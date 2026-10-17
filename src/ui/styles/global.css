@@ -1,0 +1,99 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/*
+ * Tailwind theme, mapped onto our tokens. Tailwind's default palette, radii,
+ * type scale, weights, shadows and easings are reset so only our tokens can
+ * be used. Spacing keeps Tailwind's 4px multiplier (p-1 = 4px, p-5 = 20px).
+ *
+ * Utility names: bg-canvas, bg-surface, bg-raised, border-line,
+ * border-line-strong, text-fg, text-fg-2, text-fg-3, text-accent, …
+ */
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--text);
+  --color-fg-2: var(--text-2);
+  --color-fg-3: var(--text-3);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-fail: var(--fail);
+  --color-fail-soft: var(--fail-soft);
+  --color-ok: var(--ok);
+  --color-grid-dot: var(--grid-dot);
+  --color-edge: var(--edge);
+  --color-flow: var(--flow);
+  --color-cat-traffic: var(--cat-traffic);
+  --color-cat-network: var(--cat-network);
+  --color-cat-compute: var(--cat-compute);
+  --color-cat-data: var(--cat-data);
+  --color-cat-messaging: var(--cat-messaging);
+
+  --font-*: initial;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Type scale (UIUX §8): size / line height */
+  --text-*: initial;
+  --text-xs: 0.75rem; /* 12px: axis ticks, hints */
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem; /* 13px: labels, secondary */
+  --text-sm--line-height: 1.125rem;
+  --text-base: 0.875rem; /* 14px: body, controls */
+  --text-base--line-height: 1.25rem;
+  --text-md: 1rem; /* 16px: node numbers, panel titles */
+  --text-md--line-height: 1.375rem;
+  --text-lg: 1.125rem; /* 18px: vitals */
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.5rem; /* 24px: welcome title */
+  --text-xl--line-height: 2rem;
+
+  --font-weight-*: initial;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  /* One radius per role (UIUX §4) */
+  --radius-*: initial;
+  --radius-kbd: 4px;
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --radius-pill: 9999px;
+
+  --shadow-*: initial;
+  --shadow-raised: var(--shadow-raised);
+
+  --ease-*: initial;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer base {
+  html,
+  body {
+    background-color: var(--canvas);
+    color: var(--text);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}

@@ -1,0 +1,104 @@
+/*
+ * Design tokens (docs/UIUX.md §4, §5, §9).
+ *
+ * These are the only place raw colour values live. Light is the default;
+ * dark applies when <html data-theme="dark">. The theme attribute is set
+ * before first paint by the inline script in index.html.
+ *
+ * Contrast ratios are against --surface (WCAG 2.x).
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --canvas: #f4f3f0;
+  --surface: #faf9f7;
+  --raised: #ffffff;
+
+  /* Lines */
+  --line: #e4e2dd;
+  --line-strong: #918d85; /* input borders: ≥ 3:1 against raised and surface */
+
+  /* Text */
+  --text: #3b3a36; /* 10.8:1 */
+  --text-2: #69665f; /* 5.4:1 */
+  --text-3: #8f8b84; /* 3.2:1, disabled / placeholder / axis ticks only */
+
+  /* Accent: selection, focus, primary action */
+  --accent: #3d63c9; /* 5.2:1 */
+  --accent-soft: rgb(61 99 201 / 0.1);
+
+  /* Status: only for state, never decoration */
+  --warn: #946010; /* 5.1:1 */
+  --warn-soft: rgb(148 96 16 / 0.1);
+  --fail: #be4237; /* 5.0:1 */
+  --fail-soft: rgb(190 66 55 / 0.09);
+  --ok: #3f7a55; /* 4.8:1, rare confirmations only */
+
+  /* Canvas */
+  --grid-dot: rgb(59 58 54 / 0.1);
+  --edge: #cfcbc4;
+  --flow: #8f8b84;
+
+  /* Elevation: only for things above the canvas */
+  --shadow-raised: 0 4px 16px rgb(40 36 30 / 0.07);
+
+  /* Category tints: duotone icon layer only, never near warn/fail/ok hues */
+  --cat-traffic: #5e7ba6;
+  --cat-network: #3e8a84;
+  --cat-compute: #6670b8;
+  --cat-data: #94668c;
+  --cat-messaging: #8a7f6c;
+
+  /* Motion */
+  --duration-fast: 120ms; /* hover, press, toggle */
+  --duration-popover: 160ms; /* popover, menu, tooltip */
+  --duration-panel: 200ms; /* panel open/collapse, content swap, status cross-fade */
+  --duration-zoom: 280ms; /* fit view, zoom to node */
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: #141414;
+  --surface: #1a1a19;
+  --raised: #212120;
+
+  --line: #2c2b29;
+  --line-strong: #706e68;
+
+  --text: #cfccc5; /* 10.9:1 */
+  --text-2: #9c9992; /* 6.1:1 */
+  --text-3: #75726c; /* 3.6:1 */
+
+  --accent: #7f9cf0; /* 6.6:1 */
+  --accent-soft: rgb(127 156 240 / 0.12);
+
+  --warn: #e0a44a; /* 7.9:1 */
+  --warn-soft: rgb(224 164 74 / 0.1);
+  --fail: #e8776b; /* 6.0:1 */
+  --fail-soft: rgb(232 119 107 / 0.1);
+  --ok: #7db892; /* 7.6:1 */
+
+  --grid-dot: rgb(207 204 197 / 0.07);
+  --edge: #3a3936;
+  --flow: #75726c;
+
+  --shadow-raised: 0 4px 16px rgb(0 0 0 / 0.35);
+
+  --cat-traffic: #8ea6cc;
+  --cat-network: #6fb5ae;
+  --cat-compute: #959ddb;
+  --cat-data: #bf93b7;
+  --cat-messaging: #b3a891;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-popover: 0ms;
+    --duration-panel: 0ms;
+    --duration-zoom: 0ms;
+  }
+}
