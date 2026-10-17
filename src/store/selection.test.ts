@@ -17,7 +17,23 @@ describe("selection store", () => {
     expect(store.getState().nodeIds).toEqual(["b", "c"]);
 
     select({ nodeIds: ["x", "x"] });
-    expect(store.getState()).toMatchObject({ nodeIds: ["x"], edgeIds: [] });
+    expect(store.getState()).toMatchObject({ nodeIds: ["x"], edgeIds: ["e1"] });
+
+    select({ nodeIds: [], edgeIds: ["e2"] });
+    expect(store.getState()).toMatchObject({ nodeIds: [], edgeIds: ["e2"] });
+  });
+
+  it("only changes the lists it is given, and keeps references when nothing changes", () => {
+    const store = createSelectionStore();
+    store.getState().select({ nodeIds: ["a"], edgeIds: ["e"] });
+    const before = store.getState();
+
+    store.getState().select({ nodeIds: ["a"] });
+    expect(store.getState().nodeIds).toBe(before.nodeIds);
+    expect(store.getState().edgeIds).toBe(before.edgeIds);
+
+    store.getState().select({ edgeIds: [] });
+    expect(store.getState()).toMatchObject({ nodeIds: ["a"], edgeIds: [] });
   });
 
   it("clears", () => {

@@ -1,0 +1,33 @@
+/* React Flow, themed with our tokens. Only base.css is loaded; this replaces its default look. */
+
+.react-flow {
+  --xy-background-color: var(--canvas);
+  --xy-edge-stroke: var(--edge);
+  --xy-edge-stroke-selected: var(--accent);
+  --xy-connectionline-stroke: var(--accent);
+  font-family: inherit;
+}
+
+/* Box selection and the multi-select frame. */
+.react-flow__selection,
+.react-flow__nodesselection-rect {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-kbd);
+}
+
+/* Keyboard focus on a node: a ring that follows the node's shape. */
+.react-flow__node:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-card);
+}
+
+/* Handles stay out of sight until connecting arrives (S11). */
+.react-flow__handle.handle {
+  width: 8px;
+  height: 8px;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+}

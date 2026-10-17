@@ -11,6 +11,7 @@ export type SelectMode = "replace" | "add" | "toggle";
 export type SelectionState = {
   nodeIds: readonly string[];
   edgeIds: readonly string[];
+  /** Only the lists given are changed; e.g. selecting nodes leaves edges as they are. */
   select(
     ids: { nodeIds?: readonly string[]; edgeIds?: readonly string[] },
     mode?: SelectMode,
@@ -38,11 +39,13 @@ export function createSelectionStore() {
     nodeIds: [],
     edgeIds: [],
 
-    select({ nodeIds = [], edgeIds = [] }, mode = "replace") {
-      set({
-        nodeIds: combine(get().nodeIds, nodeIds, mode),
-        edgeIds: combine(get().edgeIds, edgeIds, mode),
-      });
+    select({ nodeIds, edgeIds }, mode = "replace") {
+      const current = get();
+      const nextNodes = nodeIds ? combine(current.nodeIds, nodeIds, mode) : current.nodeIds;
+      const nextEdges = edgeIds ? combine(current.edgeIds, edgeIds, mode) : current.edgeIds;
+      // Keep references stable when nothing changed, so subscribers don't re-render.
+      if (sameIds(nextNodes, current.nodeIds) && sameIds(nextEdges, current.edgeIds)) return;
+      set({ nodeIds: nextNodes, edgeIds: nextEdges });
     },
 
     clear() {

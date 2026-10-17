@@ -13,16 +13,18 @@ import {
   UploadSimpleIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
+import { useDesign } from "../store/index.ts";
 import { Button, IconButton } from "../ui/Button.tsx";
 import { Dialog, DialogClose, DialogContent, DialogFooter } from "../ui/Dialog.tsx";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../ui/Menu.tsx";
 import { useTheme } from "../ui/theme/ThemeProvider.tsx";
 
 /**
- * The 52px top bar (UIUX §3). Run controls, the system name, and most menu
- * items are placeholders until the steps that wire them up.
+ * The 52px top bar (UIUX §3). Run controls and most menu items are
+ * placeholders until the steps that wire them up.
  */
 export function TopBar() {
+  const systemName = useDesign((s) => s.doc.name);
   return (
     <header className="grid h-13 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b border-line bg-surface pr-4 pl-5">
       <div className="flex min-w-0 items-center gap-2.5">
@@ -30,7 +32,7 @@ export function TopBar() {
         <span aria-hidden className="text-fg-3">
           /
         </span>
-        <span className="truncate font-medium">Untitled system</span>
+        <span className="truncate font-medium">{systemName}</span>
       </div>
 
       <RunControls />

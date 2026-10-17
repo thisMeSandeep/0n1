@@ -18,6 +18,15 @@ const Gallery =
     ? lazy(() => import("./ui/gallery/Gallery.tsx"))
     : null;
 
+// Dev-only: `?sample` opens the mockup's URL shortener. Also excluded from production.
+if (import.meta.env.DEV && new URLSearchParams(location.search).has("sample")) {
+  const [{ sampleSystem }, { designStore }] = await Promise.all([
+    import("./canvas/sample.ts"),
+    import("./store/index.ts"),
+  ]);
+  designStore.getState().load(sampleSystem());
+}
+
 const root = document.getElementById("root");
 if (!root) throw new Error("Root element #root not found");
 
