@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { centredAt, findFreeSpot, NODE_SIZE, snap } from "./placement.ts";
+import { centredAt, findFreeSpot, leftEdgeAt, NODE_SIZE, snap } from "./placement.ts";
 
 describe("snap", () => {
   it("rounds to the 8px grid", () => {
@@ -16,6 +16,12 @@ describe("centredAt", () => {
       x: snap(500 - NODE_SIZE.width / 2),
       y: snap(300 - NODE_SIZE.height / 2),
     });
+  });
+});
+
+describe("leftEdgeAt", () => {
+  it("puts the node's left edge on the point, vertically centred, snapped", () => {
+    expect(leftEdgeAt({ x: 403, y: 300 })).toEqual({ x: 400, y: snap(300 - NODE_SIZE.height / 2) });
   });
 });
 

@@ -18,6 +18,11 @@ export function centredAt(point: Position): Position {
   return { x: snap(point.x - NODE_SIZE.width / 2), y: snap(point.y - NODE_SIZE.height / 2) };
 }
 
+/** Top-left position that puts a node's left edge (its input) at `point`, snapped. */
+export function leftEdgeAt(point: Position): Position {
+  return { x: snap(point.x), y: snap(point.y - NODE_SIZE.height / 2) };
+}
+
 const GAP = 16;
 const STEP = 32;
 const MAX_TRIES = 50;

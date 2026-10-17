@@ -5,6 +5,7 @@ import { COMPONENT_DRAG_TYPE } from "../canvas/placement.ts";
 import { useAddComponent } from "../canvas/useAddComponent.ts";
 import { registry } from "../components/index.ts";
 import type { Category, ComponentDefinition } from "../model/component.ts";
+import { midSentence } from "../model/text.ts";
 import { IconButton } from "../ui/Button.tsx";
 import { CollapsibleSection } from "../ui/Collapsible.tsx";
 import { CATEGORY_LABEL, CATEGORY_TINT, componentIcon } from "../ui/componentIcons.tsx";
@@ -206,7 +207,7 @@ function RailItem({ definition, onAdd }: ItemProps) {
       <button
         type="button"
         draggable
-        aria-label={`Add ${definition.displayName.toLowerCase()}`}
+        aria-label={`Add ${midSentence(definition.displayName)}`}
         onDragStart={(event) => startDrag(event, definition.type)}
         onClick={() => onAdd(definition.type)}
         className="grid size-9 cursor-grab place-items-center rounded-control transition-colors duration-(--duration-fast) hover:bg-fg/5"

@@ -81,6 +81,8 @@ describe("connection rules", () => {
     ["client", "database", "Client can't send requests to a database."],
     ["client", "queue", "Client can't send requests to a queue."],
     ["queue", "service", "Queue can't send requests to a service."],
+    ["service", "cdn", "Service can't send requests to a CDN."],
+    ["load-balancer", "database", "Load balancer can't send requests to a database."],
   ])("%s → %s is refused", (source, target, reason) => {
     expect(canConnect(def(source), def(target))).toEqual({ ok: false, reason });
   });

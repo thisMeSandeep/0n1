@@ -9,12 +9,21 @@ import {
   type EdgeChange,
   type IsValidConnection,
   type NodeChange,
+  type OnConnectEnd,
   Panel,
   ReactFlow,
   useNodesInitialized,
   useReactFlow,
 } from "@xyflow/react";
-import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type DragEvent,
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { registry } from "../components/index.ts";
 import { checkConnection } from "../model/connections.ts";
 import { designStore, selectionStore, useDesign, useSelection } from "../store/index.ts";
@@ -30,8 +39,10 @@ import {
   toFlowNodes,
 } from "./flow.ts";
 import { COMPONENT_DRAG_TYPE } from "./placement.ts";
+import { QuickAdd, type QuickAddRequest } from "./QuickAdd.tsx";
 import { useAddComponent } from "./useAddComponent.ts";
-import { FIT_VIEW_OPTIONS, ZoomControls } from "./ZoomControls.tsx";
+import { FIT_VIEW_OPTIONS } from "./useViewActions.ts";
+import { ZoomControls } from "./ZoomControls.tsx";
 
 const nodeTypes = { component: ComponentNode };
 const edgeTypes = { component: ComponentEdge };
@@ -85,6 +96,36 @@ export function Canvas() {
     selection.select({ edgeIds: applySelectChanges(selection.edgeIds, changes) });
   }, []);
 
+  // Quick add: double-click empty canvas, or drop a connection on empty canvas.
+  const { screenToFlowPosition } = useReactFlow();
+  const [quickAdd, setQuickAdd] = useState<(QuickAddRequest & { key: number }) | null>(null);
+  const openQuickAdd = useCallback(
+    (screen: { x: number; y: number }, fromNodeId: string | null) =>
+      setQuickAdd((current) => ({
+        key: (current?.key ?? 0) + 1,
+        screen,
+        flow: screenToFlowPosition(screen),
+        fromNodeId,
+      })),
+    [screenToFlowPosition],
+  );
+  const onDoubleClick = useCallback(
+    (event: MouseEvent) => {
+      if (!(event.target as Element).classList?.contains("react-flow__pane")) return;
+      openQuickAdd({ x: event.clientX, y: event.clientY }, null);
+    },
+    [openQuickAdd],
+  );
+  const onConnectEnd: OnConnectEnd = useCallback(
+    (event, connection) => {
+      // Only a drop on empty canvas; a drop on any component is handled (or refused) already.
+      if (connection.isValid || connection.toNode || !connection.fromNode) return;
+      const point = "changedTouches" in event ? event.changedTouches[0] : event;
+      if (point) openQuickAdd({ x: point.clientX, y: point.clientY }, connection.fromNode.id);
+    },
+    [openQuickAdd],
+  );
+
   // Components dragged in from the palette.
   const { addAtScreenPoint } = useAddComponent();
   const onDragOver = useCallback((event: DragEvent) => {
@@ -118,6 +159,8 @@ export function Canvas() {
         onDragOver={onDragOver}
         onDrop={onDrop}
         onConnect={onConnect}
+        onConnectEnd={onConnectEnd}
+        onDoubleClick={onDoubleClick}
         isValidConnection={isValidConnection}
         connectionLineComponent={ConnectionLine}
         connectionRadius={32}
@@ -147,6 +190,9 @@ export function Canvas() {
           <ZoomControls />
         </Panel>
       </ReactFlow>
+      {quickAdd && (
+        <QuickAdd key={quickAdd.key} request={quickAdd} onClose={() => setQuickAdd(null)} />
+      )}
     </div>
   );
 }

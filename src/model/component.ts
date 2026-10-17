@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { midSentence } from "./text.ts";
 
 /**
  * Component definitions: everything 0n1 knows about a component type, as
@@ -125,5 +126,5 @@ export function canConnect(
 }
 
 function article(name: string): string {
-  return `${/^[aeiou]/i.test(name) ? "an" : "a"} ${name.toLowerCase()}`;
+  return `${/^[aeiou]/i.test(name) ? "an" : "a"} ${midSentence(name)}`;
 }

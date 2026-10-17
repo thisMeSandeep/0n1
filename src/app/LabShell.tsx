@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Canvas } from "../canvas/Canvas.tsx";
 import { PalettePanel } from "../palette/PalettePanel.tsx";
 import { selectionStore } from "../store/index.ts";
+import { CommandPalette } from "./CommandPalette.tsx";
 import { DesktopNotice } from "./DesktopNotice.tsx";
 import { InspectorPanel, OpenInspectorButton } from "./Panels.tsx";
 import { TopBar } from "./TopBar.tsx";
@@ -50,6 +51,7 @@ export function LabShell() {
           </main>
           {layout.inspectorDocked && inspector}
         </div>
+        <CommandPalette />
       </div>
     </ReactFlowProvider>
   );
