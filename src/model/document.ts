@@ -1,0 +1,117 @@
+import { z } from "zod";
+
+/**
+ * The system document: one user's design, as plain data. It is what the
+ * canvas edits, what IndexedDB stores, what backups contain and what the
+ * engine runs. Bump CURRENT_SCHEMA_VERSION and add a migration (migrate.ts)
+ * whenever its shape changes.
+ */
+export const CURRENT_SCHEMA_VERSION = 1;
+
+const id = z.string().min(1);
+
+export const positionSchema = z.object({ x: z.number(), y: z.number() });
+
+export const nodeSchema = z.object({
+  id,
+  /** Component type id from the registry, e.g. "load-balancer". */
+  type: id,
+  name: z.string().min(1).max(80),
+  position: positionSchema,
+  /** Validated against the component's own parameter schema, not here. */
+  params: z.record(z.string(), z.unknown()),
+});
+
+export const edgeSchema = z.object({
+  id,
+  /** Node that sends requests. */
+  source: id,
+  /** Node that receives them. */
+  target: id,
+});
+
+export const systemDocumentSchema = z
+  .object({
+    schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
+    id,
+    name: z.string().min(1).max(80),
+    nodes: z.array(nodeSchema),
+    edges: z.array(edgeSchema),
+    meta: z.object({
+      /** Unix epoch milliseconds. */
+      createdAt: z.number().int().nonnegative(),
+      updatedAt: z.number().int().nonnegative(),
+    }),
+  })
+  .superRefine((doc, ctx) => {
+    const nodeIds = new Set<string>();
+    doc.nodes.forEach((node, index) => {
+      if (nodeIds.has(node.id)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["nodes", index, "id"],
+          message: `Duplicate node id "${node.id}"`,
+        });
+      }
+      nodeIds.add(node.id);
+    });
+
+    const edgeIds = new Set<string>();
+    const links = new Set<string>();
+    doc.edges.forEach((edge, index) => {
+      const path = ["edges", index];
+      if (edgeIds.has(edge.id)) {
+        ctx.addIssue({
+          code: "custom",
+          path: [...path, "id"],
+          message: `Duplicate edge id "${edge.id}"`,
+        });
+      }
+      edgeIds.add(edge.id);
+
+      for (const end of ["source", "target"] as const) {
+        if (!nodeIds.has(edge[end])) {
+          ctx.addIssue({
+            code: "custom",
+            path: [...path, end],
+            message: `Unknown node "${edge[end]}"`,
+          });
+        }
+      }
+      if (edge.source === edge.target) {
+        ctx.addIssue({ code: "custom", path, message: "A component can't connect to itself" });
+      }
+      const link = `${edge.source}→${edge.target}`;
+      if (links.has(link)) {
+        ctx.addIssue({ code: "custom", path, message: `Duplicate connection ${link}` });
+      }
+      links.add(link);
+    });
+  });
+
+export type Position = z.infer<typeof positionSchema>;
+export type SystemNode = z.infer<typeof nodeSchema>;
+export type SystemEdge = z.infer<typeof edgeSchema>;
+export type SystemDocument = z.infer<typeof systemDocumentSchema>;
+
+export const DEFAULT_SYSTEM_NAME = "Untitled system";
+
+/** A new, empty system. `id` and `now` are injectable for tests. */
+export function createSystemDocument({
+  name = DEFAULT_SYSTEM_NAME,
+  id = crypto.randomUUID(),
+  now = Date.now(),
+}: {
+  name?: string;
+  id?: string;
+  now?: number;
+} = {}): SystemDocument {
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    id,
+    name,
+    nodes: [],
+    edges: [],
+    meta: { createdAt: now, updatedAt: now },
+  };
+}
