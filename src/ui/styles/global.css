@@ -31,6 +31,7 @@
   --color-grid-dot: var(--grid-dot);
   --color-edge: var(--edge);
   --color-flow: var(--flow);
+  --color-scrim: var(--scrim);
   --color-cat-traffic: var(--cat-traffic);
   --color-cat-network: var(--cat-network);
   --color-cat-compute: var(--cat-compute);
@@ -74,6 +75,61 @@
   --ease-*: initial;
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Enter/exit animations (UIUX §9). No bounce, no overshoot. */
+  --animate-*: initial;
+  --animate-pop-in: pop-in var(--duration-popover) var(--ease-standard);
+  --animate-pop-out: pop-out var(--duration-popover) var(--ease-out);
+  --animate-fade-in: fade-in var(--duration-popover) var(--ease-out);
+  --animate-fade-out: fade-out var(--duration-popover) var(--ease-out);
+  --animate-collapse-open: collapse-open var(--duration-panel) var(--ease-standard);
+  --animate-collapse-close: collapse-close var(--duration-panel) var(--ease-standard);
+  --animate-toast-in: toast-in var(--duration-panel) var(--ease-standard);
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+  @keyframes pop-out {
+    to {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes collapse-open {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-collapsible-content-height);
+    }
+  }
+  @keyframes collapse-close {
+    from {
+      height: var(--radix-collapsible-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
 }
 
 @layer base {

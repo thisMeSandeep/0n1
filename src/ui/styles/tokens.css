@@ -43,6 +43,7 @@
 
   /* Elevation: only for things above the canvas */
   --shadow-raised: 0 4px 16px rgb(40 36 30 / 0.07);
+  --scrim: rgb(40 36 30 / 0.16); /* behind dialogs */
 
   /* Category tints: duotone icon layer only, never near warn/fail/ok hues */
   --cat-traffic: #5e7ba6;
@@ -86,6 +87,7 @@
   --flow: #75726c;
 
   --shadow-raised: 0 4px 16px rgb(0 0 0 / 0.35);
+  --scrim: rgb(0 0 0 / 0.45);
 
   --cat-traffic: #8ea6cc;
   --cat-network: #6fb5ae;
