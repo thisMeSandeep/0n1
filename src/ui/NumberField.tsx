@@ -1,6 +1,6 @@
 import { type KeyboardEvent, useState } from "react";
 import { cx } from "./cx.ts";
-import { type NumericRange, parseNumber, roundValue, stepValue } from "./scale.ts";
+import { formatNumber, type NumericRange, parseNumber, roundValue, stepValue } from "./scale.ts";
 
 type NumberFieldProps = NumericRange & {
   value: number;
@@ -55,7 +55,7 @@ export function NumberField({
   return (
     <div
       className={cx(
-        "flex h-7 w-20 items-center gap-1 rounded-control border border-line-strong bg-raised px-2",
+        "flex h-7 w-24 items-center gap-1 rounded-control border border-line-strong bg-raised px-2",
         "focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent",
         disabled && "opacity-50",
         className,
@@ -69,7 +69,7 @@ export function NumberField({
         autoComplete="off"
         spellCheck={false}
         disabled={disabled}
-        value={draft ?? String(value)}
+        value={draft ?? formatNumber(value)}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
         onKeyDown={handleKeyDown}

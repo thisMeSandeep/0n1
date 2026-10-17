@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { fromPosition, parseNumber, roundValue, stepValue, toPosition } from "./scale.ts";
+import {
+  formatNumber,
+  fromPosition,
+  parseNumber,
+  roundValue,
+  stepValue,
+  toPosition,
+} from "./scale.ts";
 
 describe("linear mapping", () => {
   const range = { min: 0, max: 200 };
@@ -82,5 +89,20 @@ describe("parseNumber", () => {
     expect(parseNumber("")).toBeNull();
     expect(parseNumber("abc")).toBeNull();
     expect(parseNumber("Infinity")).toBeNull();
+  });
+});
+
+describe("formatNumber", () => {
+  it("groups thousands and keeps decimals as they are", () => {
+    expect(formatNumber(20000)).toBe("20,000");
+    expect(formatNumber(12)).toBe("12");
+    expect(formatNumber(0.05)).toBe("0.05");
+    expect(formatNumber(1234.5)).toBe("1,234.5");
+  });
+
+  it("round-trips through parseNumber", () => {
+    for (const value of [0, 0.1, 50, 1000, 100000, 9999.25]) {
+      expect(parseNumber(formatNumber(value))).toBe(value);
+    }
   });
 });

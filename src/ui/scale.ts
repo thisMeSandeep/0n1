@@ -93,6 +93,13 @@ export function stepValue(
   return rounded;
 }
 
+const numberFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 10 });
+
+/** Display a value for a number field: thousands separators, no trailing zeros. */
+export function formatNumber(value: number): string {
+  return numberFormat.format(value);
+}
+
 /** Parse user input. Returns null when it isn't a finite number. */
 export function parseNumber(text: string): number | null {
   const trimmed = text.trim().replace(/,/g, "");

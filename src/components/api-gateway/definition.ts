@@ -26,6 +26,7 @@ export const apiGateway: ComponentDefinition = {
       kind: "number",
       label: "Rate limit",
       section: "behaviour",
+      enabledBy: "rateLimiting",
       default: 1000,
       min: 1,
       max: 1_000_000,

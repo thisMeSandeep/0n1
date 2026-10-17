@@ -18,6 +18,8 @@ type ParamBase = {
   section: ParamSection;
   /** One plain sentence, shown as a hint. */
   help?: string;
+  /** Key of a toggle param; this one only applies while that toggle is on. */
+  enabledBy?: string;
 };
 
 export type NumberParam = ParamBase & {

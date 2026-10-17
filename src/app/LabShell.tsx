@@ -1,7 +1,8 @@
 import { ReactFlowProvider } from "@xyflow/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Canvas } from "../canvas/Canvas.tsx";
 import { PalettePanel } from "../palette/PalettePanel.tsx";
+import { selectionStore } from "../store/index.ts";
 import { DesktopNotice } from "./DesktopNotice.tsx";
 import { InspectorPanel, OpenInspectorButton } from "./Panels.tsx";
 import { TopBar } from "./TopBar.tsx";
@@ -11,6 +12,17 @@ import { useLabLayout } from "./useLabLayout.ts";
 export function LabShell() {
   const layout = useLabLayout();
   const [continuedOnSmallScreen, setContinuedOnSmallScreen] = useState(false);
+
+  // Below 1440px the inspector floats closed; selecting something opens it (UIUX §3).
+  const { inspectorDocked, openInspector } = layout;
+  useEffect(() => {
+    if (inspectorDocked) return;
+    return selectionStore.subscribe((selection, previous) => {
+      const changed =
+        selection.nodeIds !== previous.nodeIds || selection.edgeIds !== previous.edgeIds;
+      if (changed && selection.nodeIds.length + selection.edgeIds.length > 0) openInspector();
+    });
+  }, [inspectorDocked, openInspector]);
 
   if (layout.needsDesktopNotice && !continuedOnSmallScreen) {
     return <DesktopNotice onContinue={() => setContinuedOnSmallScreen(true)} />;

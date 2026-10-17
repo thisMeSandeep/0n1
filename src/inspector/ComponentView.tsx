@@ -1,0 +1,108 @@
+import { CopyIcon, DotsThreeIcon, TrashIcon } from "@phosphor-icons/react";
+import { registry } from "../components/index.ts";
+import { designStore, selectionStore, useDesign } from "../store/index.ts";
+import { IconButton } from "../ui/Button.tsx";
+import { CollapsibleSection } from "../ui/Collapsible.tsx";
+import { CATEGORY_LABEL, CATEGORY_TINT, componentIcon } from "../ui/componentIcons.tsx";
+import { cx } from "../ui/cx.ts";
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../ui/Menu.tsx";
+import { EditableTitle } from "./EditableTitle.tsx";
+import { InspectorHeader, InspectorSection } from "./InspectorHeader.tsx";
+import { ParamField } from "./ParamField.tsx";
+import { paramSections } from "./sections.ts";
+
+/** The inspector for one selected component (UIUX §7). */
+export function ComponentView({ nodeId, onClose }: { nodeId: string; onClose: () => void }) {
+  const node = useDesign((s) => s.doc.nodes.find((n) => n.id === nodeId));
+  const definition = node ? registry.get(node.type) : undefined;
+  if (!node || !definition) return null;
+
+  const Icon = componentIcon(definition.icon);
+  const actions = designStore.getState();
+
+  return (
+    <>
+      <InspectorHeader
+        icon={
+          <Icon
+            aria-hidden
+            weight="duotone"
+            className={cx("size-5", CATEGORY_TINT[definition.category])}
+          />
+        }
+        title={
+          <EditableTitle
+            label="Component name"
+            value={node.name}
+            onCommit={(name) => actions.renameNode(nodeId, name)}
+          />
+        }
+        // The type when the name is custom ("Links DB · Database"), otherwise the category.
+        subtitle={
+          node.name === definition.displayName
+            ? CATEGORY_LABEL[definition.category]
+            : definition.displayName
+        }
+        actions={<ComponentMenu nodeId={nodeId} />}
+        onClose={onClose}
+      />
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-10">
+        <InspectorSection title="About">
+          <div className="flex flex-col gap-2">
+            <p className="text-base text-fg">{definition.description}</p>
+            <CollapsibleSection title="How it's modelled" defaultOpen={false}>
+              <p className="max-w-[65ch] text-sm leading-relaxed text-fg-2">
+                {definition.modelNote}
+              </p>
+            </CollapsibleSection>
+          </div>
+        </InspectorSection>
+
+        {paramSections(definition).map((group) => (
+          <InspectorSection key={group.section} title={group.title}>
+            {group.params.map(([key, spec]) => (
+              <ParamField
+                key={key}
+                spec={spec}
+                value={node.params[key]}
+                params={node.params as Record<string, number | string | boolean>}
+                onChange={(value) => actions.updateParams(nodeId, { [key]: value })}
+              />
+            ))}
+          </InspectorSection>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function ComponentMenu({ nodeId }: { nodeId: string }) {
+  const duplicate = () => {
+    const [copy] = designStore.getState().duplicateNodes([nodeId]);
+    if (copy) selectionStore.getState().select({ nodeIds: [copy], edgeIds: [] });
+  };
+  return (
+    <Menu>
+      <MenuTrigger asChild>
+        <IconButton label="Component actions">
+          <DotsThreeIcon weight="bold" />
+        </IconButton>
+      </MenuTrigger>
+      <MenuContent>
+        <MenuItem icon={<CopyIcon />} shortcut="⌘D" onSelect={duplicate}>
+          Duplicate
+        </MenuItem>
+        <MenuSeparator />
+        <MenuItem
+          icon={<TrashIcon />}
+          tone="danger"
+          shortcut="⌫"
+          onSelect={() => designStore.getState().removeNodes([nodeId])}
+        >
+          Delete
+        </MenuItem>
+      </MenuContent>
+    </Menu>
+  );
+}

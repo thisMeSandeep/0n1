@@ -198,9 +198,9 @@ describe("design store", () => {
       const a = actions.addNode("cache", { x: 0, y: 0 });
       const steps = history().pastStates.length;
 
-      actions.beginDrag();
+      actions.beginGesture();
       for (let x = 1; x <= 20; x++) actions.moveNodes([{ id: a, position: { x, y: x } }]);
-      actions.endDrag();
+      actions.endGesture();
 
       expect(history().pastStates.length).toBe(steps + 1);
       expect(node(a)?.position).toEqual({ x: 20, y: 20 });
@@ -214,8 +214,8 @@ describe("design store", () => {
       const { actions, history } = setup();
       actions.addNode("cache", { x: 0, y: 0 });
       const steps = history().pastStates.length;
-      actions.beginDrag();
-      actions.endDrag();
+      actions.beginGesture();
+      actions.endGesture();
       expect(history().pastStates.length).toBe(steps);
       expect(history().isTracking).toBe(true);
     });

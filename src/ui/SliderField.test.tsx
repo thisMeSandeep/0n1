@@ -63,11 +63,11 @@ describe("SliderField", () => {
 
     await user.clear(field());
     await user.type(field(), "99999{Enter}");
-    expect(field().value).toBe("1000");
+    expect(field().value).toBe("1,000");
 
     await user.clear(field());
     await user.type(field(), "abc{Enter}");
-    expect(field().value).toBe("1000");
+    expect(field().value).toBe("1,000");
   });
 
   it("Escape reverts an unfinished edit", async () => {

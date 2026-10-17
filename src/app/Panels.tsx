@@ -1,4 +1,5 @@
 import { SidebarSimpleIcon } from "@phosphor-icons/react";
+import { Inspector } from "../inspector/Inspector.tsx";
 import { IconButton } from "../ui/Button.tsx";
 import { cx } from "../ui/cx.ts";
 
@@ -10,7 +11,7 @@ type InspectorPanelProps = {
 
 /**
  * Right panel (320px). Docked on wide screens; below 1440px it floats over
- * the canvas edge. Contextual views arrive in S12.
+ * the canvas edge.
  */
 export function InspectorPanel({ open, docked, onToggle }: InspectorPanelProps) {
   if (!open) return null;
@@ -22,13 +23,7 @@ export function InspectorPanel({ open, docked, onToggle }: InspectorPanelProps) 
         !docked && "absolute top-0 right-0 bottom-0 z-10 shadow-raised",
       )}
     >
-      <div className="flex h-14 items-center justify-between pr-3 pl-5">
-        <h2 className="text-md font-semibold">System</h2>
-        <IconButton label="Close inspector" shortcut="]" onClick={onToggle}>
-          <SidebarSimpleIcon className="-scale-x-100" />
-        </IconButton>
-      </div>
-      <p className="px-5 text-base text-fg-2">Select a component to see its settings.</p>
+      <Inspector onClose={onToggle} />
     </aside>
   );
 }

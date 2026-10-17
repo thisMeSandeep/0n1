@@ -8,8 +8,9 @@ import type { Registry } from "../model/registry.ts";
 
 /**
  * The design store: the one place the current system document is edited.
- * Every change to `doc` is one undo step, except drags, which are grouped
- * into a single step between `beginDrag` and `endDrag`.
+ * Every change to `doc` is one undo step, except gestures (dragging nodes or
+ * a slider), which are grouped into a single step between `beginGesture`
+ * and `endGesture`.
  */
 
 export type ConnectResult = { ok: true; edgeId: string } | { ok: false; reason: string };
@@ -30,9 +31,9 @@ export type DesignActions = {
   disconnect(edgeIds: readonly string[]): void;
   /** Copies nodes (and the connections between them), offset slightly. Returns new ids. */
   duplicateNodes(ids: readonly string[]): string[];
-  /** Start grouping changes (a drag) into one undo step. */
-  beginDrag(): void;
-  endDrag(): void;
+  /** Group every change until endGesture (a node drag, a slider drag) into one undo step. */
+  beginGesture(): void;
+  endGesture(): void;
 };
 
 export type DesignState = { doc: SystemDocument } & DesignActions;
@@ -69,7 +70,7 @@ export function createDesignStore({
   now = () => Date.now(),
   historyLimit = 100,
 }: DesignStoreOptions) {
-  let dragOrigin: SystemDocument | null = null;
+  let gestureOrigin: SystemDocument | null = null;
 
   const store = createStore<DesignState>()(
     temporal(
@@ -88,7 +89,7 @@ export function createDesignStore({
           doc,
 
           load(next) {
-            dragOrigin = null;
+            gestureOrigin = null;
             set({ doc: next });
             store.temporal.getState().clear();
           },
@@ -226,24 +227,24 @@ export function createDesignStore({
             return copies.map((c) => c.id);
           },
 
-          beginDrag() {
-            if (dragOrigin) return;
-            dragOrigin = get().doc;
+          beginGesture() {
+            if (gestureOrigin) return;
+            gestureOrigin = get().doc;
             store.temporal.getState().pause();
           },
 
-          endDrag() {
-            const origin = dragOrigin;
+          endGesture() {
+            const origin = gestureOrigin;
             if (!origin) return;
-            dragOrigin = null;
+            gestureOrigin = null;
             const final = get().doc;
             const temporalState = store.temporal.getState();
             if (final === origin) {
               temporalState.resume();
               return;
             }
-            // Rewind to where the drag started (untracked), then apply the end
-            // result tracked, so the whole drag becomes one undo step.
+            // Rewind to where the gesture started (untracked), then apply the end
+            // result tracked, so the whole gesture becomes one undo step.
             set({ doc: origin });
             temporalState.resume();
             set({ doc: final });

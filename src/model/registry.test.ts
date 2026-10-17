@@ -65,6 +65,15 @@ describe("validateDefinition", () => {
     );
   });
 
+  it("checks that enabledBy points at a toggle", () => {
+    const toggle = { kind: "toggle", label: "On", section: "behaviour", default: false };
+    const valid = { ...testDatabase, params: { on: toggle, p: { ...number, enabledBy: "on" } } };
+    expect(() => validateDefinition(valid as ComponentDefinition)).not.toThrow();
+    expect(() => validateDefinition(withParam({ ...number, enabledBy: "missing" }))).toThrow(
+      'enabledBy "missing" is not a toggle',
+    );
+  });
+
   it("checks that a choice default is one of its options", () => {
     const choice = {
       kind: "choice",

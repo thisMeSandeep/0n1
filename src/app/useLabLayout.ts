@@ -16,6 +16,7 @@ export type LabLayout = PanelState & {
   needsDesktopNotice: boolean;
   togglePalette: () => void;
   toggleInspector: () => void;
+  openInspector: () => void;
 };
 
 /**
@@ -41,6 +42,10 @@ export function useLabLayout(): LabLayout {
     () => setPanels((p) => ({ ...p, inspectorOpen: !p.inspectorOpen })),
     [],
   );
+  const openInspector = useCallback(
+    () => setPanels((p) => (p.inspectorOpen ? p : { ...p, inspectorOpen: true })),
+    [],
+  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -58,5 +63,6 @@ export function useLabLayout(): LabLayout {
     needsDesktopNotice: tier === "small" || !finePointer,
     togglePalette,
     toggleInspector,
+    openInspector,
   };
 }

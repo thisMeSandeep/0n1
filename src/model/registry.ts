@@ -25,6 +25,9 @@ export function validateDefinition(definition: ComponentDefinition): void {
   }
   for (const [key, spec] of Object.entries(definition.params)) {
     validateParam(`${where}, param "${key}"`, spec);
+    if (spec.enabledBy !== undefined && definition.params[spec.enabledBy]?.kind !== "toggle") {
+      throw new Error(`${where}, param "${key}": enabledBy "${spec.enabledBy}" is not a toggle`);
+    }
   }
 }
 

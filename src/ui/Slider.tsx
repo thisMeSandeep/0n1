@@ -22,7 +22,10 @@ type SliderProps = NumericRange & {
   label: string;
   /** Spoken after the value, e.g. "ms". */
   unit?: string | undefined;
-  disabled?: boolean;
+  disabled?: boolean | undefined;
+  /** A pointer drag started / ended. Use to group a drag into one undo step. */
+  onGestureStart?: (() => void) | undefined;
+  onGestureEnd?: (() => void) | undefined;
   className?: string;
 };
 
@@ -37,6 +40,8 @@ export function Slider({
   label,
   unit,
   disabled,
+  onGestureStart,
+  onGestureEnd,
   className,
   ...range
 }: SliderProps) {
@@ -70,6 +75,10 @@ export function Slider({
         next !== undefined && commit(fromPosition(next / POSITIONS, range))
       }
       onKeyDown={handleKeyDown}
+      // Radix only reports a commit when the value changed; pointer events always fire.
+      onPointerDown={onGestureStart}
+      onPointerUp={onGestureEnd}
+      onPointerCancel={onGestureEnd}
       {...(disabled ? { disabled } : {})}
       className={cx(
         "relative flex h-6 w-full touch-none select-none items-center data-disabled:opacity-50",

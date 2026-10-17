@@ -41,7 +41,7 @@ const GRID_GAP = 24;
 const PAN_BUTTONS = [1, 2];
 const MULTI_SELECT_KEYS = ["Shift", "Meta", "Control"];
 
-const { beginDrag, endDrag } = designStore.getState();
+const { beginGesture, endGesture } = designStore.getState();
 
 const isValidConnection: IsValidConnection = ({ source, target }) =>
   checkConnection(designStore.getState().doc, registry, source, target).ok;
@@ -111,10 +111,10 @@ export function Canvas() {
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onNodeDragStart={beginDrag}
-        onNodeDragStop={endDrag}
-        onSelectionDragStart={beginDrag}
-        onSelectionDragStop={endDrag}
+        onNodeDragStart={beginGesture}
+        onNodeDragStop={endGesture}
+        onSelectionDragStart={beginGesture}
+        onSelectionDragStop={endGesture}
         onDragOver={onDragOver}
         onDrop={onDrop}
         onConnect={onConnect}
