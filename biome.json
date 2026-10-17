@@ -56,6 +56,47 @@
           }
         }
       }
+    },
+    {
+      "includes": ["src/engine/**", "src/model/**", "src/components/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "react": "The engine, model and component definitions are pure TypeScript: no UI, state or storage libraries.",
+                  "react-dom": "The engine, model and component definitions are pure TypeScript: no UI, state or storage libraries.",
+                  "react-dom/client": "The engine, model and component definitions are pure TypeScript: no UI, state or storage libraries.",
+                  "@xyflow/react": "The engine, model and component definitions are pure TypeScript: no UI, state or storage libraries.",
+                  "zustand": "The engine, model and component definitions are pure TypeScript: no UI, state or storage libraries.",
+                  "zundo": "The engine, model and component definitions are pure TypeScript: no UI, state or storage libraries.",
+                  "dexie": "The engine, model and component definitions are pure TypeScript: no UI, state or storage libraries.",
+                  "cmdk": "The engine, model and component definitions are pure TypeScript: no UI, state or storage libraries."
+                },
+                "patterns": [
+                  {
+                    "group": [
+                      "@radix-ui/*",
+                      "@phosphor-icons/*",
+                      "**/ui/**",
+                      "**/app/**",
+                      "**/canvas/**",
+                      "**/inspector/**",
+                      "**/palette/**",
+                      "**/library/**",
+                      "**/store/**",
+                      "**/storage/**"
+                    ],
+                    "message": "The engine, model and component definitions must not import UI, app state or storage code."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }
