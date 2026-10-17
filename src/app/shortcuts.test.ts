@@ -49,6 +49,9 @@ describe("matching", () => {
     [press("k", { meta: true }), "commandPalette"],
     [press("?", { shift: true }), "shortcuts"],
     [press("/"), "searchComponents"],
+    [press(" "), "runPause"],
+    [press("."), "step"],
+    [press("R", { shift: true }), "reset"],
     [press("z", { meta: true }), "undo"],
     [press("Z", { meta: true, shift: true }), "redo"],
     [press("y", { meta: true }), "redo"],
@@ -102,6 +105,15 @@ describe("shouldHandle", () => {
     const button = document.createElement("button");
     dialog.append(button);
     expect(shouldHandle(undo, button)).toBe(false);
+  });
+
+  it("leaves Space to a button with keyboard focus", () => {
+    const runPause = SHORTCUTS.find((s) => s.id === "runPause")!;
+    const button = document.createElement("button");
+    expect(shouldHandle(runPause, button, { keyboardFocus: true })).toBe(false);
+    expect(shouldHandle(runPause, button)).toBe(true); // focus left by a click
+    expect(shouldHandle(runPause, document.body, { keyboardFocus: true })).toBe(true);
+    expect(shouldHandle(undo, button, { keyboardFocus: true })).toBe(true);
   });
 
   it("always handles global shortcuts", () => {

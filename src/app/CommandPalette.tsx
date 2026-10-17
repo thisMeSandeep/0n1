@@ -1,11 +1,14 @@
 import {
+  ArrowCounterClockwiseIcon,
   CornersOutIcon,
   DownloadSimpleIcon,
   FolderOpenIcon,
   KeyboardIcon,
   MagnifyingGlassPlusIcon,
   MoonIcon,
+  PlayIcon,
   PlusIcon,
+  SkipForwardIcon,
   SunIcon,
   UploadSimpleIcon,
 } from "@phosphor-icons/react";
@@ -17,6 +20,8 @@ import { backUpAll, startRestore } from "../library/backup.ts";
 import { library } from "../library/index.ts";
 import { useSystemsList } from "../library/useSystemsList.ts";
 import { midSentence } from "../model/text.ts";
+import { simulation } from "../simulation/index.ts";
+import { useSimulation } from "../simulation/store.ts";
 import { isStorageAvailable } from "../storage/index.ts";
 import { uiStore, useDesign, useUi } from "../store/index.ts";
 import {
@@ -48,6 +53,7 @@ export function CommandPalette() {
     action();
   };
   const nextTheme = resolved === "dark" ? "light" : "dark";
+  const running = useSimulation((s) => s.running);
 
   return (
     <RadixDialog.Root open={open} onOpenChange={setOpen}>
@@ -66,6 +72,34 @@ export function CommandPalette() {
             <CommandInput placeholder="Type a command or search…" />
             <CommandList className="max-h-96">
               <CommandEmpty>Nothing matches.</CommandEmpty>
+              <CommandGroup heading="Simulation">
+                <CommandItem
+                  value={running ? "Pause the run" : "Run the system"}
+                  keywords={["start", "play", "simulate", "stop"]}
+                  shortcut={shortcutKeys("runPause")}
+                  onSelect={run(simulation.toggle)}
+                  icon={<PlayIcon aria-hidden className="text-fg-2" />}
+                >
+                  {running ? "Pause the run" : "Run the system"}
+                </CommandItem>
+                <CommandItem
+                  value="Step 1 second"
+                  shortcut={shortcutKeys("step")}
+                  onSelect={run(simulation.step)}
+                  icon={<SkipForwardIcon aria-hidden className="text-fg-2" />}
+                >
+                  Step 1 second
+                </CommandItem>
+                <CommandItem
+                  value="Reset the run"
+                  keywords={["restart"]}
+                  shortcut={shortcutKeys("reset")}
+                  onSelect={run(simulation.reset)}
+                  icon={<ArrowCounterClockwiseIcon aria-hidden className="text-fg-2" />}
+                >
+                  Reset the run
+                </CommandItem>
+              </CommandGroup>
               <CommandGroup heading="Add component">
                 {registry.list().map((definition) => {
                   const Icon = componentIcon(definition.icon);

@@ -3,8 +3,7 @@ import { isTypingTarget } from "./layout.ts";
 /**
  * Every keyboard shortcut in the lab (UIUX §11), in one place. The global
  * handler, the `?` sheet, tooltips and menus all read from here, so they
- * can't drift apart. Run controls (Space, `.`, Shift R) join in S29 and
- * take down (K) in S30.
+ * can't drift apart. Take down (K) joins in S30.
  */
 
 export type KeyCombo = {
@@ -16,7 +15,7 @@ export type KeyCombo = {
   shift?: boolean;
 };
 
-export type ShortcutGroup = "General" | "Editing" | "View" | "Panels";
+export type ShortcutGroup = "General" | "Simulation" | "Editing" | "View" | "Panels";
 
 export type Shortcut = {
   id: ShortcutId;
@@ -33,6 +32,9 @@ export const SHORTCUT_IDS = [
   "commandPalette",
   "shortcuts",
   "searchComponents",
+  "runPause",
+  "step",
+  "reset",
   "undo",
   "redo",
   "duplicate",
@@ -60,6 +62,15 @@ export const SHORTCUTS: readonly Shortcut[] = [
   },
   { id: "shortcuts", label: "Keyboard shortcuts", group: "General", combos: [{ key: "?" }] },
   { id: "searchComponents", label: "Search components", group: "General", combos: [{ key: "/" }] },
+  {
+    id: "runPause",
+    label: "Run or pause",
+    group: "Simulation",
+    combos: [{ key: " " }],
+    display: "Space",
+  },
+  { id: "step", label: "Step 1 second", group: "Simulation", combos: [{ key: "." }] },
+  { id: "reset", label: "Reset the run", group: "Simulation", combos: [{ key: "r", shift: true }] },
   { id: "undo", label: "Undo", group: "Editing", combos: [{ key: "z", mod: true }] },
   {
     id: "redo",
@@ -145,12 +156,53 @@ function isOverlayTarget(target: EventTarget | null): boolean {
   );
 }
 
-/** Whether a matched shortcut should run for this event's target. */
-export function shouldHandle(shortcut: Shortcut, target: EventTarget | null): boolean {
-  return shortcut.global === true || (!isTypingTarget(target) && !isOverlayTarget(target));
+/** A focused control that Space presses or toggles. */
+export function isSpaceControl(target: EventTarget | null): boolean {
+  if (!target || typeof (target as Element).closest !== "function") return false;
+  return (
+    (target as Element).closest(
+      'button, a[href], summary, [role="button"], [role="switch"], [role="checkbox"], [role="radio"], [role="slider"], [role="tab"]',
+    ) !== null
+  );
+}
+
+/** Keys that mean someone is moving around with the keyboard. */
+const NAVIGATION_KEYS = new Set([
+  "Tab",
+  "Enter",
+  "Escape",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Home",
+  "End",
+]);
+
+export function isNavigationKey(key: string): boolean {
+  return NAVIGATION_KEYS.has(key);
+}
+
+/**
+ * Whether a matched shortcut should run for this event's target.
+ * `keyboardFocus`: focus got where it is by keyboard, not left behind by a click.
+ */
+export function shouldHandle(
+  shortcut: Shortcut,
+  target: EventTarget | null,
+  { keyboardFocus = false } = {},
+): boolean {
+  if (shortcut.global) return true;
+  if (isTypingTarget(target) || isOverlayTarget(target)) return false;
+  // Someone tabbing around expects Space to press the focused button. After a
+  // click (focus stays on the button, or goes back to a menu's trigger),
+  // Space should still run.
+  const usesSpace = shortcut.combos.some((c) => c.key === " ");
+  return !(usesSpace && keyboardFocus && isSpaceControl(target));
 }
 
 const MAC_KEYS: Record<string, string> = {
+  " ": "Space",
   Backspace: "⌫",
   Delete: "⌦",
   Escape: "Esc",

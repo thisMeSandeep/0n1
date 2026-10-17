@@ -18,6 +18,8 @@ export type SimulationState = {
   warnings: CompileIssue[];
   /** A problem the worker reported while handling a command. */
   lastError: string | null;
+  /** The user pressed Run; problems stopping it should be shown. */
+  runAttempted: boolean;
 };
 
 export const initialSimulationState: SimulationState = {
@@ -28,6 +30,7 @@ export const initialSimulationState: SimulationState = {
   errors: [],
   warnings: [],
   lastError: null,
+  runAttempted: false,
 };
 
 export function createSimulationStore() {

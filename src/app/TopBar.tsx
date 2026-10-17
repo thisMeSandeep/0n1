@@ -1,14 +1,10 @@
 import {
-  ArrowCounterClockwiseIcon,
-  CaretDownIcon,
   DotsThreeIcon,
   DownloadSimpleIcon,
   ImageIcon,
   InfoIcon,
   KeyboardIcon,
   MoonIcon,
-  PlayIcon,
-  SkipForwardIcon,
   SunIcon,
   UploadSimpleIcon,
 } from "@phosphor-icons/react";
@@ -22,11 +18,11 @@ import { Dialog, DialogClose, DialogContent, DialogFooter } from "../ui/Dialog.t
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../ui/Menu.tsx";
 import { Tooltip } from "../ui/Tooltip.tsx";
 import { useTheme } from "../ui/theme/ThemeProvider.tsx";
+import { RunControls } from "./RunControls.tsx";
 import { shortcutKeys } from "./shortcuts.ts";
 
 /**
- * The 52px top bar (UIUX §3). Run controls and most menu items are
- * placeholders until the steps that wire them up.
+ * The 52px top bar (UIUX §3): system, run controls, theme and menu.
  */
 export function TopBar() {
   return (
@@ -83,37 +79,6 @@ function SaveIndicator() {
     </span>
   );
   return hint ? <Tooltip content={hint}>{indicator}</Tooltip> : indicator;
-}
-
-function RunControls() {
-  return (
-    <fieldset className="m-0 flex min-w-0 items-center gap-1 border-0 p-0">
-      <legend className="sr-only">Simulation</legend>
-      <Button variant="primary" disabled>
-        <PlayIcon weight="fill" />
-        Run
-      </Button>
-      <IconButton label="Step" disabled>
-        <SkipForwardIcon />
-      </IconButton>
-      <IconButton label="Reset" disabled>
-        <ArrowCounterClockwiseIcon />
-      </IconButton>
-      <span className="mx-1.5 text-sm text-fg-3">
-        <span className="sr-only">Simulation time </span>
-        00:00
-      </span>
-      <span aria-hidden className="mx-2 h-5 w-px bg-line" />
-      <Button variant="ghost" size="md" disabled>
-        Speed <span className="font-medium">1×</span>
-        <CaretDownIcon className="size-3!" />
-      </Button>
-      <Button variant="ghost" size="md" disabled>
-        Traffic <span className="font-medium">100%</span>
-        <CaretDownIcon className="size-3!" />
-      </Button>
-    </fieldset>
-  );
 }
 
 function ThemeToggle() {

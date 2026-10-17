@@ -1,12 +1,15 @@
 import { useEffect, useRef } from "react";
 import { GRID } from "../canvas/placement.ts";
 import { useViewActions } from "../canvas/useViewActions.ts";
+import { simulation } from "../simulation/index.ts";
 import { designStore, selectionStore, uiStore, useUi } from "../store/index.ts";
 import { Dialog, DialogContent } from "../ui/Dialog.tsx";
 import { Kbd } from "../ui/Kbd.tsx";
 import {
   findShortcut,
   formatCombo,
+  isNavigationKey,
+  isSpaceControl,
   SHORTCUTS,
   type ShortcutGroup,
   type ShortcutId,
@@ -47,6 +50,9 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
       if (!paletteOpen) togglePalette();
       uiStore.getState().requestPaletteSearch();
     },
+    runPause: simulation.toggle,
+    step: simulation.step,
+    reset: simulation.reset,
     undo: () => designStore.temporal.getState().undo(),
     redo: () => designStore.temporal.getState().redo(),
     duplicate: () => {
@@ -101,20 +107,41 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
   };
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
+    let keyboardFocus = false;
+    const onPointerDown = () => {
+      keyboardFocus = false;
+    };
+    const handle = (event: KeyboardEvent) => {
       const shortcut = findShortcut(event);
-      if (!shortcut || !shouldHandle(shortcut, event.target)) return;
+      if (!shortcut || !shouldHandle(shortcut, event.target, { keyboardFocus })) return;
       event.preventDefault();
+      // A clicked button still has focus; move it off so the key's release can't press it too.
+      if (event.key === " " && isSpaceControl(event.target)) (event.target as HTMLElement).blur();
       handlers.current?.[shortcut.id](event);
     };
+    // Space is taken before it reaches the focused element: a menu trigger
+    // opens on Space keydown, and the prevented default tells it not to.
+    const onKeyDownCapture = (event: KeyboardEvent) => {
+      if (isNavigationKey(event.key)) keyboardFocus = true;
+      if (event.key === " ") handle(event);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== " ") handle(event);
+    };
+    window.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("keydown", onKeyDownCapture, true);
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("keydown", onKeyDownCapture, true);
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   return <ShortcutsSheet />;
 }
 
-const GROUPS: readonly ShortcutGroup[] = ["General", "Editing", "View", "Panels"];
+const GROUPS: readonly ShortcutGroup[] = ["General", "Simulation", "Editing", "View", "Panels"];
 
 /** The `?` sheet, generated from the registry. */
 function ShortcutsSheet() {
