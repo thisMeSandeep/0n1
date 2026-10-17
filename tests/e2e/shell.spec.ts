@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { openLab } from "./helpers.ts";
 
 test.describe("lab shell", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
   test("renders the top bar, panels and canvas", async ({ page }) => {
-    await page.goto("/");
+    await openLab(page);
 
     await expect(page).toHaveTitle("0n1");
     await expect(page.getByRole("banner")).toContainText("0n1");
@@ -15,7 +16,7 @@ test.describe("lab shell", () => {
   });
 
   test("[ and ] collapse and restore the panels", async ({ page }) => {
-    await page.goto("/");
+    await openLab(page);
     const palette = page.getByRole("complementary", { name: "Components" });
     const inspector = page.getByRole("complementary", { name: "Inspector" });
 
@@ -32,7 +33,7 @@ test.describe("lab shell", () => {
 
   test("the theme toggle switches between light and dark", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "light" });
-    await page.goto("/");
+    await openLab(page);
     const html = page.locator("html");
 
     await expect(html).toHaveAttribute("data-theme", "light");
@@ -42,7 +43,7 @@ test.describe("lab shell", () => {
 
   test("below 1440px the inspector starts closed and floats over the canvas", async ({ page }) => {
     await page.setViewportSize({ width: 1300, height: 900 });
-    await page.goto("/");
+    await openLab(page);
     const inspector = page.getByRole("complementary", { name: "Inspector" });
 
     await expect(inspector).toBeHidden();
@@ -57,6 +58,7 @@ test.describe("small screens", () => {
   test.use({ viewport: { width: 800, height: 900 } });
 
   test("show the desktop notice, with a way to continue", async ({ page }) => {
+    // The notice replaces the lab, so don't wait for the canvas.
     await page.goto("/");
 
     await expect(page.getByText("0n1 works best on a desktop or laptop.")).toBeVisible();

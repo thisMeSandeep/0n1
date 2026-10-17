@@ -8,6 +8,7 @@ import "./ui/styles/global.css";
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
+import { startStorage } from "./storage/index.ts";
 import { ThemeProvider } from "./ui/theme/ThemeProvider.tsx";
 import { UIProvider } from "./ui/UIProvider.tsx";
 
@@ -18,13 +19,17 @@ const Gallery =
     ? lazy(() => import("./ui/gallery/Gallery.tsx"))
     : null;
 
-// Dev-only: `?sample` opens the mockup's URL shortener. Also excluded from production.
+// Dev-only: `?sample` opens the mockup's URL shortener without touching storage.
+// Excluded from production builds.
 if (import.meta.env.DEV && new URLSearchParams(location.search).has("sample")) {
   const [{ sampleSystem }, { designStore }] = await Promise.all([
     import("./canvas/sample.ts"),
     import("./store/index.ts"),
   ]);
   designStore.getState().load(sampleSystem());
+} else if (!Gallery) {
+  // Reopen the last system from this browser before the first paint.
+  await startStorage();
 }
 
 const root = document.getElementById("root");

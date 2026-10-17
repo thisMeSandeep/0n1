@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { openLab } from "./helpers.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -15,7 +16,7 @@ async function select(page: Page, name: string) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/?sample");
+  await openLab(page, "/?sample");
   await expect(nodes(page)).toHaveCount(6);
 });
 

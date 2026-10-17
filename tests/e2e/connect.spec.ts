@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { openLab } from "./helpers.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -25,7 +26,7 @@ async function dragConnection(page: Page, from: string, to: string, release = tr
 }
 
 test("dragging from a component's right edge onto another connects them", async ({ page }) => {
-  await page.goto("/");
+  await openLab(page);
   await add(page, "Client");
   await add(page, "Service");
 
@@ -38,12 +39,14 @@ test("dragging from a component's right edge onto another connects them", async 
 test("an invalid target explains why while hovering, and nothing is connected", async ({
   page,
 }) => {
-  await page.goto("/");
+  await openLab(page);
   await add(page, "Database");
   await add(page, "Client");
 
   await dragConnection(page, "Database", "Client", false);
-  await expect(page.getByRole("status")).toHaveText("Client doesn't take requests.");
+  await expect(page.getByTestId("canvas").getByRole("status")).toHaveText(
+    "Client doesn't take requests.",
+  );
   await expect(node(page, "Client").locator("[data-card]")).toHaveCSS("opacity", "0.45");
   // The drag line turns into a quiet dashed line over a component that can't take it.
   await expect(page.locator(".react-flow__connectionline path")).toHaveAttribute(
@@ -53,18 +56,18 @@ test("an invalid target explains why while hovering, and nothing is connected", 
   await page.mouse.up();
 
   await expect(edges(page)).toHaveCount(0);
-  await expect(page.getByRole("status")).toHaveCount(0);
+  await expect(page.getByTestId("canvas").getByRole("status")).toHaveCount(0);
 });
 
 test("components that only receive requests have no output dot", async ({ page }) => {
-  await page.goto("/");
+  await openLab(page);
   await add(page, "Cache");
   await node(page, "Cache").hover();
   await expect(node(page, "Cache").locator(".handle-source")).toHaveCount(0);
 });
 
 test("unconnected components carry a hint that goes away once wired up", async ({ page }) => {
-  await page.goto("/");
+  await openLab(page);
   await add(page, "Client");
   await add(page, "Service");
 
@@ -80,7 +83,7 @@ test("unconnected components carry a hint that goes away once wired up", async (
 });
 
 test("a load balancer with nothing behind it says so", async ({ page }) => {
-  await page.goto("/");
+  await openLab(page);
   await add(page, "Client");
   await add(page, "Load balancer");
   await dragConnection(page, "Client", "Load balancer");

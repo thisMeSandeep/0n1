@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { openLab } from "./helpers.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -26,7 +27,7 @@ async function dragIntoSpace(page: Page, from: string, x: number, y: number) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await openLab(page);
 });
 
 test("double-clicking empty canvas adds a component right there", async ({ page }) => {
@@ -99,7 +100,7 @@ test("a three-component system can be built without the palette", async ({ page 
 test.describe("command palette", () => {
   test("⌘K opens it, and commands run", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "light" });
-    await page.goto("/");
+    await openLab(page);
 
     await page.keyboard.press("ControlOrMeta+k");
     const palette = page.getByRole("dialog", { name: "Command palette" });

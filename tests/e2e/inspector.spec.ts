@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { openLab } from "./helpers.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -7,7 +8,7 @@ const node = (page: Page, name: string) =>
   page.locator(".react-flow__node").filter({ hasText: new RegExp(`^${name}`) });
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/?sample");
+  await openLab(page, "/?sample");
   await expect(page.locator(".react-flow__node")).toHaveCount(6);
 });
 

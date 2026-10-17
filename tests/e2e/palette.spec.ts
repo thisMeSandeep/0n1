@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { openLab } from "./helpers.ts";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -8,7 +9,7 @@ const nodes = (page: Page) => page.locator(".react-flow__node");
 const node = (page: Page, name: string) => nodes(page).filter({ hasText: name });
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await openLab(page);
 });
 
 test("lists every component in its group", async ({ page }) => {

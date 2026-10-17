@@ -13,10 +13,12 @@ import {
   UploadSimpleIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
-import { uiStore, useDesign } from "../store/index.ts";
+import { uiStore, useDesign, useUi } from "../store/index.ts";
+import type { SaveStatus } from "../store/ui.ts";
 import { Button, IconButton } from "../ui/Button.tsx";
 import { Dialog, DialogClose, DialogContent, DialogFooter } from "../ui/Dialog.tsx";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../ui/Menu.tsx";
+import { Tooltip } from "../ui/Tooltip.tsx";
 import { useTheme } from "../ui/theme/ThemeProvider.tsx";
 import { shortcutKeys } from "./shortcuts.ts";
 
@@ -34,6 +36,7 @@ export function TopBar() {
           /
         </span>
         <span className="truncate font-medium">{systemName}</span>
+        <SaveIndicator />
       </div>
 
       <RunControls />
@@ -44,6 +47,41 @@ export function TopBar() {
       </div>
     </header>
   );
+}
+
+const SAVE_TEXT: Record<
+  Exclude<SaveStatus, null>,
+  { label: string; hint?: string; tone: string }
+> = {
+  saved: { label: "Saved", tone: "text-fg-3" },
+  saving: { label: "Saving…", tone: "text-fg-3" },
+  error: {
+    label: "Couldn't save",
+    hint: "Your latest changes aren't stored yet. 0n1 will try again on your next edit.",
+    tone: "text-fail",
+  },
+  unavailable: {
+    label: "Not saved",
+    hint: "This browser isn't letting 0n1 store data, so changes will be lost when you close the tab.",
+    tone: "text-warn",
+  },
+};
+
+/** Faint autosave state next to the system name (UIUX §3). No spinners. */
+function SaveIndicator() {
+  const status = useUi((s) => s.saveStatus);
+  if (!status) return null;
+  const { label, hint, tone } = SAVE_TEXT[status];
+  const indicator = (
+    <span
+      role="status"
+      tabIndex={hint ? 0 : undefined}
+      className={`ml-1 shrink-0 rounded-kbd text-xs ${tone}`}
+    >
+      {label}
+    </span>
+  );
+  return hint ? <Tooltip content={hint}>{indicator}</Tooltip> : indicator;
 }
 
 function RunControls() {
