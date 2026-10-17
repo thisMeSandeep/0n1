@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { BLUEPRINT_FILES } from "../blueprints/catalog.ts";
+import { type Blueprint, parseBlueprint } from "../blueprints/format.ts";
 import { registry } from "../components/index.ts";
 import { createSystemDocument } from "../model/document.ts";
 import { LabDatabase } from "../storage/db.ts";
@@ -30,6 +32,7 @@ async function setup() {
   const library = createLibraryActions({
     systems,
     store,
+    registry,
     // Stand-in for autosave: store whatever is open.
     flush: async () => {
       flushes.push(store.getState().doc.id);
@@ -44,6 +47,41 @@ async function setup() {
 }
 
 describe("library actions", () => {
+  it("opens a blueprint as a copy that can be edited and saved without touching the original", async () => {
+    const { library, open, store, systems, flushes } = await setup();
+    const shipped = structuredClone(BLUEPRINT_FILES["./catalog/url-shortener.json"]);
+    const blueprint: Blueprint = parseBlueprint(
+      BLUEPRINT_FILES["./catalog/url-shortener.json"],
+      registry,
+    );
+
+    const copy = await library.createFromBlueprint(blueprint);
+    expect(flushes).toEqual(["first"]); // the open system was saved first
+    expect(open()).toBe(copy);
+    expect(copy).toMatchObject({
+      id: "id1",
+      name: "URL shortener",
+      blueprint: { id: "url-shortener" },
+    });
+    expect(await systems.get("id1")).toEqual(copy);
+
+    // Edit the copy and save it: the blueprint, and the file it came from, stay as shipped.
+    const users = open().nodes.find((n) => n.type === "client")?.id as string;
+    store.getState().updateParams(users, { rate: 5000 });
+    store.getState().renameNode(users, "Everyone");
+    store.getState().removeNodes([open().nodes.find((n) => n.type === "cache")?.id as string]);
+    await systems.save(open());
+    expect(BLUEPRINT_FILES["./catalog/url-shortener.json"]).toEqual(shipped);
+    expect(blueprint.system.nodes).toHaveLength(6);
+
+    // Opening it again makes a second, untouched copy.
+    const again = await library.createFromBlueprint(blueprint);
+    expect(again).toMatchObject({ id: "id2", name: "URL shortener 2" });
+    expect(again.nodes).toHaveLength(6);
+    expect(again.nodes.find((n) => n.type === "client")?.name).toBe("Users");
+    expect((await systems.get("id1"))?.nodes).toHaveLength(5);
+  });
+
   it("creates and opens numbered blank systems, saving the old one first", async () => {
     const { library, names, open, store, flushes, systems } = await setup();
     store.getState().addNode("cache", { x: 0, y: 0 });

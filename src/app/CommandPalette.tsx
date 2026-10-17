@@ -1,5 +1,6 @@
 import {
   ArrowCounterClockwiseIcon,
+  BlueprintIcon,
   CornersOutIcon,
   DownloadSimpleIcon,
   FolderOpenIcon,
@@ -13,6 +14,7 @@ import {
   UploadSimpleIcon,
 } from "@phosphor-icons/react";
 import * as RadixDialog from "@radix-ui/react-dialog";
+import { BLUEPRINTS } from "../blueprints/catalog.ts";
 import { useAddComponent } from "../canvas/useAddComponent.ts";
 import { useViewActions } from "../canvas/useViewActions.ts";
 import { registry } from "../components/index.ts";
@@ -186,7 +188,7 @@ type SystemsCommandsProps = {
   onBrowse: () => void;
 };
 
-/** New, browse, and open each other saved system by name. */
+/** New (blank or from a blueprint), browse, and open each other saved system by name. */
 function SystemsCommands({ run, onBrowse }: SystemsCommandsProps) {
   const saved = useSystemsList();
   const openId = useDesign((s) => s.doc.id);
@@ -200,6 +202,17 @@ function SystemsCommands({ run, onBrowse }: SystemsCommandsProps) {
       >
         New system
       </CommandItem>
+      {BLUEPRINTS.map((blueprint) => (
+        <CommandItem
+          key={blueprint.id}
+          value={`New system from blueprint: ${blueprint.title}`}
+          keywords={["blueprint", "example", "template"]}
+          onSelect={run(() => void library.createFromBlueprint(blueprint))}
+          icon={<BlueprintIcon aria-hidden className="text-fg-2" />}
+        >
+          New system from blueprint: {blueprint.title}
+        </CommandItem>
+      ))}
       <CommandItem
         value="Back up all systems"
         keywords={["export", "download", "save", "json"]}

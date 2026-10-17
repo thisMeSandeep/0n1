@@ -38,6 +38,7 @@ test("creates new systems and switches between them", async ({ page }) => {
 
   await openLibrary(page);
   await page.getByRole("button", { name: "New system" }).click();
+  await page.getByRole("menuitem", { name: "Blank system" }).click();
   await expect(banner(page)).toContainText("Untitled system 2");
   await expect(nodes(page)).toHaveCount(0);
 
@@ -72,6 +73,7 @@ test("duplicates a system and finds it by search", async ({ page }) => {
 test("deletes a system, and Undo brings it back", async ({ page }) => {
   await openLibrary(page);
   await page.getByRole("button", { name: "New system" }).click();
+  await page.getByRole("menuitem", { name: "Blank system" }).click();
   await openLibrary(page);
 
   await rowAction(page, "Untitled system", "Delete");
@@ -88,6 +90,7 @@ test("deletes a system, and Undo brings it back", async ({ page }) => {
 test("deleting the open system switches to another one", async ({ page }) => {
   await openLibrary(page);
   await page.getByRole("button", { name: "New system" }).click();
+  await page.getByRole("menuitem", { name: "Blank system" }).click();
   await expect(banner(page)).toContainText("Untitled system 2");
 
   await openLibrary(page);
@@ -102,6 +105,7 @@ test("the library survives a reload, and ⌘K can open systems", async ({ page }
   await systemsList(page).getByLabel("System name").fill("Payments");
   await systemsList(page).getByLabel("System name").press("Enter");
   await page.getByRole("button", { name: "New system" }).click();
+  await page.getByRole("menuitem", { name: "Blank system" }).click();
   await expect(banner(page)).toContainText("Untitled system");
 
   await page.reload();

@@ -1,0 +1,72 @@
+{
+  "format": "0n1-blueprint",
+  "version": 1,
+  "id": "url-shortener",
+  "title": "URL shortener",
+  "summary": "Read-heavy: almost every request looks up a link.",
+  "description": "People open short links far more often than they create them, and a few links are much more popular than the rest. Two services behind a load balancer look up links in a cache first, and in the database when the cache doesn't have them.",
+  "experiments": [
+    "Press Space to run. At the default traffic everything copes, and the cache answers about half of the lookups.",
+    "Set Traffic to 1000%. Both services get busy and p99 climbs.",
+    "Select Shortener API · 2 and press K to take it down. The other service can't keep up on its own, and users start seeing errors.",
+    "Bring it back, then add a third service behind the load balancer and watch p99 come down.",
+    "Select Users and set Key popularity to Every key equally likely. With no popular links the cache's hit ratio collapses, and the database does more of the work."
+  ],
+  "order": 1,
+  "system": {
+    "schemaVersion": 1,
+    "nodes": [
+      {
+        "id": "users",
+        "type": "client",
+        "name": "Users",
+        "position": { "x": 56, "y": 328 },
+        "params": {}
+      },
+      {
+        "id": "lb",
+        "type": "load-balancer",
+        "name": "Load balancer",
+        "position": { "x": 328, "y": 328 },
+        "params": {}
+      },
+      {
+        "id": "api-1",
+        "type": "service",
+        "name": "Shortener API · 1",
+        "position": { "x": 600, "y": 192 },
+        "params": {}
+      },
+      {
+        "id": "api-2",
+        "type": "service",
+        "name": "Shortener API · 2",
+        "position": { "x": 600, "y": 472 },
+        "params": {}
+      },
+      {
+        "id": "cache",
+        "type": "cache",
+        "name": "Link cache",
+        "position": { "x": 872, "y": 112 },
+        "params": {}
+      },
+      {
+        "id": "db",
+        "type": "database",
+        "name": "Links DB",
+        "position": { "x": 872, "y": 392 },
+        "params": {}
+      }
+    ],
+    "edges": [
+      { "id": "users-lb", "source": "users", "target": "lb" },
+      { "id": "lb-api-1", "source": "lb", "target": "api-1" },
+      { "id": "lb-api-2", "source": "lb", "target": "api-2" },
+      { "id": "api-1-cache", "source": "api-1", "target": "cache" },
+      { "id": "api-1-db", "source": "api-1", "target": "db" },
+      { "id": "api-2-cache", "source": "api-2", "target": "cache" },
+      { "id": "api-2-db", "source": "api-2", "target": "db" }
+    ]
+  }
+}

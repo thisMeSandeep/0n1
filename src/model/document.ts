@@ -42,6 +42,11 @@ export const systemDocumentSchema = z
       createdAt: z.number().int().nonnegative(),
       updatedAt: z.number().int().nonnegative(),
     }),
+    /**
+     * The blueprint this system was made from, if any, for its suggested
+     * experiments. Optional, so adding it needed no schema version bump.
+     */
+    blueprint: z.object({ id }).optional(),
   })
   .superRefine((doc, ctx) => {
     const nodeIds = new Set<string>();

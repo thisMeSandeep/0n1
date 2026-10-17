@@ -1,14 +1,17 @@
+import { type Blueprint, blueprintDocument } from "../blueprints/format.ts";
 import {
   createSystemDocument,
   DEFAULT_SYSTEM_NAME,
   type SystemDocument,
 } from "../model/document.ts";
+import type { Registry } from "../model/registry.ts";
 import type { SystemsRepository } from "../storage/systems.ts";
 import { type DesignStore, uniqueName } from "../store/design.ts";
 
 type LibraryDeps = {
   systems: SystemsRepository;
   store: DesignStore;
+  registry: Registry;
   /** Store the open system's pending edits before switching away from it. */
   flush: () => Promise<void>;
   now?: () => number;
@@ -24,6 +27,7 @@ export type DeletedSystem = { restore: () => Promise<void> };
 export function createLibraryActions({
   systems,
   store,
+  registry,
   flush,
   now = Date.now,
   newId = () => crypto.randomUUID(),
@@ -93,6 +97,23 @@ export function createLibraryActions({
     async createAndOpen(): Promise<void> {
       await flush();
       store.getState().load(await create());
+    },
+
+    /**
+     * A new system made from a blueprint, opened. It's always a copy, named
+     * after the blueprint ("URL shortener 2" if that name is taken), so the
+     * blueprint itself never changes.
+     */
+    async createFromBlueprint(blueprint: Blueprint): Promise<SystemDocument> {
+      const doc = blueprintDocument(blueprint, registry, {
+        id: newId(),
+        name: uniqueName(blueprint.title, await takenNames()),
+        now: now(),
+      });
+      await systems.save(doc);
+      await flush();
+      store.getState().load(doc);
+      return doc;
     },
 
     open,

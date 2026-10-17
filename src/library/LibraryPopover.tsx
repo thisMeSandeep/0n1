@@ -3,18 +3,20 @@ import {
   CopyIcon,
   DotsThreeIcon,
   DownloadSimpleIcon,
+  FileIcon,
   MagnifyingGlassIcon,
   PencilSimpleIcon,
   PlusIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { type KeyboardEvent, useMemo, useState } from "react";
+import { BLUEPRINTS } from "../blueprints/catalog.ts";
 import { isStorageAvailable } from "../storage/index.ts";
 import type { SystemSummary } from "../storage/systems.ts";
 import { uiStore, useDesign, useUi } from "../store/index.ts";
 import { Button, IconButton } from "../ui/Button.tsx";
 import { cx } from "../ui/cx.ts";
-import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../ui/Menu.tsx";
+import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "../ui/Menu.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/Popover.tsx";
 import { toast } from "../ui/Toast.tsx";
 import { backUpAll, backUpSystem } from "./backup.ts";
@@ -113,19 +115,7 @@ function LibraryPanel() {
             className="w-full min-w-0 bg-transparent text-sm text-fg outline-none placeholder:text-fg-3 [&::-webkit-search-cancel-button]:appearance-none"
           />
         </label>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() =>
-            void attempt(async () => {
-              await library.createAndOpen();
-              setOpen(false);
-            }, "Couldn't create a system")
-          }
-        >
-          <PlusIcon />
-          New system
-        </Button>
+        <NewSystemMenu />
       </div>
 
       <ul aria-label="Systems" className="max-h-80 overflow-y-auto p-1.5">
@@ -284,5 +274,46 @@ function SystemRow({
         </MenuContent>
       </Menu>
     </div>
+  );
+}
+
+/** New system: blank, or a copy of a blueprint (UIUX §10). */
+function NewSystemMenu() {
+  const create = (make: () => Promise<unknown>) =>
+    void attempt(async () => {
+      await make();
+      setOpen(false);
+    }, "Couldn't create a system");
+  return (
+    <Menu>
+      <MenuTrigger asChild>
+        <Button variant="primary" size="sm">
+          <PlusIcon />
+          New system
+          <CaretDownIcon className="size-3!" />
+        </Button>
+      </MenuTrigger>
+      <MenuContent className="w-72">
+        <MenuItem icon={<FileIcon />} onSelect={() => create(() => library.createAndOpen())}>
+          Blank system
+        </MenuItem>
+        {BLUEPRINTS.length > 0 && (
+          <>
+            <MenuSeparator />
+            <MenuLabel>From a blueprint</MenuLabel>
+            {BLUEPRINTS.map((blueprint) => (
+              <MenuItem
+                key={blueprint.id}
+                className="h-auto! items-start py-2"
+                onSelect={() => create(() => library.createFromBlueprint(blueprint))}
+              >
+                <span className="block text-base text-fg">{blueprint.title}</span>
+                <span className="block text-sm text-fg-2">{blueprint.summary}</span>
+              </MenuItem>
+            ))}
+          </>
+        )}
+      </MenuContent>
+    </Menu>
   );
 }
