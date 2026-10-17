@@ -38,6 +38,7 @@ function sentBy(params: Record<string, unknown>, durationMs = 100_000) {
     nextRequestId: () => ++id,
     peer: () => undefined,
     sampling: { weight: () => 1, countRequest: () => {} },
+    isUp: () => true,
     send: (_to, request, reply) => {
       sent.push(request);
       reply({ ok: true });

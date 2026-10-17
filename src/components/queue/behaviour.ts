@@ -12,9 +12,10 @@ type Job = { request: Request; enqueuedAt: number; deliveries: number };
  * to whichever worker has the most; the queue never hands a worker more
  * than it can take, so the backlog shows up here. When full, new jobs are
  * rejected. Depth and capacity count real jobs, so sampled jobs (S26)
- * count by their weight.
+ * count by their weight. It skips workers that are down, and picks up again
+ * when they come back. A queue that is itself taken down comes back empty.
  */
-export const queue: BehaviourFactory = ({ sim, node, recorder, send, peer }) => {
+export const queue: BehaviourFactory = ({ sim, node, recorder, send, peer, isUp }) => {
   const { capacity, enqueueTime, redeliver } = node.params as {
     capacity: number;
     enqueueTime: number;
@@ -67,7 +68,7 @@ export const queue: BehaviourFactory = ({ sim, node, recorder, send, peer }) => 
       let slots = 0;
       for (let i = 0; i < workers.length; i++) {
         const candidate = workers[(turn + i) % workers.length];
-        if (!candidate) continue;
+        if (!candidate || !isUp(candidate.id)) continue;
         if (candidate.free >= 1 && (!worker || candidate.free > worker.free)) {
           worker = candidate;
           // Matches what the worker's own server will take (see slotsFor).
@@ -97,6 +98,12 @@ export const queue: BehaviourFactory = ({ sim, node, recorder, send, peer }) => 
 
   report();
   return {
+    onPeerStatus(id, up) {
+      const worker = workers.find((w) => w.id === id);
+      if (!worker || !up) return; // a worker going down fails its jobs back to us
+      worker.free = worker.concurrency; // it came back fresh
+      dispatch();
+    },
     handle(request, reply) {
       recorder.arrive(sim.now, request.weight);
       if (depth + arriving + request.weight > capacity) {

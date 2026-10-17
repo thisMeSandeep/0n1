@@ -1,6 +1,6 @@
 import type { RuntimeNode } from "../compile.ts";
+import type { ScheduledEvent } from "../core/eventQueue.ts";
 import type { Rng } from "../core/prng.ts";
-import type { Simulator } from "../core/simulator.ts";
 import type { NodeRecorder, SystemRecorder } from "../metrics/recorder.ts";
 
 /** One request travelling through the system. Retries are new attempts of the same request. */
@@ -41,8 +41,17 @@ export type Outcome =
 /** Called exactly once with how a request ended. */
 export type Reply = (outcome: Outcome) => void;
 
+/** Simulated time and scheduling, as a component sees it. */
+export type Clock = {
+  readonly now: number;
+  schedule(delay: number, event: () => void): ScheduledEvent;
+  at(time: number, event: () => void): ScheduledEvent;
+  cancel(event: ScheduledEvent): void;
+};
+
 export type BehaviourContext = {
-  sim: Simulator;
+  /** Only runs this component's events while it's up (S27). */
+  sim: Clock;
   /** This component's own random stream. */
   rng: Rng;
   node: RuntimeNode;
@@ -53,6 +62,8 @@ export type BehaviourContext = {
   send(to: string, request: Request, onReply: Reply): void;
   /** Another component in the system, e.g. a queue reading its workers' capacity. */
   peer(id: string): RuntimeNode | undefined;
+  /** Whether another component is up (not taken down). */
+  isUp(id: string): boolean;
   nextRequestId(): number;
   /** Request sampling (S26): clients send one request per `weight` real ones. */
   sampling: {
@@ -66,8 +77,10 @@ export type BehaviourContext = {
 /** What a component does with requests that reach it. */
 export type Behaviour = {
   handle(request: Request, reply: Reply): void;
-  /** Called once when the run starts (clients start sending here). */
+  /** Called once when the run starts (clients start sending here), and again after coming back up. */
   start?(): void;
+  /** Another component was taken down or brought back. */
+  onPeerStatus?(id: string, up: boolean): void;
 };
 
 export type BehaviourFactory = (ctx: BehaviourContext) => Behaviour;

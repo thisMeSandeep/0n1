@@ -1,6 +1,5 @@
-import type { Simulator } from "../core/simulator.ts";
 import type { NodeRecorder } from "../metrics/recorder.ts";
-import type { Outcome, Reply, Request } from "./types.ts";
+import type { Clock, Outcome, Reply, Request } from "./types.ts";
 
 export type ServerOptions = {
   /** Requests handled at the same time; the rest wait in line. */
@@ -43,7 +42,7 @@ export class QueueingServer {
   #waitingWeight = 0;
 
   constructor(
-    private readonly sim: Simulator,
+    private readonly sim: Clock,
     private readonly recorder: NodeRecorder,
     private readonly options: ServerOptions,
   ) {}

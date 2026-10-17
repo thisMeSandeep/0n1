@@ -1,11 +1,12 @@
 import { BEHAVIOURS } from "../../components/behaviours.ts";
 import type { RuntimeModel } from "../compile.ts";
-import { createRng } from "../core/prng.ts";
+import type { ScheduledEvent } from "../core/eventQueue.ts";
+import { createRng, type Rng } from "../core/prng.ts";
 import { Simulator } from "../core/simulator.ts";
 import { type MetricsSnapshot, NodeRecorder, SystemRecorder } from "../metrics/recorder.ts";
 import { DEFAULT_WINDOW, type WindowOptions } from "../metrics/windows.ts";
 import { SamplingController } from "./sampling.ts";
-import type { Behaviour, Reply, Request } from "./types.ts";
+import type { Behaviour, BehaviourContext, Clock, Outcome, Reply, Request } from "./types.ts";
 
 export type EngineOptions = {
   seed?: number;
@@ -33,13 +34,34 @@ const SAMPLING_INTERVAL_MS = 500;
 /** Default one-way delay between components in the same data centre. */
 export const DEFAULT_NETWORK_LATENCY_MS = 0.5;
 
+const UNAVAILABLE: Outcome = { ok: false, reason: "unavailable" };
+
+/** A request a component is working on, so it can be failed if the component goes down. */
+type Pending = { settled: boolean; reply: Reply };
+
+/**
+ * One life of a component, from start (or being brought back) until it's
+ * taken down. Everything it schedules, sends or replies is ignored once it's
+ * dead, so a component that was taken down can't leak work, and coming back
+ * starts from a clean slate (a restarted cache is cold).
+ */
+type Incarnation = {
+  id: string;
+  alive: boolean;
+  behaviour: Behaviour;
+  pending: Set<Pending>;
+};
+
 /** A running simulation of one compiled system. */
 export class Engine {
   readonly sim = new Simulator();
   readonly system: SystemRecorder;
   readonly recorders = new Map<string, NodeRecorder>();
   readonly sampling: SamplingController;
-  #behaviours = new Map<string, Behaviour>();
+  #current = new Map<string, Incarnation>();
+  #lives = new Map<string, number>();
+  #rng: Rng;
+  #latency: number;
   #requestId = 0;
 
   constructor(
@@ -51,42 +73,26 @@ export class Engine {
       eventBudget = DEFAULT_EVENT_BUDGET,
     }: EngineOptions = {},
   ) {
-    const rng = createRng(seed);
+    this.#rng = createRng(seed);
+    this.#latency = networkLatencyMs;
     this.system = new SystemRecorder(window);
     const offered = model.clients.reduce(
       (sum, id) => sum + Number(model.nodes.get(id)?.params.rate ?? 0),
       0,
     );
     this.sampling = new SamplingController(eventBudget, offered);
-    const sampling = {
-      weight: () => this.sampling.weight,
-      countRequest: () => this.sampling.countRequest(),
-    };
 
     for (const id of model.order) {
       const node = model.nodes.get(id);
       if (!node) continue;
-      const factory = BEHAVIOURS[node.type];
-      if (!factory)
-        throw new Error(`${node.name}: ${node.definition.displayName} isn't simulated yet.`);
-      const recorder = new NodeRecorder(window);
-      this.recorders.set(id, recorder);
-      this.#behaviours.set(
-        id,
-        factory({
-          sim: this.sim,
-          rng: rng.fork(id),
-          node,
-          recorder,
-          system: this.system,
-          nextRequestId: () => ++this.#requestId,
-          send: (to, request, onReply) => this.#send(to, request, onReply, networkLatencyMs),
-          peer: (other) => model.nodes.get(other),
-          sampling,
-        }),
-      );
+      if (!BEHAVIOURS[node.type]) {
+        throw new Error(`${node.name}: ${node.definition.displayName} can't be simulated.`);
+      }
+      this.recorders.set(id, new NodeRecorder(window));
+      this.#current.set(id, this.#incarnate(id));
     }
-    for (const behaviour of this.#behaviours.values()) behaviour.start?.();
+    for (const life of this.#current.values()) life.behaviour.start?.();
+
     const reconsider = () => {
       this.sampling.observe(this.sim.eventsProcessed);
       this.sim.schedule(SAMPLING_INTERVAL_MS, reconsider);
@@ -94,18 +100,107 @@ export class Engine {
     this.sim.schedule(SAMPLING_INTERVAL_MS, reconsider);
   }
 
-  #send(to: string, request: Request, onReply: Reply, latency: number): void {
-    const target = this.#behaviours.get(to);
-    if (!target) {
-      onReply({ ok: false, reason: "unavailable" });
-      return;
-    }
-    this.sim.schedule(latency, () => {
+  #incarnate(id: string): Incarnation {
+    const node = this.model.nodes.get(id);
+    const factory = node && BEHAVIOURS[node.type];
+    if (!node || !factory) throw new Error(`Unknown component ${id}`);
+    const lives = (this.#lives.get(id) ?? 0) + 1;
+    this.#lives.set(id, lives);
+
+    const life = { id, alive: true, pending: new Set<Pending>() } as Incarnation;
+    const sim = this.sim;
+    // Work this life schedules only happens while it's alive.
+    const clock: Clock = {
+      get now() {
+        return sim.now;
+      },
+      schedule: (delay, event) => sim.schedule(delay, () => life.alive && event()),
+      at: (time, event) => sim.at(time, () => life.alive && event()),
+      cancel: (event: ScheduledEvent) => sim.cancel(event),
+    };
+    const ctx: BehaviourContext = {
+      sim: clock,
+      // The first life keeps the plain stream, so runs without failures don't change.
+      rng: this.#rng.fork(lives === 1 ? id : `${id}#${lives}`),
+      node,
+      recorder: this.recorders.get(id) as NodeRecorder,
+      system: this.system,
+      nextRequestId: () => ++this.#requestId,
+      send: (to, request, onReply) => this.#send(life, to, request, onReply),
+      peer: (other) => this.model.nodes.get(other),
+      isUp: (other) => this.isUp(other),
+      sampling: {
+        weight: () => this.sampling.weight,
+        countRequest: () => this.sampling.countRequest(),
+      },
+    };
+    life.behaviour = factory(ctx);
+    return life;
+  }
+
+  #send(from: Incarnation, to: string, request: Request, onReply: Reply): void {
+    if (!from.alive) return;
+    // A reply only reaches the sender if it's still the same, living component.
+    const deliver: Reply = (outcome) => {
+      if (from.alive) onReply(outcome);
+    };
+    const back = (outcome: Outcome) => this.sim.schedule(this.#latency, () => deliver(outcome));
+
+    this.sim.schedule(this.#latency, () => {
+      const target = this.#current.get(to);
+      if (!target?.alive) {
+        back(UNAVAILABLE); // like a refused connection: fails fast
+        return;
+      }
+      const pending: Pending = { settled: false, reply: back };
+      target.pending.add(pending);
       request.path.push(to);
-      target.handle(request, (outcome) => {
-        this.sim.schedule(latency, () => onReply(outcome));
+      target.behaviour.handle(request, (outcome) => {
+        if (pending.settled) return;
+        pending.settled = true;
+        target.pending.delete(pending);
+        back(outcome);
       });
     });
+  }
+
+  isUp(id: string): boolean {
+    return this.#current.get(id)?.alive ?? false;
+  }
+
+  /**
+   * Take a component down: everything it was working on fails as
+   * unavailable, new requests to it fail fast, and its own work stops.
+   * Returns false if it was already down.
+   */
+  takeDown(id: string): boolean {
+    const life = this.#current.get(id);
+    if (!life?.alive) return false;
+    life.alive = false;
+    for (const pending of life.pending) {
+      pending.settled = true;
+      pending.reply(UNAVAILABLE);
+    }
+    life.pending.clear();
+    this.recorders.get(id)?.markDown(this.sim.now);
+    this.#announce(id, false);
+    return true;
+  }
+
+  /** Bring a component back, starting fresh. Returns false if it wasn't down. */
+  bringBack(id: string): boolean {
+    if (this.isUp(id) || !this.#current.has(id)) return false;
+    const life = this.#incarnate(id);
+    this.#current.set(id, life);
+    life.behaviour.start?.();
+    this.#announce(id, true);
+    return true;
+  }
+
+  #announce(id: string, up: boolean): void {
+    for (const life of this.#current.values()) {
+      if (life.alive && life.id !== id) life.behaviour.onPeerStatus?.(id, up);
+    }
   }
 
   /** Advance simulated time to `time` (ms). */
@@ -116,7 +211,9 @@ export class Engine {
   snapshot(): MetricsSnapshot {
     const now = this.sim.now;
     const nodes: MetricsSnapshot["nodes"] = {};
-    for (const [id, recorder] of this.recorders) nodes[id] = recorder.snapshot(now);
+    for (const [id, recorder] of this.recorders) {
+      nodes[id] = { ...recorder.snapshot(now), down: !this.isUp(id) };
+    }
     return {
       time: now,
       sampling: { weight: this.sampling.weight },

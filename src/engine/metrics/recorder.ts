@@ -27,6 +27,8 @@ export type NodeMetrics = {
   staleReads?: number | null;
   /** Queues: how long the oldest waiting job has waited (ms). Null when empty. */
   oldestJobAge?: number | null;
+  /** Taken down (S27). */
+  down?: boolean;
   /** Right now. */
   inFlight: number;
   waiting: number;
@@ -107,6 +109,14 @@ export class NodeRecorder {
 
   setWaiting(waiting: number): void {
     this.#waiting = waiting;
+  }
+
+  /** Taken down: nothing is in progress or waiting any more. */
+  markDown(time: number): void {
+    this.#busy.set(time, 0);
+    this.#inFlight = 0;
+    this.#waiting = 0;
+    if (this.#oldestSince !== undefined) this.#oldestSince = null;
   }
 
   /** Queues: when the oldest waiting job was added, or null when empty. */
