@@ -5,6 +5,7 @@ import {
   edgeKey,
   type MetricsSnapshot,
   type NodeMetrics,
+  type SystemMetrics,
 } from "../engine/metrics/recorder.ts";
 import type { LiveDetail } from "../model/component.ts";
 import type { SystemEdge } from "../model/document.ts";
@@ -80,9 +81,53 @@ export type EdgeLive = {
   errors: Measure;
 };
 
+/** The vitals turn amber or red past these (UIUX §3): p99 as users see it, in ms… */
+export const SYSTEM_P99_WARN_MS = 500;
+export const SYSTEM_P99_FAIL_MS = 1000;
+/** …and the share of users' requests that fail. */
+export const SYSTEM_ERRORS_WARN = FAILING_ERRORS;
+export const SYSTEM_ERRORS_FAIL = 0.05;
+
+export type Level = "ok" | "warn" | "fail";
+
+/** The whole system as users see it: the vitals pill. */
+export type SystemLive = {
+  throughput: string;
+  p99: Measure | null;
+  p99Level: Level;
+  errors: Measure;
+  errorsLevel: Level;
+};
+
+export function levelOf(value: number, warn: number, fail: number): Level {
+  return value >= fail ? "fail" : value >= warn ? "warn" : "ok";
+}
+
+export function systemLive(m: SystemMetrics): SystemLive {
+  const p99 = m.latency?.p99 ?? null;
+  return {
+    throughput: formatCompact(m.throughput),
+    p99: p99 === null ? null : formatDuration(p99),
+    p99Level: p99 === null ? "ok" : levelOf(p99, SYSTEM_P99_WARN_MS, SYSTEM_P99_FAIL_MS),
+    errors: formatPercent(m.errorRate),
+    errorsLevel: levelOf(m.errorRate, SYSTEM_ERRORS_WARN, SYSTEM_ERRORS_FAIL),
+  };
+}
+
+const sameSystemLive = (a: SystemLive | null, b: SystemLive) =>
+  a !== null &&
+  a.throughput === b.throughput &&
+  sameMeasure(a.p99, b.p99) &&
+  a.p99Level === b.p99Level &&
+  sameMeasure(a.errors, b.errors) &&
+  a.errorsLevel === b.errorsLevel;
+
 export type LiveState = {
   /** A run has been loaded: there are numbers to show. */
   started: boolean;
+  /** The snapshot this state was made from, for views that list every number. */
+  snapshot: MetricsSnapshot | null;
+  system: SystemLive | null;
   nodes: Readonly<Record<string, NodeLive>>;
   /** Connections, by the document's edge id. */
   edges: Readonly<Record<string, EdgeLive>>;
@@ -90,7 +135,15 @@ export type LiveState = {
   trends: Readonly<Record<string, Trend>>;
 };
 
-const EMPTY: LiveState = { started: false, nodes: {}, edges: {}, trends: {} };
+export const EMPTY_LIVE: LiveState = {
+  started: false,
+  snapshot: null,
+  system: null,
+  nodes: {},
+  edges: {},
+  trends: {},
+};
+const EMPTY = EMPTY_LIVE;
 
 /**
  * Share of requests that failed here: turned away, or its own errors. Not
@@ -267,8 +320,11 @@ export function nextLiveState(
     }
   }
 
+  const system = systemLive(snapshot.system);
   return {
     started: true,
+    snapshot,
+    system: sameSystemLive(previous.system, system) ? previous.system : system,
     nodes: changed ? nodes : previous.nodes,
     edges: edgesChanged ? edges : previous.edges,
     trends: advanced || restarted ? trends : previous.trends,

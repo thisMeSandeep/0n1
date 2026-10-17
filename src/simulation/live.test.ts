@@ -5,6 +5,7 @@ import { createSystemDocument } from "../model/document.ts";
 import { createDesignStore } from "../store/design.ts";
 import {
   createLiveView,
+  EMPTY_LIVE,
   edgeLive,
   LIVE_INTERVAL_MS,
   type LiveState,
@@ -41,7 +42,7 @@ const snapshot = (
   edges,
 });
 
-const EMPTY: LiveState = { started: false, nodes: {}, edges: {}, trends: {} };
+const EMPTY: LiveState = EMPTY_LIVE;
 const p99 = () => "p99" as const;
 
 describe("a component's live view", () => {

@@ -10,6 +10,7 @@ import { cx } from "../ui/cx.ts";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../ui/Menu.tsx";
 import { EditableTitle } from "./EditableTitle.tsx";
 import { InspectorHeader, InspectorSection } from "./InspectorHeader.tsx";
+import { ComponentDetails, LiveSummary } from "./LiveSummary.tsx";
 import { ParamField } from "./ParamField.tsx";
 import { paramSections } from "./sections.ts";
 
@@ -48,6 +49,7 @@ export function ComponentView({ nodeId, onClose }: { nodeId: string; onClose: ()
         actions={<ComponentMenu nodeId={nodeId} />}
         onClose={onClose}
       />
+      <LiveSummary nodeId={nodeId} detail={definition.liveDetail ?? "p99"} />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-10">
         <InspectorSection title="About">
@@ -74,6 +76,8 @@ export function ComponentView({ nodeId, onClose }: { nodeId: string; onClose: ()
             ))}
           </InspectorSection>
         ))}
+
+        <ComponentDetails nodeId={nodeId} />
       </div>
     </>
   );

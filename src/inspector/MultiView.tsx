@@ -1,4 +1,6 @@
-import { CopyIcon, TrashIcon } from "@phosphor-icons/react";
+import { CopyIcon, PowerIcon, TrashIcon } from "@phosphor-icons/react";
+import { shortcutKeys } from "../app/shortcuts.ts";
+import { simulation, useLive } from "../simulation/index.ts";
 import { designStore, selectionStore } from "../store/index.ts";
 import { Button } from "../ui/Button.tsx";
 import { InspectorHeader } from "./InspectorHeader.tsx";
@@ -21,6 +23,9 @@ export function MultiView({ nodeIds, edgeIds, onClose }: MultiViewProps) {
     const copies = designStore.getState().duplicateNodes(nodeIds);
     selectionStore.getState().select({ nodeIds: copies, edgeIds: [] });
   };
+  const allDown = useLive(
+    (s) => nodeIds.length > 0 && nodeIds.every((id) => s.nodes[id]?.status === "down"),
+  );
   const remove = () => {
     const actions = designStore.getState();
     actions.disconnect(edgeIds);
@@ -43,6 +48,15 @@ export function MultiView({ nodeIds, edgeIds, onClose }: MultiViewProps) {
           <Button onClick={duplicate}>
             <CopyIcon />
             Duplicate
+          </Button>
+        )}
+        {nodeIds.length > 0 && (
+          <Button
+            onClick={() => simulation.toggleDown(nodeIds)}
+            aria-keyshortcuts={shortcutKeys("takeDown")}
+          >
+            <PowerIcon />
+            {allDown ? "Bring back" : "Take down"}
           </Button>
         )}
         <Button variant="danger" onClick={remove}>

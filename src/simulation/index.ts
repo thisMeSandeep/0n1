@@ -2,6 +2,7 @@ import { registry } from "../components/index.ts";
 import { designStore } from "../store/index.ts";
 import { createSimulationClient } from "./client.ts";
 import { createSimulationController } from "./controller.ts";
+import { createSystemHistory, type SystemHistory, useSystemHistory } from "./history.ts";
 import { createLiveView, type LiveState, useLiveView } from "./live.ts";
 import { simulationStore } from "./store.ts";
 
@@ -17,4 +18,11 @@ export const live = createLiveView({ simulation: simulationStore, design: design
 
 export function useLive<T>(selector: (state: LiveState) => T): T {
   return useLiveView(live, selector);
+}
+
+/** The system's numbers over time, for charts. */
+export const history = createSystemHistory(simulationStore);
+
+export function useRunHistory<T>(selector: (state: SystemHistory) => T): T {
+  return useSystemHistory(history, selector);
 }

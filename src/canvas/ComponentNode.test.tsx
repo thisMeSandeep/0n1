@@ -5,7 +5,7 @@ import { Profiler } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { NodeMetrics } from "../engine/metrics/recorder.ts";
 import { live } from "../simulation/index.ts";
-import { nextLiveState } from "../simulation/live.ts";
+import { EMPTY_LIVE, nextLiveState } from "../simulation/live.ts";
 import { TooltipProvider } from "../ui/Tooltip.tsx";
 import { ComponentNode, zoomLevel } from "./ComponentNode.tsx";
 import type { ComponentFlowNode } from "./flow.ts";
@@ -89,7 +89,7 @@ function renderCanvas() {
 }
 
 beforeEach(() => {
-  live.setState({ started: false, nodes: {}, edges: {}, trends: {} }, true);
+  live.setState(EMPTY_LIVE, true);
   renders.clear();
 });
 afterEach(cleanup);

@@ -12,6 +12,7 @@ import {
   SystemRecorder,
 } from "../metrics/recorder.ts";
 import { DEFAULT_WINDOW, type WindowOptions } from "../metrics/windows.ts";
+import { DEFAULT_NETWORK_LATENCY_MS } from "../network.ts";
 import { SamplingController } from "./sampling.ts";
 import type { Behaviour, BehaviourContext, Clock, Outcome, Reply, Request } from "./types.ts";
 
@@ -38,8 +39,7 @@ export const DEFAULT_EVENT_BUDGET = 300_000;
 /** How often (simulated ms) the sampling weight is reconsidered. */
 const SAMPLING_INTERVAL_MS = 500;
 
-/** Default one-way delay between components in the same data centre. */
-export const DEFAULT_NETWORK_LATENCY_MS = 0.5;
+export { DEFAULT_NETWORK_LATENCY_MS } from "../network.ts";
 
 const UNAVAILABLE: Outcome = { ok: false, reason: "unavailable" };
 

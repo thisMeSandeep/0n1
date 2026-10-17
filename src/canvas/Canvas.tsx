@@ -46,6 +46,7 @@ import { COMPONENT_DRAG_TYPE } from "./placement.ts";
 import { QuickAdd, type QuickAddRequest } from "./QuickAdd.tsx";
 import { useAddComponent } from "./useAddComponent.ts";
 import { FIT_VIEW_OPTIONS } from "./useViewActions.ts";
+import { VitalsPill } from "./VitalsPill.tsx";
 import { ZoomControls } from "./ZoomControls.tsx";
 
 const nodeTypes = { component: ComponentNode };
@@ -194,6 +195,9 @@ export function Canvas() {
         />
         <Panel position="bottom-left" className="m-0! mb-6! ml-5!">
           <ZoomControls />
+        </Panel>
+        <Panel position="bottom-center" className="m-0! mb-6!">
+          <VitalsPill />
         </Panel>
         {minimap && (
           <MiniMap
