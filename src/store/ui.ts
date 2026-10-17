@@ -28,11 +28,13 @@ export type UiState = {
   minimap: boolean;
   commandPaletteOpen: boolean;
   shortcutsOpen: boolean;
+  libraryOpen: boolean;
   /** Bumped to ask the palette to focus its search. */
   paletteSearchRequest: number;
   toggleMinimap(): void;
   setCommandPaletteOpen(open: boolean): void;
   setShortcutsOpen(open: boolean): void;
+  setLibraryOpen(open: boolean): void;
   requestPaletteSearch(): void;
 };
 
@@ -54,10 +56,12 @@ export function createUiStore() {
     minimap: false,
     commandPaletteOpen: false,
     shortcutsOpen: false,
+    libraryOpen: false,
     paletteSearchRequest: 0,
     toggleMinimap: () => set((s) => ({ minimap: !s.minimap })),
     setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
     setShortcutsOpen: (open) => set({ shortcutsOpen: open }),
+    setLibraryOpen: (open) => set({ libraryOpen: open }),
     requestPaletteSearch: () => set((s) => ({ paletteSearchRequest: s.paletteSearchRequest + 1 })),
   }));
 }

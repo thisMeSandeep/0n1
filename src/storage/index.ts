@@ -1,7 +1,7 @@
 import { designStore, uiStore } from "../store/index.ts";
 import type { SaveStatus } from "../store/ui.ts";
 import type { ThemePreference } from "../ui/theme/theme.ts";
-import { openInitialSystem, startAutosave } from "./autosave.ts";
+import { type Autosave, openInitialSystem, startAutosave } from "./autosave.ts";
 import { LabDatabase } from "./db.ts";
 import {
   bindPreferences,
@@ -16,7 +16,7 @@ export const db = new LabDatabase();
 export const systems = createSystemsRepository(db);
 export const settings = createSettingsRepository(db);
 
-let storageAvailable = false;
+let autosave: Autosave | null = null;
 
 /**
  * Open the last system, restore preferences and start autosaving. Returns
@@ -33,8 +33,7 @@ export async function startStorage(): Promise<ThemePreference> {
     ]);
     designStore.getState().load(doc);
     bindPreferences(uiStore, settings, prefs);
-    startAutosave({ store: designStore, systems, settings, onStatus: setStatus });
-    storageAvailable = true;
+    autosave = startAutosave({ store: designStore, systems, settings, onStatus: setStatus });
     setStatus("saved");
     // The synchronous mirror can be newer than IndexedDB (see preferences.ts).
     const theme = readThemeMirror() ?? prefs.theme;
@@ -51,5 +50,15 @@ export async function startStorage(): Promise<ThemePreference> {
 /** Remember the user's theme choice. */
 export function saveThemePreference(theme: ThemePreference): void {
   writeThemeMirror(theme);
-  if (storageAvailable) void settings.set("theme", theme);
+  if (autosave) void settings.set("theme", theme);
+}
+
+/** Whether systems are being stored in this browser. */
+export function isStorageAvailable(): boolean {
+  return autosave !== null;
+}
+
+/** Store any pending edit to the open system now. */
+export function flushPendingSave(): Promise<void> {
+  return autosave?.flush() ?? Promise.resolve();
 }

@@ -5,6 +5,7 @@ import { count } from "./sections.ts";
 
 /** Nothing selected: the system as a whole. Health and traffic arrive in S32. */
 export function SystemView({ onClose }: { onClose: () => void }) {
+  const id = useDesign((s) => s.doc.id);
   const name = useDesign((s) => s.doc.name);
   const nodes = useDesign((s) => s.doc.nodes.length);
   const edges = useDesign((s) => s.doc.edges.length);
@@ -14,6 +15,8 @@ export function SystemView({ onClose }: { onClose: () => void }) {
       <InspectorHeader
         title={
           <EditableTitle
+            // A new system means a fresh field: never carry a half-typed name across.
+            key={id}
             label="System name"
             value={name}
             onCommit={(next) => designStore.getState().renameSystem(next)}

@@ -104,7 +104,7 @@ describe("autosave", () => {
     const store = createDesignStore({ registry, doc: doc("sys", "System", 1) });
     const statuses: SaveStatus[] = [];
     const requestPersistence = vi.fn(async () => true);
-    const stop = startAutosave({
+    const { stop, flush } = startAutosave({
       store,
       systems,
       settings,
@@ -112,7 +112,7 @@ describe("autosave", () => {
       delayMs: 20,
       requestPersistence,
     });
-    return { systems, settings, store, statuses, requestPersistence, stop };
+    return { systems, settings, store, statuses, requestPersistence, stop, flush };
   }
 
   it("saves shortly after edits, debounced, and reports saving then saved", async () => {
@@ -156,6 +156,14 @@ describe("autosave", () => {
     document.dispatchEvent(new Event("visibilitychange"));
     await vi.waitFor(async () => expect((await systems.get("sys"))?.name).toBe("Renamed"));
     Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+    stop();
+  });
+
+  it("flush() resolves once the pending change is stored", async () => {
+    const { systems, store, flush, stop } = setup();
+    store.getState().renameSystem("Flushed");
+    await flush();
+    expect((await systems.get("sys"))?.name).toBe("Flushed");
     stop();
   });
 

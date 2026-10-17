@@ -13,7 +13,8 @@ import {
   UploadSimpleIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
-import { uiStore, useDesign, useUi } from "../store/index.ts";
+import { LibraryPopover } from "../library/LibraryPopover.tsx";
+import { uiStore, useUi } from "../store/index.ts";
 import type { SaveStatus } from "../store/ui.ts";
 import { Button, IconButton } from "../ui/Button.tsx";
 import { Dialog, DialogClose, DialogContent, DialogFooter } from "../ui/Dialog.tsx";
@@ -27,15 +28,14 @@ import { shortcutKeys } from "./shortcuts.ts";
  * placeholders until the steps that wire them up.
  */
 export function TopBar() {
-  const systemName = useDesign((s) => s.doc.name);
   return (
     <header className="grid h-13 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b border-line bg-surface pr-4 pl-5">
-      <div className="flex min-w-0 items-center gap-2.5">
+      <div className="flex min-w-0 items-center gap-1.5">
         <span className="text-[0.9375rem] font-semibold tracking-tight">0n1</span>
         <span aria-hidden className="text-fg-3">
           /
         </span>
-        <span className="truncate font-medium">{systemName}</span>
+        <LibraryPopover />
         <SaveIndicator />
       </div>
 

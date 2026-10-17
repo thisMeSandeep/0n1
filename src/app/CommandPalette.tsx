@@ -1,16 +1,21 @@
 import {
   CornersOutIcon,
+  FolderOpenIcon,
   KeyboardIcon,
   MagnifyingGlassPlusIcon,
   MoonIcon,
+  PlusIcon,
   SunIcon,
 } from "@phosphor-icons/react";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { useAddComponent } from "../canvas/useAddComponent.ts";
 import { useViewActions } from "../canvas/useViewActions.ts";
 import { registry } from "../components/index.ts";
+import { library } from "../library/index.ts";
+import { useSystemsList } from "../library/useSystemsList.ts";
 import { midSentence } from "../model/text.ts";
-import { uiStore, useUi } from "../store/index.ts";
+import { isStorageAvailable } from "../storage/index.ts";
+import { uiStore, useDesign, useUi } from "../store/index.ts";
 import {
   Command,
   CommandEmpty,
@@ -80,6 +85,12 @@ export function CommandPalette() {
                   );
                 })}
               </CommandGroup>
+              {isStorageAvailable() && (
+                <SystemsCommands
+                  run={run}
+                  onBrowse={() => uiStore.getState().setLibraryOpen(true)}
+                />
+              )}
               <CommandGroup heading="View">
                 <CommandItem
                   value="Fit to view"
@@ -130,5 +141,49 @@ export function CommandPalette() {
         </RadixDialog.Content>
       </RadixDialog.Portal>
     </RadixDialog.Root>
+  );
+}
+
+type SystemsCommandsProps = {
+  run: (action: () => void) => () => void;
+  onBrowse: () => void;
+};
+
+/** New, browse, and open each other saved system by name. */
+function SystemsCommands({ run, onBrowse }: SystemsCommandsProps) {
+  const saved = useSystemsList();
+  const openId = useDesign((s) => s.doc.id);
+  return (
+    <CommandGroup heading="Systems">
+      <CommandItem
+        value="New system"
+        keywords={["create", "blank"]}
+        onSelect={run(() => void library.createAndOpen())}
+        icon={<PlusIcon aria-hidden className="text-fg-2" />}
+      >
+        New system
+      </CommandItem>
+      <CommandItem
+        value="Browse systems"
+        keywords={["library", "switch"]}
+        onSelect={run(onBrowse)}
+        icon={<FolderOpenIcon aria-hidden className="text-fg-2" />}
+      >
+        Browse systems…
+      </CommandItem>
+      {(saved ?? [])
+        .filter((s) => s.id !== openId)
+        .map((system) => (
+          <CommandItem
+            key={system.id}
+            value={`Open ${system.name} ${system.id}`}
+            keywords={["switch"]}
+            onSelect={run(() => void library.open(system.id))}
+            icon={<FolderOpenIcon aria-hidden className="text-fg-2" />}
+          >
+            Open “{system.name}”
+          </CommandItem>
+        ))}
+    </CommandGroup>
   );
 }

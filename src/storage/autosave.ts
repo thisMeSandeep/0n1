@@ -48,10 +48,16 @@ type AutosaveOptions = {
 
 const defaultPersist = () => navigator.storage?.persist?.() ?? Promise.resolve(false);
 
+export type Autosave = {
+  /** Write any pending change now. Resolves once it's stored. */
+  flush(): Promise<void>;
+  stop(): void;
+};
+
 /**
  * Save the open system shortly after each edit. Pending saves are flushed
  * when another system is opened and when the page is hidden, so nothing is
- * lost on tab close. Returns a function that stops autosaving.
+ * lost on tab close.
  */
 export function startAutosave({
   store,
@@ -60,7 +66,7 @@ export function startAutosave({
   onStatus,
   delayMs = 500,
   requestPersistence = defaultPersist,
-}: AutosaveOptions): () => void {
+}: AutosaveOptions): Autosave {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pending: SystemDocument | null = null;
   let persistAsked = false;
@@ -82,13 +88,15 @@ export function startAutosave({
     }
   };
 
+  let writing: Promise<void> = Promise.resolve();
   const flush = () => {
     clearTimeout(timer);
     timer = undefined;
     const doc = pending;
     pending = null;
-    if (doc) return write(doc);
-    return Promise.resolve();
+    // Chain writes so a flush also waits for one already in progress.
+    if (doc) writing = writing.then(() => write(doc));
+    return writing;
   };
 
   const unsubscribe = store.subscribe((state, previous) => {
@@ -113,10 +121,13 @@ export function startAutosave({
   window.addEventListener("pagehide", flush);
   void settings.set("lastSystemId", store.getState().doc.id);
 
-  return () => {
-    unsubscribe();
-    document.removeEventListener("visibilitychange", onHide);
-    window.removeEventListener("pagehide", flush);
-    void flush();
+  return {
+    flush,
+    stop() {
+      unsubscribe();
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", flush);
+      void flush();
+    },
   };
 }
