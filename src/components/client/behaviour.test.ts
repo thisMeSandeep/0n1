@@ -37,6 +37,7 @@ function sentBy(params: Record<string, unknown>, durationMs = 100_000) {
     system: new SystemRecorder(),
     nextRequestId: () => ++id,
     peer: () => undefined,
+    sampling: { weight: () => 1, countRequest: () => {} },
     send: (_to, request, reply) => {
       sent.push(request);
       reply({ ok: true });

@@ -20,9 +20,9 @@ export const database: BehaviourFactory = ({ sim, rng, recorder, node, send }) =
   const server = new QueueingServer(sim, recorder, {
     concurrency: connections,
     maxWaiting,
-    work: (request, done) => {
+    work: (request, done, stretch) => {
       const mean = request.kind === "write" ? writeTime : readTime;
-      sim.schedule(workTime(rng, mean), () => {
+      sim.schedule(workTime(rng, mean) * stretch, () => {
         if (rng.next() < errorRate / 100) {
           done({ ok: false, reason: "error" });
           return;

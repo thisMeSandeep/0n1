@@ -216,6 +216,8 @@ export class SystemRecorder {
 export type MetricsSnapshot = {
   /** Simulated time (ms). */
   time: number;
+  /** Each simulated request stands for this many real ones (1 = no sampling). */
+  sampling: { weight: number };
   system: SystemMetrics;
   nodes: Record<string, NodeMetrics>;
 };

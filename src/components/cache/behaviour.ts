@@ -7,6 +7,10 @@ import { workTime } from "../../engine/runtime/workTime.ts";
  * once) over a real LRU of keys with expiry. The hit ratio isn't a setting;
  * it comes from the size, the TTL and which keys clients ask for.
  * Answers `get` (with `hit`), `set` and `delete`.
+ *
+ * Sampling (S26): a sampled request stands for `weight` real ones, so each
+ * key is asked for `weight` times less often; its TTL is stretched by the
+ * same factor so entries don't expire early.
  */
 export const cache: BehaviourFactory = ({ sim, rng, recorder, node }) => {
   const { size, concurrency, responseTime, ttl } = node.params as {
@@ -28,9 +32,9 @@ export const cache: BehaviourFactory = ({ sim, rng, recorder, node }) => {
     return true;
   };
 
-  const store = (key: number) => {
+  const store = (key: number, weight: number) => {
     entries.delete(key);
-    entries.set(key, sim.now + ttlMs);
+    entries.set(key, sim.now + ttlMs * weight);
     while (entries.size > size) {
       const oldest = entries.keys().next().value as number;
       entries.delete(oldest);
@@ -40,10 +44,10 @@ export const cache: BehaviourFactory = ({ sim, rng, recorder, node }) => {
   const server = new QueueingServer(sim, recorder, {
     concurrency,
     maxWaiting: 100_000,
-    work: (request, done) => {
-      sim.schedule(workTime(rng, responseTime), () => {
+    work: (request, done, stretch) => {
+      sim.schedule(workTime(rng, responseTime) * stretch, () => {
         if (request.op === "set") {
-          store(request.key);
+          store(request.key, request.weight);
           done({ ok: true });
         } else if (request.op === "delete") {
           entries.delete(request.key);

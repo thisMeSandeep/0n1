@@ -54,6 +54,13 @@ export type BehaviourContext = {
   /** Another component in the system, e.g. a queue reading its workers' capacity. */
   peer(id: string): RuntimeNode | undefined;
   nextRequestId(): number;
+  /** Request sampling (S26): clients send one request per `weight` real ones. */
+  sampling: {
+    /** How many real requests each new request stands for right now. */
+    weight(): number;
+    /** A client sent a new request (not a retry). */
+    countRequest(): void;
+  };
 };
 
 /** What a component does with requests that reach it. */

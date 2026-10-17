@@ -7,6 +7,8 @@ import { workTime } from "../../engine/runtime/workTime.ts";
  * Writes arrive from the primary and take `replicationLag` to apply; a read
  * of a key with a write still on its way is counted as stale. Applying
  * writes is treated as free, so it doesn't compete with reads for slots.
+ * When sampling, each key sees `weight` times fewer writes, so a write's
+ * stale window is stretched by its weight to keep the stale share right.
  */
 export const readReplica: BehaviourFactory = ({ sim, rng, recorder, node }) => {
   const { connections, readTime, replicationLag, maxWaiting, errorRate } = node.params as {
@@ -22,8 +24,8 @@ export const readReplica: BehaviourFactory = ({ sim, rng, recorder, node }) => {
   const server = new QueueingServer(sim, recorder, {
     concurrency: connections,
     maxWaiting,
-    work: (request, done) => {
-      sim.schedule(workTime(rng, readTime), () => {
+    work: (request, done, stretch) => {
+      sim.schedule(workTime(rng, readTime) * stretch, () => {
         if (rng.next() < errorRate / 100) {
           done({ ok: false, reason: "error" });
           return;
@@ -38,7 +40,7 @@ export const readReplica: BehaviourFactory = ({ sim, rng, recorder, node }) => {
     handle(request, reply) {
       if (request.op === "replicate") {
         pending.set(request.key, (pending.get(request.key) ?? 0) + 1);
-        sim.schedule(replicationLag, () => {
+        sim.schedule(replicationLag * request.weight, () => {
           const left = (pending.get(request.key) ?? 1) - 1;
           if (left > 0) pending.set(request.key, left);
           else pending.delete(request.key);

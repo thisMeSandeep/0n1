@@ -8,6 +8,9 @@ import type { BehaviourFactory, Outcome, Request } from "../../engine/runtime/ty
  * after a timeout or failure the client retries straight away, up to
  * `retries` extra times. A reply that comes after the timeout is ignored,
  * but the work it caused still happened.
+ *
+ * When sampling (S26), it sends one request per `weight` real ones, each
+ * standing for `weight`, so the real rate is unchanged.
  */
 export const client: BehaviourFactory = ({
   sim,
@@ -17,6 +20,7 @@ export const client: BehaviourFactory = ({
   system,
   send,
   nextRequestId,
+  sampling,
 }) => {
   const { rate, readShare, keys, keyPopularity, timeout, retries } = node.params as {
     rate: number;
@@ -61,9 +65,11 @@ export const client: BehaviourFactory = ({
   };
 
   const sendOne = () => {
+    const weight = sampling.weight();
+    sampling.countRequest();
     const request: Request = {
       id: nextRequestId(),
-      weight: 1,
+      weight,
       kind: rng.next() < readShare / 100 ? "read" : "write",
       key: zipf ? zipf.sample(rng) : uniformInt(rng, keys),
       createdAt: sim.now,
@@ -72,14 +78,15 @@ export const client: BehaviourFactory = ({
     };
     recorder.arrive(sim.now, request.weight);
     attempt(request);
-    sim.schedule(exponential(rng, meanGapMs), sendOne);
+    sim.schedule(exponential(rng, meanGapMs * sampling.weight()), sendOne);
   };
 
   return {
     // Clients don't take requests (the compiler enforces it).
     handle: (_request, reply) => reply({ ok: false, reason: "unavailable" }),
     start: () => {
-      if (node.targets.length > 0) sim.schedule(exponential(rng, meanGapMs), sendOne);
+      if (node.targets.length > 0)
+        sim.schedule(exponential(rng, meanGapMs * sampling.weight()), sendOne);
     },
   };
 };

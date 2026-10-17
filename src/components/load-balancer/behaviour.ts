@@ -41,11 +41,11 @@ export const loadBalancer: BehaviourFactory = ({ sim, node, recorder, send }) =>
         return;
       }
       const target = pick();
-      outstanding.set(target, (outstanding.get(target) ?? 0) + 1);
+      outstanding.set(target, (outstanding.get(target) ?? 0) + request.weight);
       recorder.setInFlight(++inFlight);
       sim.schedule(delay, () =>
         send(target, request, (outcome) => {
-          outstanding.set(target, (outstanding.get(target) ?? 1) - 1);
+          outstanding.set(target, (outstanding.get(target) ?? request.weight) - request.weight);
           recorder.setInFlight(--inFlight);
           recorder.complete(sim.now, sim.now - arrivedAt, outcome.ok, request.weight);
           reply(outcome);

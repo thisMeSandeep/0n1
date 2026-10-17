@@ -15,8 +15,8 @@ export function createApplicationWork(
 ) {
   const { sim, rng, node } = ctx;
   const data = createDataAccess(ctx);
-  return (request: Request, done: (outcome: Outcome) => void) => {
-    sim.schedule(workTime(rng, workTimeMs), () => {
+  return (request: Request, done: (outcome: Outcome) => void, stretch = 1) => {
+    sim.schedule(workTime(rng, workTimeMs) * stretch, () => {
       if (rng.next() < errorRate / 100) {
         done({ ok: false, reason: "error" });
         return;
