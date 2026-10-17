@@ -36,6 +36,7 @@ function sentBy(params: Record<string, unknown>, durationMs = 100_000) {
     recorder: new NodeRecorder(),
     system: new SystemRecorder(),
     nextRequestId: () => ++id,
+    peer: () => undefined,
     send: (_to, request, reply) => {
       sent.push(request);
       reply({ ok: true });

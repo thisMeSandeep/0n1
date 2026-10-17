@@ -54,6 +54,7 @@ export class Engine {
           system: this.system,
           nextRequestId: () => ++this.#requestId,
           send: (to, request, onReply) => this.#send(to, request, onReply, networkLatencyMs),
+          peer: (other) => model.nodes.get(other),
         }),
       );
     }

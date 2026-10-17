@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { registry } from "../../components/index.ts";
+import { BEHAVIOURS } from "../../components/behaviours.ts";
+import { componentDefinitions, registry } from "../../components/index.ts";
 import { defaultParams } from "../../model/component.ts";
 import { createSystemDocument } from "../../model/document.ts";
 import { compile } from "../compile.ts";
@@ -136,20 +137,8 @@ describe("Engine: client → service", () => {
     expect(run(5)).not.toEqual(run(6));
   });
 
-  it("refuses components it can't simulate yet", () => {
-    const doc = {
-      ...createSystemDocument({ id: "s", now: 0 }),
-      nodes: [
-        { id: "u", type: "client", name: "Users", position: { x: 0, y: 0 }, params: {} },
-        { id: "a", type: "service", name: "API", position: { x: 0, y: 0 }, params: {} },
-        { id: "q", type: "queue", name: "Jobs", position: { x: 0, y: 0 }, params: {} },
-      ],
-      edges: [
-        { id: "1", source: "u", target: "a" },
-        { id: "2", source: "a", target: "q" },
-      ],
-    };
-    const { model } = compile(doc, registry);
-    expect(() => new Engine(model!)).toThrow("Jobs: Queue isn't simulated yet.");
+  it("can simulate every component in the palette", () => {
+    for (const definition of componentDefinitions)
+      expect(BEHAVIOURS[definition.type]).toBeDefined();
   });
 });

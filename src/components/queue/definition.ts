@@ -8,7 +8,7 @@ export const queue: ComponentDefinition = {
   modelNote:
     "Adding a job is quick and answers the sender straight away; the work happens later. " +
     "Connected workers pull jobs in order as they free up. " +
-    "When the queue is full, new jobs are rejected. Failed jobs can be put back to try again.",
+    "When the queue is full, new jobs are rejected. Failed jobs can be put back to try again, up to 5 tries in all.",
   icon: "stack",
   keywords: ["message", "jobs", "broker", "async"],
   params: {

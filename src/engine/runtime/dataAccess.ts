@@ -4,13 +4,14 @@ import type { BehaviourContext, Outcome, Request } from "./types.ts";
  * How a service (or worker) reads and writes its data, cache-aside:
  * - Read: ask the cache; on a miss read a replica if there is one,
  *   otherwise the database, then store the result in the cache.
- * - Write: write the database, then invalidate the key in the cache.
+ * - Write: put it on a queue if there is one (a worker does it later),
+ *   otherwise write the database, then invalidate the key in the cache.
  * With several caches or databases, the key picks one (sharding);
  * replicas take turns.
  */
 export function createDataAccess(ctx: Pick<BehaviourContext, "send" | "node">) {
   const { send, node } = ctx;
-  const { caches, databases, replicas } = node.routes;
+  const { caches, databases, replicas, queues } = node.routes;
   let nextReplica = 0;
 
   const byKey = (targets: readonly string[], key: number) =>
@@ -49,7 +50,12 @@ export function createDataAccess(ctx: Pick<BehaviourContext, "send" | "node">) {
       return;
     }
 
-    // A write.
+    // A write: handed to a queue when there is one.
+    const queue = byKey(queues, request.key);
+    if (queue !== null) {
+      send(queue, { ...request, op: undefined }, done);
+      return;
+    }
     const database = byKey(databases, request.key);
     if (database === null) {
       // Replicas are read-only; with only replicas there's nowhere to write.

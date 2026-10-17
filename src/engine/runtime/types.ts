@@ -51,6 +51,8 @@ export type BehaviourContext = {
   system: SystemRecorder;
   /** Send a request to another component; network delay applies both ways. */
   send(to: string, request: Request, onReply: Reply): void;
+  /** Another component in the system, e.g. a queue reading its workers' capacity. */
+  peer(id: string): RuntimeNode | undefined;
   nextRequestId(): number;
 };
 

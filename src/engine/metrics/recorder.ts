@@ -25,6 +25,8 @@ export type NodeMetrics = {
   hitRatio?: number | null;
   /** Read replicas: share of reads that missed a recent write, 0–1. */
   staleReads?: number | null;
+  /** Queues: how long the oldest waiting job has waited (ms). Null when empty. */
+  oldestJobAge?: number | null;
   /** Right now. */
   inFlight: number;
   waiting: number;
@@ -67,6 +69,8 @@ export class NodeRecorder {
   #window: WindowOptions;
   #capacity = 1;
   #rateCapacity: number | null = null;
+  /** Undefined until a queue reports; then the oldest job's enqueue time, or null. */
+  #oldestSince: number | null | undefined = undefined;
   #inFlight = 0;
   #waiting = 0;
 
@@ -103,6 +107,11 @@ export class NodeRecorder {
 
   setWaiting(waiting: number): void {
     this.#waiting = waiting;
+  }
+
+  /** Queues: when the oldest waiting job was added, or null when empty. */
+  setOldest(enqueuedAt: number | null): void {
+    this.#oldestSince = enqueuedAt;
   }
 
   /** A cache or CDN lookup, and whether it was answered without the origin. */
@@ -146,6 +155,9 @@ export class NodeRecorder {
     return {
       ...(hitRatio === undefined ? {} : { hitRatio }),
       ...(staleReads === undefined ? {} : { staleReads }),
+      ...(this.#oldestSince === undefined
+        ? {}
+        : { oldestJobAge: this.#oldestSince === null ? null : now - this.#oldestSince }),
       arrivals: this.#arrivals.rate(now),
       throughput: this.#completed.rate(now),
       errorRate: completed > 0 ? this.#failed.sum(now) / completed : 0,
