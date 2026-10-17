@@ -1,6 +1,7 @@
-import { CopyIcon, DotsThreeIcon, TrashIcon } from "@phosphor-icons/react";
+import { CopyIcon, DotsThreeIcon, PowerIcon, TrashIcon } from "@phosphor-icons/react";
 import { shortcutKeys } from "../app/shortcuts.ts";
 import { registry } from "../components/index.ts";
+import { simulation, useLive } from "../simulation/index.ts";
 import { designStore, selectionStore, useDesign } from "../store/index.ts";
 import { IconButton } from "../ui/Button.tsx";
 import { CollapsibleSection } from "../ui/Collapsible.tsx";
@@ -83,6 +84,7 @@ function ComponentMenu({ nodeId }: { nodeId: string }) {
     const [copy] = designStore.getState().duplicateNodes([nodeId]);
     if (copy) selectionStore.getState().select({ nodeIds: [copy], edgeIds: [] });
   };
+  const down = useLive((s) => s.nodes[nodeId]?.status === "down");
   return (
     <Menu>
       <MenuTrigger asChild>
@@ -93,6 +95,13 @@ function ComponentMenu({ nodeId }: { nodeId: string }) {
       <MenuContent>
         <MenuItem icon={<CopyIcon />} shortcut={shortcutKeys("duplicate")} onSelect={duplicate}>
           Duplicate
+        </MenuItem>
+        <MenuItem
+          icon={<PowerIcon />}
+          shortcut={shortcutKeys("takeDown")}
+          onSelect={() => (down ? simulation.bringBack(nodeId) : simulation.takeDown(nodeId))}
+        >
+          {down ? "Bring back" : "Take down"}
         </MenuItem>
         <MenuSeparator />
         <MenuItem

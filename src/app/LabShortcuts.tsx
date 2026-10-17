@@ -53,6 +53,7 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
     runPause: simulation.toggle,
     step: simulation.step,
     reset: simulation.reset,
+    takeDown: () => simulation.toggleDown(selectionStore.getState().nodeIds),
     undo: () => designStore.temporal.getState().undo(),
     redo: () => designStore.temporal.getState().redo(),
     duplicate: () => {

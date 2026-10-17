@@ -25,6 +25,7 @@ describe("taking components down", () => {
     engine.runUntil(10_000);
     const down = engine.snapshot();
     expect(down.nodes.api?.down).toBe(true);
+    expect(down.nodes.api?.downSince).toBe(5000);
     expect(down.system.errorRate).toBe(1);
     // A refused connection: one network round trip, not a timeout.
     expect(down.system.latency?.p99 ?? Number.POSITIVE_INFINITY).toBeLessThan(5);
@@ -35,6 +36,7 @@ describe("taking components down", () => {
     engine.runUntil(15_000);
     const back = engine.snapshot();
     expect(back.nodes.api?.down).toBe(false);
+    expect(back.nodes.api?.downSince).toBeNull();
     expect(back.system.errorRate).toBe(0);
   });
 
@@ -205,5 +207,50 @@ describe("taking components down", () => {
       return engine.snapshot();
     };
     expect(run()).toEqual(run());
+  });
+});
+
+describe("where failures start", () => {
+  it("counts a failure only at the component it started at", () => {
+    const engine = runningSystem(
+      {
+        users: { type: "client", params: { rate: 400, retries: 0, timeout: 5000 } },
+        lb: { type: "load-balancer" },
+        api: { type: "service", params: roomy },
+        db: { type: "database", params: { ...roomy, errorRate: 20 } },
+      },
+      [
+        ["users", "lb"],
+        ["lb", "api"],
+        ["api", "db"],
+      ],
+      { window },
+    );
+    engine.runUntil(8000);
+    const { nodes } = engine.snapshot();
+    const share = (id: string) => (nodes[id]?.failures ?? 0) / (nodes[id]?.arrivals ?? 1);
+    expect(share("db")).toBeCloseTo(0.2, 1);
+    expect(nodes.api?.errorRate).toBeGreaterThan(0.1); // passed back through…
+    expect(share("api")).toBe(0); // …but not started there
+    expect(share("lb")).toBe(0);
+  });
+
+  it("counts requests a full line turns away at that component", () => {
+    const engine = runningSystem(
+      {
+        users: { type: "client", params: { rate: 2000, retries: 0, timeout: 5000 } },
+        lb: { type: "load-balancer" },
+        api: { type: "service", params: { concurrency: 4, maxWaiting: 10, workTime: 5 } },
+      },
+      [
+        ["users", "lb"],
+        ["lb", "api"],
+      ],
+      { window },
+    );
+    engine.runUntil(5000);
+    const { nodes } = engine.snapshot();
+    expect(nodes.api?.failures).toBeGreaterThan(500);
+    expect(nodes.lb?.failures).toBe(0);
   });
 });

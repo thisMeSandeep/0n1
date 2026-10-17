@@ -76,3 +76,9 @@
 .react-flow__attribution a {
   color: var(--text-3);
 }
+
+/* A component showing its details sits above its neighbours, so they don't cover the card. */
+.react-flow__node:has([data-hovercard]) {
+  /* biome-ignore lint/complexity/noImportantStyles: React Flow sets z-index inline. */
+  z-index: 1000 !important;
+}

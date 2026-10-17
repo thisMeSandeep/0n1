@@ -5,8 +5,11 @@ import type { Position } from "../model/document.ts";
 /** MIME type for dragging a component type from the palette onto the canvas. */
 export const COMPONENT_DRAG_TYPE = "application/x-0n1-component";
 
-/** Approximate node size (UIUX §6), used for centring and overlap checks. */
-export const NODE_SIZE = { width: 208, height: 72 } as const;
+/**
+ * Node size (UIUX §6), used for centring and overlap checks. The height is
+ * the same idle and running: the numbers row and bar always take their space.
+ */
+export const NODE_SIZE = { width: 208, height: 101 } as const;
 export const GRID = 8;
 
 export function snap(value: number): number {

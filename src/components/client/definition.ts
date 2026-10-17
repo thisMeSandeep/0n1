@@ -11,6 +11,7 @@ export const client: ComponentDefinition = {
     "The client doesn't slow down when the system struggles, which is how real traffic behaves.",
   icon: "desktop",
   keywords: ["user", "browser", "traffic", "load"],
+  liveDetail: "sent",
   params: {
     rate: {
       kind: "number",

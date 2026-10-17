@@ -36,7 +36,12 @@ export type FailureReason =
 
 export type Outcome =
   /** `hit` is set by caches and CDNs: whether the answer came from them. */
-  { ok: true; hit?: boolean } | { ok: false; reason: FailureReason };
+  | { ok: true; hit?: boolean }
+  /**
+   * `at`: the component the failure started at. The engine sets it when a
+   * failure first comes back from a component; components passing it on keep it.
+   */
+  | { ok: false; reason: FailureReason; at?: string };
 
 /** Called exactly once with how a request ended. */
 export type Reply = (outcome: Outcome) => void;

@@ -11,6 +11,7 @@ export const queue: ComponentDefinition = {
     "When the queue is full, new jobs are rejected. Failed jobs can be put back to try again, up to 5 tries in all.",
   icon: "stack",
   keywords: ["message", "jobs", "broker", "async"],
+  liveDetail: "waiting",
   params: {
     capacity: {
       kind: "number",

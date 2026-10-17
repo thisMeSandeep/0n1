@@ -13,6 +13,7 @@ export const cache: ComponentDefinition = {
     "Services use it cache-aside: they check it first, and on a miss read the database and store the result.",
   icon: "lightning",
   keywords: ["memory", "in-memory", "key value"],
+  liveDetail: "hit",
   params: {
     size: {
       kind: "number",

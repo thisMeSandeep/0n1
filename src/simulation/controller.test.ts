@@ -113,4 +113,59 @@ describe("simulation controller", () => {
       { type: "setTraffic", multiplier: 3 },
     ]);
   });
+
+  it("takes components down before the first Run, loading the system paused", () => {
+    const { design, controller, types } = setup();
+    const id = design.getState().addNode("client", { x: 0, y: 0 });
+    controller.takeDown(id);
+    expect(types()).toEqual(["load", "setSpeed", "setTraffic", "takeDown"]);
+    expect(controller.isDown(id)).toBe(true);
+  });
+
+  it("keeps components down through a reload, until reset", () => {
+    const { design, controller, sent, clear } = setup();
+    const users = design.getState().addNode("client", { x: 0, y: 0 });
+    const api = design.getState().addNode("service", { x: 200, y: 0 });
+    controller.play();
+    controller.takeDown(api);
+    clear();
+    design.getState().connect(users, api);
+    expect(sent.slice(1)).toEqual([{ type: "takeDown", nodeId: api }]);
+
+    controller.reset();
+    clear();
+    design.getState().addNode("cache", { x: 400, y: 0 });
+    expect(sent.map((c) => c.type)).toEqual(["load"]);
+    expect(controller.isDown(api)).toBe(false);
+  });
+
+  it("forgets removed components", () => {
+    const { design, controller, types, clear } = setup();
+    const api = design.getState().addNode("service", { x: 0, y: 0 });
+    controller.takeDown(api);
+    design.getState().removeNodes([api]);
+    clear();
+    design.getState().addNode("service", { x: 0, y: 0 });
+    expect(types()).toEqual(["load"]);
+  });
+
+  it("K takes the selection down, or brings it back when it's all down", () => {
+    const { design, controller, sent, clear } = setup();
+    const a = design.getState().addNode("service", { x: 0, y: 0 });
+    const b = design.getState().addNode("service", { x: 0, y: 200 });
+    controller.play();
+    controller.takeDown(a);
+    clear();
+    controller.toggleDown([a, b]); // one is up: take the rest down
+    expect(sent).toEqual([{ type: "takeDown", nodeId: b }]);
+    clear();
+    controller.toggleDown([a, b]);
+    expect(sent).toEqual([
+      { type: "bringBack", nodeId: a },
+      { type: "bringBack", nodeId: b },
+    ]);
+    clear();
+    controller.toggleDown([]);
+    expect(sent).toEqual([]);
+  });
 });

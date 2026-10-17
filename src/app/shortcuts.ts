@@ -3,7 +3,7 @@ import { isTypingTarget } from "./layout.ts";
 /**
  * Every keyboard shortcut in the lab (UIUX §11), in one place. The global
  * handler, the `?` sheet, tooltips and menus all read from here, so they
- * can't drift apart. Take down (K) joins in S30.
+ * can't drift apart.
  */
 
 export type KeyCombo = {
@@ -35,6 +35,7 @@ export const SHORTCUT_IDS = [
   "runPause",
   "step",
   "reset",
+  "takeDown",
   "undo",
   "redo",
   "duplicate",
@@ -71,6 +72,12 @@ export const SHORTCUTS: readonly Shortcut[] = [
   },
   { id: "step", label: "Step 1 second", group: "Simulation", combos: [{ key: "." }] },
   { id: "reset", label: "Reset the run", group: "Simulation", combos: [{ key: "r", shift: true }] },
+  {
+    id: "takeDown",
+    label: "Take down or bring back the selection",
+    group: "Simulation",
+    combos: [{ key: "k" }],
+  },
   { id: "undo", label: "Undo", group: "Editing", combos: [{ key: "z", mod: true }] },
   {
     id: "redo",

@@ -11,6 +11,7 @@ export const cdn: ComponentDefinition = {
     "Capacity is treated as unlimited, which is close to true for large CDNs.",
   icon: "globe-hemisphere-west",
   keywords: ["edge", "static", "content delivery"],
+  liveDetail: "hit",
   params: {
     hitRatio: {
       kind: "number",

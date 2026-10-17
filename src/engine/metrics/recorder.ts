@@ -13,8 +13,13 @@ export type NodeMetrics = {
   arrivals: number;
   /** Requests finishing (successfully or not). */
   throughput: number;
-  /** Share of finished requests that failed, 0–1. */
+  /** Share of finished requests that failed, 0–1, wherever they failed. */
   errorRate: number;
+  /**
+   * Failures per second that started here (turned away, its own errors),
+   * not ones passed on from components behind it.
+   */
+  failures: number;
   /** Requests turned away before being handled (line full, rate limited, down). */
   drops: number;
   /** Time from arrival to finishing, including waiting in line. Null if nothing finished. */
@@ -29,6 +34,8 @@ export type NodeMetrics = {
   oldestJobAge?: number | null;
   /** Taken down (S27). */
   down?: boolean;
+  /** When it was taken down (simulated ms), if it's down. */
+  downSince?: number | null;
   /** Right now. */
   inFlight: number;
   waiting: number;
@@ -62,6 +69,7 @@ export class NodeRecorder {
   #completed: RateCounter;
   #failed: RateCounter;
   #dropped: RateCounter;
+  #originated: RateCounter;
   #latency: WindowedHistogram;
   #busy: TimeWeightedGauge;
   #lookups: RateCounter | null = null;
@@ -82,6 +90,7 @@ export class NodeRecorder {
     this.#completed = new RateCounter(options);
     this.#failed = new RateCounter(options);
     this.#dropped = new RateCounter(options);
+    this.#originated = new RateCounter(options);
     this.#latency = new WindowedHistogram(options);
     this.#busy = new TimeWeightedGauge(options);
   }
@@ -98,6 +107,11 @@ export class NodeRecorder {
 
   drop(time: number, weight = 1): void {
     this.#dropped.add(time, weight);
+  }
+
+  /** A failure that started here (the engine calls this as it replies). */
+  originate(time: number, weight = 1): void {
+    this.#originated.add(time, weight);
   }
 
   /** How many units of capacity are in use (e.g. busy connections) out of `capacity`. */
@@ -172,6 +186,7 @@ export class NodeRecorder {
       throughput: this.#completed.rate(now),
       errorRate: completed > 0 ? this.#failed.sum(now) / completed : 0,
       drops: this.#dropped.rate(now),
+      failures: this.#originated.rate(now),
       latency: latencySummary(this.#latency.merged(now)),
       utilization: Math.min(
         1,

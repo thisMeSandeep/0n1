@@ -1,17 +1,38 @@
 import { LinkBreakIcon } from "@phosphor-icons/react";
-import { Handle, type NodeProps, Position, useConnection } from "@xyflow/react";
-import { memo, useMemo } from "react";
+import { Handle, type NodeProps, Position, useConnection, useStore } from "@xyflow/react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { registry } from "../components/index.ts";
 import { checkConnection } from "../model/connections.ts";
+import { useLive } from "../simulation/index.ts";
 import { designStore } from "../store/index.ts";
 import { CATEGORY_TINT, componentIcon } from "../ui/componentIcons.tsx";
 import { cx } from "../ui/cx.ts";
 import { Tooltip } from "../ui/Tooltip.tsx";
 import type { ComponentFlowNode } from "./flow.ts";
+import {
+  ErrorBadge,
+  LiveNumbers,
+  NodeHoverCard,
+  NodeTrend,
+  StatusMark,
+  UtilizationBar,
+} from "./NodeLive.tsx";
+
+/** Semantic zoom (UIUX §6): far out shows only icon, name and a status mark; close up adds a sparkline. */
+export type ZoomLevel = "far" | "normal" | "near";
+export const FAR_ZOOM = 0.5;
+export const NEAR_ZOOM = 1.3;
+
+export function zoomLevel(zoom: number): ZoomLevel {
+  return zoom < FAR_ZOOM ? "far" : zoom > NEAR_ZOOM ? "near" : "normal";
+}
+
+/** How long the pointer rests on a component before its details show. */
+const HOVER_DELAY_MS = 400;
 
 /**
- * A component on the canvas (UIUX §6). Static for now: icon, name and type.
- * Live numbers and the utilization bar fill in from S30.
+ * A component on the canvas (UIUX §6): icon and name; while running, its
+ * rate, detail number (p99, hit ratio…), utilization bar and state.
  *
  * While a connection is being dragged, other components show whether they
  * can take it: valid targets get an accent ring, invalid ones fade and
@@ -21,11 +42,18 @@ export const ComponentNode = memo(function ComponentNode({
   id,
   data,
   selected,
+  dragging,
 }: NodeProps<ComponentFlowNode>) {
   const definition = registry.get(data.type);
   const Icon = componentIcon(definition?.icon ?? "");
+  // The type, when the name doesn't already say it ("Links DB" · Database).
   const typeLabel =
     definition && definition.displayName !== data.name ? definition.displayName : null;
+
+  const view = useLive((s) => s.nodes[id]);
+  const started = useLive((s) => s.started);
+  const zoom = useStore((s) => zoomLevel(s.transform[2]));
+  const status = view?.status ?? "healthy";
 
   // Primitive selectors: re-render only when the drag starts, ends, or moves onto/off a node.
   const fromId = useConnection((c) => (c.inProgress ? c.fromNode.id : null));
@@ -37,6 +65,7 @@ export const ComponentNode = memo(function ComponentNode({
     [isTargetCandidate, fromId, id],
   );
   const hovered = overId === id;
+  const details = useHoverDetails(started && !dragging && fromId === null);
   const ring =
     selected || (check?.ok && hovered)
       ? "outline-accent"
@@ -45,13 +74,20 @@ export const ComponentNode = memo(function ComponentNode({
         : "outline-transparent";
 
   return (
-    <div className="relative">
+    <div className="relative" {...details.handlers}>
       <div
         data-card
+        data-status={view ? status : undefined}
         className={cx(
           "w-52 rounded-card border bg-raised px-4 py-3.5 text-fg outline-2 outline-offset-2",
-          "transition-[outline-color,opacity] duration-(--duration-fast)",
-          data.hint ? "border-dashed border-line-strong" : "border-line",
+          "transition-[outline-color,opacity,border-color,filter] duration-(--duration-fast)",
+          status === "down"
+            ? "border-dashed border-line-strong opacity-60 grayscale"
+            : status === "failing"
+              ? "border-[color-mix(in_srgb,var(--fail)_55%,var(--line))]"
+              : data.hint
+                ? "border-dashed border-line-strong"
+                : "border-line",
           ring,
           check && !check.ok && "opacity-45",
         )}
@@ -69,6 +105,7 @@ export const ComponentNode = memo(function ComponentNode({
             className={cx("size-5 shrink-0", definition && CATEGORY_TINT[definition.category])}
           />
           <span className="min-w-0 flex-1 truncate font-medium">{data.name}</span>
+          {zoom === "far" && <StatusMark status={status} />}
           {data.hint && (
             <Tooltip content={data.hint}>
               <button
@@ -81,12 +118,29 @@ export const ComponentNode = memo(function ComponentNode({
             </Tooltip>
           )}
         </div>
-        {typeLabel && <p className="mt-1 pl-7.5 text-sm text-fg-2">{typeLabel}</p>}
-        <div aria-hidden className="mt-3.5 h-0.75 rounded-pill bg-line" />
+        {zoom !== "far" && (
+          <>
+            {view ? (
+              <LiveNumbers view={view} />
+            ) : typeLabel ? (
+              <p className="mt-3.5 flex h-5.5 items-center truncate text-sm text-fg-2">
+                {typeLabel}
+              </p>
+            ) : (
+              // Where the numbers will be, so starting a run doesn't resize the card.
+              <div aria-hidden className="mt-3.5 h-5.5" />
+            )}
+            <UtilizationBar view={view} />
+            {zoom === "near" && view && <NodeTrend nodeId={id} className="mt-3 text-fg-3" />}
+          </>
+        )}
         {definition && definition.connections.outgoing.length > 0 && (
           <Handle type="source" position={Position.Right} className="handle handle-source" />
         )}
       </div>
+      {/* After the card, so it's read after the name. */}
+      {view?.hasErrors && zoom !== "far" && <ErrorBadge view={view} />}
+      {details.open && <NodeHoverCard nodeId={id} />}
       {/* Outside the card so it doesn't fade with it. */}
       {check && !check.ok && hovered && (
         <p
@@ -99,3 +153,24 @@ export const ComponentNode = memo(function ComponentNode({
     </div>
   );
 });
+
+/** Open after the pointer has rested a moment; closed whenever it isn't allowed. */
+function useHoverDetails(allowed: boolean) {
+  const [resting, setResting] = useState(false);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!resting || !allowed) {
+      setOpen(false);
+      return;
+    }
+    const timer = setTimeout(() => setOpen(true), HOVER_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [resting, allowed]);
+  return {
+    open: open && allowed,
+    handlers: {
+      onPointerEnter: () => setResting(true),
+      onPointerLeave: () => setResting(false),
+    },
+  };
+}

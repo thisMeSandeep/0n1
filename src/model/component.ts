@@ -46,6 +46,8 @@ export type ToggleParam = ParamBase & {
 
 export type ParamSpec = NumberParam | ChoiceParam | ToggleParam;
 
+export type LiveDetail = "p99" | "hit" | "waiting" | "sent";
+
 export type ComponentDefinition = {
   /** Stable, kebab-case id stored in documents, e.g. "load-balancer". Never rename. */
   type: string;
@@ -60,6 +62,12 @@ export type ComponentDefinition = {
   /** Extra search terms for the palette, e.g. "db". Generic words only, no vendor names. */
   keywords?: readonly string[];
   params: Readonly<Record<string, ParamSpec>>;
+  /**
+   * The number shown beside its rate while running (default "p99"):
+   * "hit" (caches), "waiting" (queues), or "sent" for components that only
+   * send traffic, whose rate is what they send.
+   */
+  liveDetail?: LiveDetail;
   connections: {
     /** Whether other components can send requests to this one. */
     incoming: boolean;

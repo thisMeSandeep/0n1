@@ -61,6 +61,7 @@ export class Engine {
   readonly sampling: SamplingController;
   #current = new Map<string, Incarnation>();
   #lives = new Map<string, number>();
+  #downSince = new Map<string, number>();
   #rng: Rng;
   #latency: number;
   #requestId = 0;
@@ -158,7 +159,13 @@ export class Engine {
         if (pending.settled) return;
         pending.settled = true;
         target.pending.delete(pending);
-        back(outcome);
+        if (!outcome.ok && outcome.at === undefined) {
+          // It failed here, not behind this component.
+          this.recorders.get(to)?.originate(this.sim.now, request.weight);
+          back({ ...outcome, at: to });
+        } else {
+          back(outcome);
+        }
       });
     });
   }
@@ -223,6 +230,7 @@ export class Engine {
     }
     life.pending.clear();
     this.recorders.get(id)?.markDown(this.sim.now);
+    this.#downSince.set(id, this.sim.now);
     this.#announce(id, false);
     return true;
   }
@@ -232,6 +240,7 @@ export class Engine {
     if (this.isUp(id) || !this.#current.has(id)) return false;
     const life = this.#incarnate(id);
     this.#current.set(id, life);
+    this.#downSince.delete(id);
     life.behaviour.start?.();
     this.#announce(id, true);
     return true;
@@ -252,7 +261,11 @@ export class Engine {
     const now = this.sim.now;
     const nodes: MetricsSnapshot["nodes"] = {};
     for (const [id, recorder] of this.recorders) {
-      nodes[id] = { ...recorder.snapshot(now), down: !this.isUp(id) };
+      nodes[id] = {
+        ...recorder.snapshot(now),
+        down: !this.isUp(id),
+        downSince: this.#downSince.get(id) ?? null,
+      };
     }
     return {
       time: now,

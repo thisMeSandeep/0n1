@@ -52,6 +52,7 @@ describe("matching", () => {
     [press(" "), "runPause"],
     [press("."), "step"],
     [press("R", { shift: true }), "reset"],
+    [press("k"), "takeDown"],
     [press("z", { meta: true }), "undo"],
     [press("Z", { meta: true, shift: true }), "redo"],
     [press("y", { meta: true }), "redo"],

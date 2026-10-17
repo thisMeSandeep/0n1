@@ -23,6 +23,9 @@ function structure(doc: SystemDocument): string {
  * - adding or removing components or connections reloads the system
  *   (time back to 0, still running if it was);
  * - opening another system loads it, paused.
+ *
+ * Components taken down stay down through a reload, until they're brought
+ * back, the run is reset, or another system is opened.
  */
 export function createSimulationController({
   client,
@@ -34,13 +37,19 @@ export function createSimulationController({
   store: SimulationStore;
 }) {
   let synced: SystemDocument | null = null;
+  const down = new Set<string>();
 
   const load = (doc: SystemDocument) => {
     synced = doc;
     client.send({ type: "load", doc });
+    const present = new Set(doc.nodes.map((n) => n.id));
+    for (const nodeId of down) {
+      if (present.has(nodeId)) client.send({ type: "takeDown", nodeId });
+      else down.delete(nodeId);
+    }
   };
 
-  /** Make sure the worker has the current design; returns false if it can't run. */
+  /** Make sure the worker has the current design. */
   const ensureLoaded = () => {
     if (!synced) {
       const { speed, traffic } = store.getState();
@@ -56,6 +65,7 @@ export function createSimulationController({
     if (doc.id !== synced.id) {
       client.send({ type: "pause" });
       store.setState({ runAttempted: false });
+      down.clear();
       load(doc);
       return;
     }
@@ -79,6 +89,17 @@ export function createSimulationController({
   };
   const pause = () => client.send({ type: "pause" });
 
+  /** Works before the first Run too: the system loads, paused, with it down. */
+  const takeDown = (nodeId: string) => {
+    ensureLoaded();
+    down.add(nodeId);
+    client.send({ type: "takeDown", nodeId });
+  };
+  const bringBack = (nodeId: string) => {
+    down.delete(nodeId);
+    if (synced) client.send({ type: "bringBack", nodeId });
+  };
+
   return {
     play,
     pause,
@@ -89,6 +110,7 @@ export function createSimulationController({
       client.send({ type: "step", ms: STEP_MS });
     },
     reset: () => {
+      down.clear();
       if (synced) client.send({ type: "reset" });
     },
     setSpeed: (speed: number) => {
@@ -99,11 +121,16 @@ export function createSimulationController({
       store.setState({ traffic: multiplier });
       if (synced) client.send({ type: "setTraffic", multiplier });
     },
-    takeDown: (nodeId: string) => {
-      if (synced) client.send({ type: "takeDown", nodeId });
-    },
-    bringBack: (nodeId: string) => {
-      if (synced) client.send({ type: "bringBack", nodeId });
+    takeDown,
+    bringBack,
+    isDown: (nodeId: string) => down.has(nodeId),
+    /** Take them all down, or if they're all down already, bring them back (K). */
+    toggleDown: (nodeIds: readonly string[]) => {
+      const allDown = nodeIds.length > 0 && nodeIds.every((id) => down.has(id));
+      for (const id of nodeIds) {
+        if (allDown) bringBack(id);
+        else if (!down.has(id)) takeDown(id);
+      }
     },
     /** Hide the problems popover until the next Run. */
     dismissProblems: () => store.setState({ runAttempted: false }),

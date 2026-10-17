@@ -57,6 +57,7 @@
   --duration-popover: 160ms; /* popover, menu, tooltip */
   --duration-panel: 200ms; /* panel open/collapse, content swap, status cross-fade */
   --duration-zoom: 280ms; /* fit view, zoom to node */
+  --duration-live: 250ms; /* live bars easing between updates */
 }
 
 :root[data-theme="dark"] {
@@ -102,5 +103,6 @@
     --duration-popover: 0ms;
     --duration-panel: 0ms;
     --duration-zoom: 0ms;
+    --duration-live: 0ms;
   }
 }
