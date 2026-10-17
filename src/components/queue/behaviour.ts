@@ -16,11 +16,7 @@ type Job = { request: Request; enqueuedAt: number; deliveries: number };
  * when they come back. A queue that is itself taken down comes back empty.
  */
 export const queue: BehaviourFactory = ({ sim, node, recorder, send, peer, isUp }) => {
-  const { capacity, enqueueTime, redeliver } = node.params as {
-    capacity: number;
-    enqueueTime: number;
-    redeliver: boolean;
-  };
+  const params = () => node.params as { capacity: number; enqueueTime: number; redeliver: boolean };
   const workers = node.routes.workers.map((id) => {
     const concurrency = Math.max(1, Number(peer(id)?.params.concurrency ?? 1));
     return { id, concurrency, free: concurrency };
@@ -34,7 +30,7 @@ export const queue: BehaviourFactory = ({ sim, node, recorder, send, peer, isUp 
   let turn = 0;
 
   const report = () => {
-    recorder.setBusy(sim.now, depth, capacity);
+    recorder.setBusy(sim.now, depth, params().capacity);
     recorder.setInFlight(processing);
     recorder.setWaiting(depth);
     recorder.setOldest(head < jobs.length ? (jobs[head] as Job).enqueuedAt : null);
@@ -86,7 +82,7 @@ export const queue: BehaviourFactory = ({ sim, node, recorder, send, peer, isUp 
         assigned.free += slots;
         processing -= job.request.weight;
         if (outcome.ok) finish(job, true);
-        else if (redeliver && job.deliveries < MAX_DELIVERIES) {
+        else if (params().redeliver && job.deliveries < MAX_DELIVERIES) {
           job.deliveries++;
           push(job);
         } else finish(job, false);
@@ -98,6 +94,15 @@ export const queue: BehaviourFactory = ({ sim, node, recorder, send, peer, isUp 
 
   report();
   return {
+    onPeerChange(id) {
+      // A worker's "Jobs at once" changed while running.
+      const worker = workers.find((w) => w.id === id);
+      if (!worker) return;
+      const concurrency = Math.max(1, Number(peer(id)?.params.concurrency ?? 1));
+      worker.free += concurrency - worker.concurrency;
+      worker.concurrency = concurrency;
+      dispatch();
+    },
     onPeerStatus(id, up) {
       const worker = workers.find((w) => w.id === id);
       if (!worker || !up) return; // a worker going down fails its jobs back to us
@@ -106,13 +111,13 @@ export const queue: BehaviourFactory = ({ sim, node, recorder, send, peer, isUp 
     },
     handle(request, reply) {
       recorder.arrive(sim.now, request.weight);
-      if (depth + arriving + request.weight > capacity) {
+      if (depth + arriving + request.weight > params().capacity) {
         recorder.drop(sim.now, request.weight);
         reply({ ok: false, reason: "rejected" });
         return;
       }
       arriving += request.weight;
-      sim.schedule(enqueueTime, () => {
+      sim.schedule(params().enqueueTime, () => {
         arriving -= request.weight;
         push({ request: { ...request, op: undefined }, enqueuedAt: sim.now, deliveries: 1 });
         reply({ ok: true });

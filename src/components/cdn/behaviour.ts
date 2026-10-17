@@ -7,7 +7,7 @@ import { workTime } from "../../engine/runtime/workTime.ts";
  * Capacity is treated as unlimited.
  */
 export const cdn: BehaviourFactory = ({ sim, rng, recorder, node, send }) => {
-  const { hitRatio, edgeTime } = node.params as { hitRatio: number; edgeTime: number };
+  const params = () => node.params as { hitRatio: number; edgeTime: number };
   let turn = 0;
   let inFlight = 0;
 
@@ -22,10 +22,10 @@ export const cdn: BehaviourFactory = ({ sim, rng, recorder, node, send }) => {
       };
 
       if (request.kind === "read") {
-        const hit = rng.next() < hitRatio / 100;
+        const hit = rng.next() < params().hitRatio / 100;
         recorder.recordLookup(arrivedAt, hit, request.weight);
         if (hit) {
-          sim.schedule(workTime(rng, edgeTime), () => {
+          sim.schedule(workTime(rng, params().edgeTime), () => {
             finish(true);
             reply({ ok: true, hit: true });
           });

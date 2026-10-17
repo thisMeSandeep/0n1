@@ -11,11 +11,13 @@ import { workTime } from "./workTime.ts";
  */
 export function createApplicationWork(
   ctx: BehaviourContext,
-  { workTimeMs, errorRate }: { workTimeMs: number; errorRate: number },
+  /** Read on every request, so changes while running take effect. */
+  settings: () => { workTimeMs: number; errorRate: number },
 ) {
   const { sim, rng, node } = ctx;
   const data = createDataAccess(ctx);
   return (request: Request, done: (outcome: Outcome) => void, stretch = 1) => {
+    const { workTimeMs, errorRate } = settings();
     sim.schedule(workTime(rng, workTimeMs) * stretch, () => {
       if (rng.next() < errorRate / 100) {
         done({ ok: false, reason: "error" });

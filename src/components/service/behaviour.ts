@@ -9,16 +9,24 @@ import type { BehaviourFactory } from "../../engine/runtime/types.ts";
  * like a thread per request.
  */
 export const service: BehaviourFactory = (ctx) => {
-  const { concurrency, workTime, maxWaiting, errorRate } = ctx.node.params as {
-    concurrency: number;
-    workTime: number;
-    maxWaiting: number;
-    errorRate: number;
-  };
+  const params = () =>
+    ctx.node.params as {
+      concurrency: number;
+      workTime: number;
+      maxWaiting: number;
+      errorRate: number;
+    };
   const server = new QueueingServer(ctx.sim, ctx.recorder, {
-    concurrency,
-    maxWaiting,
-    work: createApplicationWork(ctx, { workTimeMs: workTime, errorRate }),
+    get concurrency() {
+      return params().concurrency;
+    },
+    get maxWaiting() {
+      return params().maxWaiting;
+    },
+    work: createApplicationWork(ctx, () => ({
+      workTimeMs: params().workTime,
+      errorRate: params().errorRate,
+    })),
   });
   return { handle: (request, reply) => server.handle(request, reply) };
 };

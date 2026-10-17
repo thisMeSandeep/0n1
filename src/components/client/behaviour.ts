@@ -21,17 +21,27 @@ export const client: BehaviourFactory = ({
   send,
   nextRequestId,
   sampling,
+  traffic,
 }) => {
-  const { rate, readShare, keys, keyPopularity, timeout, retries } = node.params as {
-    rate: number;
-    readShare: number;
-    keys: number;
-    keyPopularity: "hot" | "uniform";
-    timeout: number;
-    retries: number;
+  // Read live, so changes while running take effect (S28).
+  const params = () =>
+    node.params as {
+      rate: number;
+      readShare: number;
+      keys: number;
+      keyPopularity: "hot" | "uniform";
+      timeout: number;
+      retries: number;
+    };
+  /** Average gap between new requests, for the current rate, traffic and sampling. */
+  const meanGapMs = () => (1000 * sampling.weight()) / (params().rate * traffic());
+  let zipf: { keys: number; sampler: ReturnType<typeof createZipf> } | null = null;
+  const pickKey = () => {
+    const { keys, keyPopularity } = params();
+    if (keyPopularity !== "hot") return uniformInt(rng, keys);
+    if (zipf?.keys !== keys) zipf = { keys, sampler: createZipf(keys, 1) };
+    return zipf.sampler.sample(rng);
   };
-  const meanGapMs = 1000 / rate;
-  const zipf = keyPopularity === "hot" ? createZipf(keys, 1) : null;
   let nextTarget = 0;
 
   const pickTarget = () => {
@@ -55,12 +65,12 @@ export const client: BehaviourFactory = ({
       settled = true;
       if (timer) sim.cancel(timer);
       if (outcome.ok) finish(request, true);
-      else if (request.attempt <= retries)
+      else if (request.attempt <= params().retries)
         attempt({ ...request, attempt: request.attempt + 1, path: [node.id] });
       else finish(request, false);
     };
 
-    timer = sim.schedule(timeout, () => settle({ ok: false, reason: "timeout" }));
+    timer = sim.schedule(params().timeout, () => settle({ ok: false, reason: "timeout" }));
     send(pickTarget(), request, settle);
   };
 
@@ -70,23 +80,22 @@ export const client: BehaviourFactory = ({
     const request: Request = {
       id: nextRequestId(),
       weight,
-      kind: rng.next() < readShare / 100 ? "read" : "write",
-      key: zipf ? zipf.sample(rng) : uniformInt(rng, keys),
+      kind: rng.next() < params().readShare / 100 ? "read" : "write",
+      key: pickKey(),
       createdAt: sim.now,
       attempt: 1,
       path: [node.id],
     };
     recorder.arrive(sim.now, request.weight);
     attempt(request);
-    sim.schedule(exponential(rng, meanGapMs * sampling.weight()), sendOne);
+    sim.schedule(exponential(rng, meanGapMs()), sendOne);
   };
 
   return {
     // Clients don't take requests (the compiler enforces it).
     handle: (_request, reply) => reply({ ok: false, reason: "unavailable" }),
     start: () => {
-      if (node.targets.length > 0)
-        sim.schedule(exponential(rng, meanGapMs * sampling.weight()), sendOne);
+      if (node.targets.length > 0) sim.schedule(exponential(rng, meanGapMs()), sendOne);
     },
   };
 };

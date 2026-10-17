@@ -64,6 +64,8 @@ export type BehaviourContext = {
   peer(id: string): RuntimeNode | undefined;
   /** Whether another component is up (not taken down). */
   isUp(id: string): boolean;
+  /** The Traffic % control as a multiplier (1 = as configured); clients scale their rate by it. */
+  traffic(): number;
   nextRequestId(): number;
   /** Request sampling (S26): clients send one request per `weight` real ones. */
   sampling: {
@@ -81,6 +83,8 @@ export type Behaviour = {
   start?(): void;
   /** Another component was taken down or brought back. */
   onPeerStatus?(id: string, up: boolean): void;
+  /** Another component's settings changed while running. */
+  onPeerChange?(id: string): void;
 };
 
 export type BehaviourFactory = (ctx: BehaviourContext) => Behaviour;

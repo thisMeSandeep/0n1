@@ -1,4 +1,4 @@
-import { createTokenBucket } from "../../engine/runtime/tokenBucket.ts";
+import { liveTokenBucket } from "../../engine/runtime/tokenBucket.ts";
 import type { BehaviourFactory } from "../../engine/runtime/types.ts";
 
 /**
@@ -8,21 +8,22 @@ import type { BehaviourFactory } from "../../engine/runtime/types.ts";
  * that are up; with them off, requests sent to a down target fail.
  */
 export const loadBalancer: BehaviourFactory = ({ sim, node, recorder, send, isUp }) => {
-  const { strategy, delay, throughputLimit, healthChecks } = node.params as {
-    strategy: "round-robin" | "least-busy";
-    delay: number;
-    throughputLimit: number;
-    healthChecks: boolean;
-  };
+  const params = () =>
+    node.params as {
+      strategy: "round-robin" | "least-busy";
+      delay: number;
+      throughputLimit: number;
+      healthChecks: boolean;
+    };
   const targets = node.targets;
   const outstanding = new Map(targets.map((t) => [t, 0]));
-  const limit = createTokenBucket(throughputLimit);
+  const limit = liveTokenBucket(() => params().throughputLimit, recorder);
   let turn = 0;
   let inFlight = 0;
-  recorder.setRateCapacity(throughputLimit);
 
   /** The next target, or null if health checks find none up. */
   const pick = (): string | null => {
+    const { strategy, healthChecks } = params();
     const start = turn++ % targets.length;
     let best: string | null = null;
     for (let i = 0; i < targets.length; i++) {
@@ -54,7 +55,7 @@ export const loadBalancer: BehaviourFactory = ({ sim, node, recorder, send, isUp
       }
       outstanding.set(target, (outstanding.get(target) ?? 0) + request.weight);
       recorder.setInFlight(++inFlight);
-      sim.schedule(delay, () =>
+      sim.schedule(params().delay, () =>
         send(target, request, (outcome) => {
           outstanding.set(target, (outstanding.get(target) ?? request.weight) - request.weight);
           recorder.setInFlight(--inFlight);

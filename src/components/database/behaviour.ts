@@ -8,19 +8,25 @@ import { workTime } from "../../engine/runtime/workTime.ts";
  * successful write is sent on to connected read replicas.
  */
 export const database: BehaviourFactory = ({ sim, rng, recorder, node, send }) => {
-  const { connections, readTime, writeTime, maxWaiting, errorRate } = node.params as {
-    connections: number;
-    readTime: number;
-    writeTime: number;
-    maxWaiting: number;
-    errorRate: number;
-  };
+  const params = () =>
+    node.params as {
+      connections: number;
+      readTime: number;
+      writeTime: number;
+      maxWaiting: number;
+      errorRate: number;
+    };
   const replicate = () => {};
 
   const server = new QueueingServer(sim, recorder, {
-    concurrency: connections,
-    maxWaiting,
+    get concurrency() {
+      return params().connections;
+    },
+    get maxWaiting() {
+      return params().maxWaiting;
+    },
     work: (request, done, stretch) => {
+      const { readTime, writeTime, errorRate } = params();
       const mean = request.kind === "write" ? writeTime : readTime;
       sim.schedule(workTime(rng, mean) * stretch, () => {
         if (rng.next() < errorRate / 100) {

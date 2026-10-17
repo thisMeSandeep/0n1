@@ -25,7 +25,7 @@ export class SamplingController {
   #lastEvents = 0;
 
   constructor(
-    private readonly budgetPerSecond: number,
+    private budgetPerSecond: number,
     private offeredRate: number,
     initialEventsPerRequest = 10,
   ) {
@@ -43,6 +43,12 @@ export class SamplingController {
 
   countRequest(): void {
     this.#requests++;
+  }
+
+  /** A new budget, e.g. when the run speed changes (S28). */
+  setBudget(perSecond: number): void {
+    this.budgetPerSecond = perSecond;
+    this.#update();
   }
 
   /** Real requests per second clients are offering (e.g. after a rate change, S28). */

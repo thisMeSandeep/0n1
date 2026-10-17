@@ -13,13 +13,8 @@ import { workTime } from "../../engine/runtime/workTime.ts";
  * same factor so entries don't expire early.
  */
 export const cache: BehaviourFactory = ({ sim, rng, recorder, node }) => {
-  const { size, concurrency, responseTime, ttl } = node.params as {
-    size: number;
-    concurrency: number;
-    responseTime: number;
-    ttl: number;
-  };
-  const ttlMs = ttl * 1000;
+  const params = () =>
+    node.params as { size: number; concurrency: number; responseTime: number; ttl: number };
   /** key → expiry time. Map order is recency: oldest first. */
   const entries = new Map<number, number>();
 
@@ -32,20 +27,29 @@ export const cache: BehaviourFactory = ({ sim, rng, recorder, node }) => {
     return true;
   };
 
-  const store = (key: number, weight: number) => {
-    entries.delete(key);
-    entries.set(key, sim.now + ttlMs * weight);
+  /** Drop the least recently used keys until it fits (also after "Keys held" shrinks). */
+  const trim = () => {
+    const size = params().size;
     while (entries.size > size) {
       const oldest = entries.keys().next().value as number;
       entries.delete(oldest);
     }
   };
 
+  const store = (key: number, weight: number) => {
+    entries.delete(key);
+    entries.set(key, sim.now + params().ttl * 1000 * weight);
+    trim();
+  };
+
   const server = new QueueingServer(sim, recorder, {
-    concurrency,
+    get concurrency() {
+      return params().concurrency;
+    },
     maxWaiting: 100_000,
     work: (request, done, stretch) => {
-      sim.schedule(workTime(rng, responseTime) * stretch, () => {
+      sim.schedule(workTime(rng, params().responseTime) * stretch, () => {
+        trim();
         if (request.op === "set") {
           store(request.key, request.weight);
           done({ ok: true });

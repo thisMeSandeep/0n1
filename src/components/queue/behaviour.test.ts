@@ -45,6 +45,7 @@ function pipeline(
     peer: (other: string) => model.nodes.get(other),
     sampling: { weight: () => 1, countRequest: () => {} },
     isUp: () => true,
+    traffic: () => 1,
     send: (to: string, request: Request, reply: Reply) => {
       sim.schedule(0, () =>
         behaviours[to]?.handle(request, (outcome) => {

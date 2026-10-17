@@ -11,22 +11,27 @@ import { workTime } from "../../engine/runtime/workTime.ts";
  * stale window is stretched by its weight to keep the stale share right.
  */
 export const readReplica: BehaviourFactory = ({ sim, rng, recorder, node }) => {
-  const { connections, readTime, replicationLag, maxWaiting, errorRate } = node.params as {
-    connections: number;
-    readTime: number;
-    replicationLag: number;
-    maxWaiting: number;
-    errorRate: number;
-  };
+  const params = () =>
+    node.params as {
+      connections: number;
+      readTime: number;
+      replicationLag: number;
+      maxWaiting: number;
+      errorRate: number;
+    };
   /** key → writes received but not yet applied. */
   const pending = new Map<number, number>();
 
   const server = new QueueingServer(sim, recorder, {
-    concurrency: connections,
-    maxWaiting,
+    get concurrency() {
+      return params().connections;
+    },
+    get maxWaiting() {
+      return params().maxWaiting;
+    },
     work: (request, done, stretch) => {
-      sim.schedule(workTime(rng, readTime) * stretch, () => {
-        if (rng.next() < errorRate / 100) {
+      sim.schedule(workTime(rng, params().readTime) * stretch, () => {
+        if (rng.next() < params().errorRate / 100) {
           done({ ok: false, reason: "error" });
           return;
         }
@@ -40,7 +45,7 @@ export const readReplica: BehaviourFactory = ({ sim, rng, recorder, node }) => {
     handle(request, reply) {
       if (request.op === "replicate") {
         pending.set(request.key, (pending.get(request.key) ?? 0) + 1);
-        sim.schedule(replicationLag * request.weight, () => {
+        sim.schedule(params().replicationLag * request.weight, () => {
           const left = (pending.get(request.key) ?? 1) - 1;
           if (left > 0) pending.set(request.key, left);
           else pending.delete(request.key);

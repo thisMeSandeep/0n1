@@ -1,4 +1,5 @@
 import { BEHAVIOURS } from "../../components/behaviours.ts";
+import { type Params, paramsSchema } from "../../model/component.ts";
 import type { RuntimeModel } from "../compile.ts";
 import type { ScheduledEvent } from "../core/eventQueue.ts";
 import { createRng, type Rng } from "../core/prng.ts";
@@ -63,6 +64,7 @@ export class Engine {
   #rng: Rng;
   #latency: number;
   #requestId = 0;
+  #traffic = 1;
 
   constructor(
     readonly model: RuntimeModel,
@@ -76,11 +78,7 @@ export class Engine {
     this.#rng = createRng(seed);
     this.#latency = networkLatencyMs;
     this.system = new SystemRecorder(window);
-    const offered = model.clients.reduce(
-      (sum, id) => sum + Number(model.nodes.get(id)?.params.rate ?? 0),
-      0,
-    );
-    this.sampling = new SamplingController(eventBudget, offered);
+    this.sampling = new SamplingController(eventBudget, this.#offeredRate());
 
     for (const id of model.order) {
       const node = model.nodes.get(id);
@@ -129,6 +127,7 @@ export class Engine {
       send: (to, request, onReply) => this.#send(life, to, request, onReply),
       peer: (other) => this.model.nodes.get(other),
       isUp: (other) => this.isUp(other),
+      traffic: () => this.#traffic,
       sampling: {
         weight: () => this.sampling.weight,
         countRequest: () => this.sampling.countRequest(),
@@ -162,6 +161,47 @@ export class Engine {
         back(outcome);
       });
     });
+  }
+
+  /** Real requests per second all clients offer, with the traffic multiplier. */
+  #offeredRate(): number {
+    const base = this.model.clients.reduce(
+      (sum, id) => sum + Number(this.model.nodes.get(id)?.params.rate ?? 0),
+      0,
+    );
+    return base * this.#traffic;
+  }
+
+  /**
+   * Change a component's settings while running. Validated against its
+   * schema (throws if invalid); takes effect from the next request.
+   */
+  updateParams(id: string, patch: Params): void {
+    const node = this.model.nodes.get(id);
+    if (!node) throw new Error(`Unknown component ${id}`);
+    const result = paramsSchema(node.definition).safeParse({ ...node.params, ...patch });
+    if (!result.success) throw new Error(`Invalid settings for ${node.name}`);
+    node.params = result.data as Params;
+    if (node.type === "client") this.sampling.setOfferedRate(this.#offeredRate());
+    for (const life of this.#current.values()) {
+      if (life.alive && life.id !== id) life.behaviour.onPeerChange?.(id);
+    }
+  }
+
+  /** Scale every client's rate (the Traffic % control). */
+  setTrafficMultiplier(multiplier: number): void {
+    if (!(multiplier > 0)) throw new RangeError("Traffic multiplier must be positive");
+    this.#traffic = multiplier;
+    this.sampling.setOfferedRate(this.#offeredRate());
+  }
+
+  get trafficMultiplier(): number {
+    return this.#traffic;
+  }
+
+  /** Events per simulated second to stay under; the worker divides by the run speed. */
+  setEventBudget(perSecond: number): void {
+    this.sampling.setBudget(perSecond);
   }
 
   isUp(id: string): boolean {

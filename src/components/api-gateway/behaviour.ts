@@ -1,4 +1,4 @@
-import { createTokenBucket } from "../../engine/runtime/tokenBucket.ts";
+import { liveTokenBucket } from "../../engine/runtime/tokenBucket.ts";
 import type { BehaviourFactory } from "../../engine/runtime/types.ts";
 
 /**
@@ -7,24 +7,24 @@ import type { BehaviourFactory } from "../../engine/runtime/types.ts";
  * itself is over its throughput limit, then passes it to a target in turn.
  */
 export const apiGateway: BehaviourFactory = ({ sim, node, recorder, send }) => {
-  const { delay, throughputLimit, rateLimiting, rateLimit } = node.params as {
-    delay: number;
-    throughputLimit: number;
-    rateLimiting: boolean;
-    rateLimit: number;
-  };
-  const throughput = createTokenBucket(throughputLimit);
-  const limiter = rateLimiting ? createTokenBucket(rateLimit) : null;
+  const params = () =>
+    node.params as {
+      delay: number;
+      throughputLimit: number;
+      rateLimiting: boolean;
+      rateLimit: number;
+    };
+  const throughput = liveTokenBucket(() => params().throughputLimit, recorder);
+  const limiter = liveTokenBucket(() => params().rateLimit);
   let turn = 0;
   let inFlight = 0;
-  recorder.setRateCapacity(throughputLimit);
 
   return {
     handle(request, reply) {
       const arrivedAt = sim.now;
       recorder.arrive(arrivedAt, request.weight);
       const allowed =
-        (limiter === null || limiter.take(arrivedAt, request.weight)) &&
+        (!params().rateLimiting || limiter.take(arrivedAt, request.weight)) &&
         throughput.take(arrivedAt, request.weight);
       if (!allowed) {
         recorder.drop(arrivedAt, request.weight);
@@ -33,7 +33,7 @@ export const apiGateway: BehaviourFactory = ({ sim, node, recorder, send }) => {
       }
       const target = node.targets[turn++ % node.targets.length] as string;
       recorder.setInFlight(++inFlight);
-      sim.schedule(delay, () =>
+      sim.schedule(params().delay, () =>
         send(target, request, (outcome) => {
           recorder.setInFlight(--inFlight);
           recorder.complete(sim.now, sim.now - arrivedAt, outcome.ok, request.weight);
