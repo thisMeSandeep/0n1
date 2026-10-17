@@ -7,7 +7,14 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!**/dist", "!**/coverage", "!docs/mockups"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/coverage",
+      "!**/test-results",
+      "!**/playwright-report",
+      "!docs/mockups"
+    ]
   },
   "formatter": {
     "enabled": true,

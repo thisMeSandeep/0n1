@@ -26,6 +26,13 @@ bun run dev
 | `bun run lint` | Lint and check formatting (Biome) |
 | `bun run format` | Fix formatting and lint issues where possible |
 | `bun run test` | Run unit tests (Vitest) |
+| `bun run test:e2e` | Run end-to-end tests (Playwright) |
+
+The first time you run end-to-end tests, install the browser:
+
+```sh
+bunx playwright install chromium
+```
 
 ## License
 
