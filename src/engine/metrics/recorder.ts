@@ -57,6 +57,7 @@ export class NodeRecorder {
   #latency: WindowedHistogram;
   #busy: TimeWeightedGauge;
   #capacity = 1;
+  #rateCapacity: number | null = null;
   #inFlight = 0;
   #waiting = 0;
 
@@ -94,6 +95,19 @@ export class NodeRecorder {
     this.#waiting = waiting;
   }
 
+  /** Requests in progress, for components without slots (they use setBusy). */
+  setInFlight(inFlight: number): void {
+    this.#inFlight = inFlight;
+  }
+
+  /**
+   * For pass-through components limited by rate rather than slots (load
+   * balancers, gateways): utilization becomes incoming rate ÷ this.
+   */
+  setRateCapacity(perSecond: number): void {
+    this.#rateCapacity = perSecond > 0 ? perSecond : null;
+  }
+
   snapshot(now: number): NodeMetrics {
     const completed = this.#completed.sum(now);
     return {
@@ -102,7 +116,12 @@ export class NodeRecorder {
       errorRate: completed > 0 ? this.#failed.sum(now) / completed : 0,
       drops: this.#dropped.rate(now),
       latency: latencySummary(this.#latency.merged(now)),
-      utilization: Math.min(1, this.#busy.average(now) / this.#capacity),
+      utilization: Math.min(
+        1,
+        this.#rateCapacity === null
+          ? this.#busy.average(now) / this.#capacity
+          : this.#arrivals.rate(now) / this.#rateCapacity,
+      ),
       inFlight: this.#inFlight,
       waiting: this.#waiting,
       totals: {
