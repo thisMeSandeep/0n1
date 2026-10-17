@@ -17,6 +17,11 @@ export type Request = {
   attempt: number;
   /** Components it has passed through, in order. */
   path: string[];
+  /**
+   * What's being asked of a data component, when it isn't the request's own
+   * read or write: cache lookups, fills and invalidations, and replication.
+   */
+  op?: "get" | "set" | "delete" | "replicate";
 };
 
 export type FailureReason =
@@ -29,7 +34,9 @@ export type FailureReason =
   /** The component (or what it needed) is down (S27). */
   | "unavailable";
 
-export type Outcome = { ok: true } | { ok: false; reason: FailureReason };
+export type Outcome =
+  /** `hit` is set by caches and CDNs: whether the answer came from them. */
+  { ok: true; hit?: boolean } | { ok: false; reason: FailureReason };
 
 /** Called exactly once with how a request ended. */
 export type Reply = (outcome: Outcome) => void;

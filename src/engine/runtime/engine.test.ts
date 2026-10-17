@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { registry } from "../../components/index.ts";
-import { WORK_TIME_CV } from "../../components/service/behaviour.ts";
 import { defaultParams } from "../../model/component.ts";
 import { createSystemDocument } from "../../model/document.ts";
 import { compile } from "../compile.ts";
 import { Engine, type EngineOptions } from "./engine.ts";
+import { WORK_TIME_CV } from "./workTime.ts";
 
 const RUN_MS = 300_000;
 const WHOLE_RUN = { windowMs: RUN_MS * 2, slots: 1 };
@@ -141,15 +141,15 @@ describe("Engine: client → service", () => {
       ...createSystemDocument({ id: "s", now: 0 }),
       nodes: [
         { id: "u", type: "client", name: "Users", position: { x: 0, y: 0 }, params: {} },
-        { id: "q", type: "cdn", name: "Edge", position: { x: 0, y: 0 }, params: {} },
         { id: "a", type: "service", name: "API", position: { x: 0, y: 0 }, params: {} },
+        { id: "q", type: "queue", name: "Jobs", position: { x: 0, y: 0 }, params: {} },
       ],
       edges: [
-        { id: "1", source: "u", target: "q" },
-        { id: "2", source: "q", target: "a" },
+        { id: "1", source: "u", target: "a" },
+        { id: "2", source: "a", target: "q" },
       ],
     };
     const { model } = compile(doc, registry);
-    expect(() => new Engine(model!)).toThrow("Edge: CDN isn't simulated yet.");
+    expect(() => new Engine(model!)).toThrow("Jobs: Queue isn't simulated yet.");
   });
 });

@@ -21,6 +21,10 @@ export type NodeMetrics = {
   latency: { mean: number; p50: number; p95: number; p99: number } | null;
   /** Average share of capacity in use, 0–1. */
   utilization: number;
+  /** Caches and CDNs: share of lookups answered without the origin, 0–1. Null if no lookups yet. */
+  hitRatio?: number | null;
+  /** Read replicas: share of reads that missed a recent write, 0–1. */
+  staleReads?: number | null;
   /** Right now. */
   inFlight: number;
   waiting: number;
@@ -56,12 +60,18 @@ export class NodeRecorder {
   #dropped: RateCounter;
   #latency: WindowedHistogram;
   #busy: TimeWeightedGauge;
+  #lookups: RateCounter | null = null;
+  #hits: RateCounter | null = null;
+  #reads: RateCounter | null = null;
+  #stale: RateCounter | null = null;
+  #window: WindowOptions;
   #capacity = 1;
   #rateCapacity: number | null = null;
   #inFlight = 0;
   #waiting = 0;
 
   constructor(options: WindowOptions = DEFAULT_WINDOW) {
+    this.#window = options;
     this.#arrivals = new RateCounter(options);
     this.#completed = new RateCounter(options);
     this.#failed = new RateCounter(options);
@@ -95,6 +105,22 @@ export class NodeRecorder {
     this.#waiting = waiting;
   }
 
+  /** A cache or CDN lookup, and whether it was answered without the origin. */
+  recordLookup(time: number, hit: boolean, weight = 1): void {
+    this.#lookups ??= new RateCounter(this.#window);
+    this.#hits ??= new RateCounter(this.#window);
+    this.#lookups.add(time, weight);
+    if (hit) this.#hits.add(time, weight);
+  }
+
+  /** A read at a replica, and whether it missed a write that hadn't arrived yet. */
+  recordRead(time: number, stale: boolean, weight = 1): void {
+    this.#reads ??= new RateCounter(this.#window);
+    this.#stale ??= new RateCounter(this.#window);
+    this.#reads.add(time, weight);
+    if (stale) this.#stale.add(time, weight);
+  }
+
   /** Requests in progress, for components without slots (they use setBusy). */
   setInFlight(inFlight: number): void {
     this.#inFlight = inFlight;
@@ -110,7 +136,16 @@ export class NodeRecorder {
 
   snapshot(now: number): NodeMetrics {
     const completed = this.#completed.sum(now);
+    const share = (part: RateCounter | null, whole: RateCounter | null) => {
+      if (!part || !whole) return undefined;
+      const total = whole.sum(now);
+      return total > 0 ? part.sum(now) / total : null;
+    };
+    const hitRatio = share(this.#hits, this.#lookups);
+    const staleReads = share(this.#stale, this.#reads);
     return {
+      ...(hitRatio === undefined ? {} : { hitRatio }),
+      ...(staleReads === undefined ? {} : { staleReads }),
       arrivals: this.#arrivals.rate(now),
       throughput: this.#completed.rate(now),
       errorRate: completed > 0 ? this.#failed.sum(now) / completed : 0,

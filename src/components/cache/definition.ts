@@ -7,7 +7,7 @@ export const cache: ComponentDefinition = {
   displayName: "Cache",
   description: "Keeps recently used data in memory so reads are fast.",
   modelNote:
-    "It holds up to a set number of keys and drops the least recently used when full. " +
+    "It holds up to a set number of keys (at most a million in this lab) and drops the least recently used when full. " +
     "Entries expire after the TTL. " +
     "The hit ratio isn't a setting: it emerges from the cache size and how popular keys are. " +
     "Services use it cache-aside: they check it first, and on a miss read the database and store the result.",
@@ -21,7 +21,7 @@ export const cache: ComponentDefinition = {
       help: "How many items fit before old ones are dropped.",
       default: 10_000,
       min: 10,
-      max: 10_000_000,
+      max: 1_000_000,
       step: 1,
       scale: "log",
     },
