@@ -45,6 +45,7 @@ function publish(time: number, nodes: Record<string, NodeMetrics>) {
           sampling: { weight: 1 },
           system: { goodput: 0, throughput: 0, errorRate: 0, latency: null },
           nodes,
+          edges: {},
         },
         () => "p99",
       ),
@@ -88,7 +89,7 @@ function renderCanvas() {
 }
 
 beforeEach(() => {
-  live.setState({ started: false, nodes: {}, trends: {} }, true);
+  live.setState({ started: false, nodes: {}, edges: {}, trends: {} }, true);
   renders.clear();
 });
 afterEach(cleanup);

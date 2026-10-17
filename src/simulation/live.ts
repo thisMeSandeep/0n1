@@ -1,7 +1,13 @@
 import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
-import type { MetricsSnapshot, NodeMetrics } from "../engine/metrics/recorder.ts";
+import {
+  type EdgeMetrics,
+  edgeKey,
+  type MetricsSnapshot,
+  type NodeMetrics,
+} from "../engine/metrics/recorder.ts";
 import type { LiveDetail } from "../model/component.ts";
+import type { SystemEdge } from "../model/document.ts";
 import type { Registry } from "../model/registry.ts";
 import type { DesignStore } from "../store/design.ts";
 import {
@@ -55,15 +61,36 @@ export type NodeLive = {
 
 export type Trend = { label: string; unit: string; values: readonly number[] };
 
+/** From this share of failed replies a connection turns amber, and from this one red (UIUX §6). */
+export const EDGE_WARN_ERRORS = FAILING_ERRORS;
+export const EDGE_FAIL_ERRORS = 0.05;
+/** Most flow dots on one connection. */
+export const MAX_DOTS = 6;
+
+export type EdgeStatus = "idle" | "healthy" | "warn" | "fail" | "down";
+
+export type EdgeLive = {
+  status: EdgeStatus;
+  /** Stroke width: 1.5px, growing on a log scale to 4px at 100k requests a second. */
+  width: number;
+  /** Flow dots: none without traffic, one more for every tenfold rate, up to MAX_DOTS. */
+  dots: number;
+  rate: string;
+  latency: Measure | null;
+  errors: Measure;
+};
+
 export type LiveState = {
   /** A run has been loaded: there are numbers to show. */
   started: boolean;
   nodes: Readonly<Record<string, NodeLive>>;
+  /** Connections, by the document's edge id. */
+  edges: Readonly<Record<string, EdgeLive>>;
   /** Recent values of each component's detail number (or its rate), for sparklines. */
   trends: Readonly<Record<string, Trend>>;
 };
 
-const EMPTY: LiveState = { started: false, nodes: {}, trends: {} };
+const EMPTY: LiveState = { started: false, nodes: {}, edges: {}, trends: {} };
 
 /**
  * Share of requests that failed here: turned away, or its own errors. Not
@@ -133,8 +160,43 @@ function trendPoint(
   }
 }
 
-const sameMeasure = (a: Partial<Measure>, b: Partial<Measure>) =>
-  a.value === b.value && a.unit === b.unit;
+/** A connection's view. `down`: either end is down. */
+export function edgeLive(m: EdgeMetrics | undefined, down: boolean): EdgeLive {
+  const rate = m?.rate ?? 0;
+  const errorRate = m?.errorRate ?? 0;
+  const scale = Math.min(1, Math.log10(1 + rate) / 5);
+  const status: EdgeStatus = down
+    ? "down"
+    : rate <= 0
+      ? "idle"
+      : errorRate >= EDGE_FAIL_ERRORS
+        ? "fail"
+        : errorRate >= EDGE_WARN_ERRORS
+          ? "warn"
+          : "healthy";
+  return {
+    status,
+    width: Math.round((1.5 + 2.5 * scale) * 4) / 4,
+    dots: down || rate <= 0 ? 0 : Math.min(MAX_DOTS, 1 + Math.max(0, Math.floor(Math.log10(rate)))),
+    rate: formatCompact(rate),
+    latency: m?.latency ? formatDuration(m.latency.p99) : null,
+    errors: formatPercent(errorRate),
+  };
+}
+
+const sameMeasure = (a: Partial<Measure> | null, b: Partial<Measure> | null) =>
+  a === b || (a !== null && b !== null && a.value === b.value && a.unit === b.unit);
+
+export function sameEdgeLive(a: EdgeLive, b: EdgeLive): boolean {
+  return (
+    a.status === b.status &&
+    a.width === b.width &&
+    a.dots === b.dots &&
+    a.rate === b.rate &&
+    sameMeasure(a.latency, b.latency) &&
+    sameMeasure(a.errors, b.errors)
+  );
+}
 
 export function sameNodeLive(a: NodeLive, b: NodeLive): boolean {
   return (
@@ -160,6 +222,7 @@ export function nextLiveState(
   previousTime: number | null,
   snapshot: MetricsSnapshot | null,
   detailOfNode: (id: string) => LiveDetail,
+  docEdges: readonly SystemEdge[] = [],
 ): LiveState {
   if (!snapshot) return previous.started ? EMPTY : previous;
   const restarted = previousTime === null || snapshot.time < previousTime;
@@ -190,9 +253,24 @@ export function nextLiveState(
   }
   if (Object.keys(previous.nodes).length !== Object.keys(nodes).length) changed = true;
 
+  let edgesChanged = Object.keys(previous.edges).length !== docEdges.length;
+  const edges: Record<string, EdgeLive> = {};
+  for (const edge of docEdges) {
+    const down = Boolean(snapshot.nodes[edge.source]?.down || snapshot.nodes[edge.target]?.down);
+    const view = edgeLive(snapshot.edges[edgeKey(edge.source, edge.target)], down);
+    const before = previous.edges[edge.id];
+    if (before && sameEdgeLive(before, view)) {
+      edges[edge.id] = before;
+    } else {
+      edges[edge.id] = view;
+      edgesChanged = true;
+    }
+  }
+
   return {
     started: true,
     nodes: changed ? nodes : previous.nodes,
+    edges: edgesChanged ? edges : previous.edges,
     trends: advanced || restarted ? trends : previous.trends,
   };
 }
@@ -241,7 +319,16 @@ export function createLiveView({
     cancelPending = null;
     lastPublish = timers.now();
     const { snapshot } = simulation.getState();
-    store.setState(nextLiveState(store.getState(), lastTime, snapshot, detailOfNode), true);
+    store.setState(
+      nextLiveState(
+        store.getState(),
+        lastTime,
+        snapshot,
+        detailOfNode,
+        design.getState().doc.edges,
+      ),
+      true,
+    );
     lastTime = snapshot?.time ?? null;
   };
 

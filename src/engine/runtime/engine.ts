@@ -4,7 +4,13 @@ import type { RuntimeModel } from "../compile.ts";
 import type { ScheduledEvent } from "../core/eventQueue.ts";
 import { createRng, type Rng } from "../core/prng.ts";
 import { Simulator } from "../core/simulator.ts";
-import { type MetricsSnapshot, NodeRecorder, SystemRecorder } from "../metrics/recorder.ts";
+import {
+  EdgeRecorder,
+  edgeKey,
+  type MetricsSnapshot,
+  NodeRecorder,
+  SystemRecorder,
+} from "../metrics/recorder.ts";
 import { DEFAULT_WINDOW, type WindowOptions } from "../metrics/windows.ts";
 import { SamplingController } from "./sampling.ts";
 import type { Behaviour, BehaviourContext, Clock, Outcome, Reply, Request } from "./types.ts";
@@ -58,6 +64,9 @@ export class Engine {
   readonly sim = new Simulator();
   readonly system: SystemRecorder;
   readonly recorders = new Map<string, NodeRecorder>();
+  /** By edgeKey, created when a connection first carries a request. */
+  readonly edgeRecorders = new Map<string, EdgeRecorder>();
+  #window: WindowOptions;
   readonly sampling: SamplingController;
   #current = new Map<string, Incarnation>();
   #lives = new Map<string, number>();
@@ -78,6 +87,7 @@ export class Engine {
   ) {
     this.#rng = createRng(seed);
     this.#latency = networkLatencyMs;
+    this.#window = window;
     this.system = new SystemRecorder(window);
     this.sampling = new SamplingController(eventBudget, this.#offeredRate());
 
@@ -138,10 +148,24 @@ export class Engine {
     return life;
   }
 
+  #edge(from: string, to: string): EdgeRecorder {
+    const key = edgeKey(from, to);
+    let recorder = this.edgeRecorders.get(key);
+    if (!recorder) {
+      recorder = new EdgeRecorder(this.#window);
+      this.edgeRecorders.set(key, recorder);
+    }
+    return recorder;
+  }
+
   #send(from: Incarnation, to: string, request: Request, onReply: Reply): void {
     if (!from.alive) return;
+    const edge = this.#edge(from.id, to);
+    const sentAt = this.sim.now;
+    edge.send(sentAt, request.weight);
     // A reply only reaches the sender if it's still the same, living component.
     const deliver: Reply = (outcome) => {
+      edge.reply(this.sim.now, this.sim.now - sentAt, outcome.ok, request.weight);
       if (from.alive) onReply(outcome);
     };
     const back = (outcome: Outcome) => this.sim.schedule(this.#latency, () => deliver(outcome));
@@ -267,11 +291,14 @@ export class Engine {
         downSince: this.#downSince.get(id) ?? null,
       };
     }
+    const edges: MetricsSnapshot["edges"] = {};
+    for (const [key, recorder] of this.edgeRecorders) edges[key] = recorder.snapshot(now);
     return {
       time: now,
       sampling: { weight: this.sampling.weight },
       system: this.system.snapshot(now),
       nodes,
+      edges,
     };
   }
 }

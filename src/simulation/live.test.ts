@@ -5,6 +5,7 @@ import { createSystemDocument } from "../model/document.ts";
 import { createDesignStore } from "../store/design.ts";
 import {
   createLiveView,
+  edgeLive,
   LIVE_INTERVAL_MS,
   type LiveState,
   type LiveTimers,
@@ -28,14 +29,19 @@ const metrics = (patch: Partial<NodeMetrics> = {}): NodeMetrics => ({
   ...patch,
 });
 
-const snapshot = (time: number, nodes: Record<string, NodeMetrics>): MetricsSnapshot => ({
+const snapshot = (
+  time: number,
+  nodes: Record<string, NodeMetrics>,
+  edges: MetricsSnapshot["edges"] = {},
+): MetricsSnapshot => ({
   time,
   sampling: { weight: 1 },
   system: { goodput: 0, throughput: 0, errorRate: 0, latency: null },
   nodes,
+  edges,
 });
 
-const EMPTY: LiveState = { started: false, nodes: {}, trends: {} };
+const EMPTY: LiveState = { started: false, nodes: {}, edges: {}, trends: {} };
 const p99 = () => "p99" as const;
 
 describe("a component's live view", () => {
@@ -145,6 +151,69 @@ describe("the live state", () => {
   it("empties when there's no run", () => {
     const state = nextLiveState(EMPTY, null, snapshot(0, { a: metrics() }), p99);
     expect(nextLiveState(state, 0, null, p99)).toEqual(EMPTY);
+  });
+});
+
+describe("a connection's live view", () => {
+  const edge = (rate: number, errorRate = 0) => ({
+    rate,
+    errorRate,
+    latency: { mean: 30, p50: 20, p95: 60, p99: 84 },
+  });
+
+  it("grows thicker and gets more dots with traffic, on a log scale", () => {
+    expect(edgeLive(undefined, false)).toMatchObject({ status: "idle", width: 1.5, dots: 0 });
+    expect(edgeLive(edge(0.5), false)).toMatchObject({ width: 1.5, dots: 1 });
+    expect(edgeLive(edge(1500), false)).toMatchObject({ status: "healthy", width: 3, dots: 4 });
+    expect(edgeLive(edge(100_000), false)).toMatchObject({ width: 4, dots: 6 });
+    expect(edgeLive(edge(10_000_000), false)).toMatchObject({ width: 4, dots: 6 });
+  });
+
+  it("turns amber, then red, as requests on it fail", () => {
+    expect(edgeLive(edge(100, 0.001), false).status).toBe("healthy");
+    expect(edgeLive(edge(100, 0.01), false).status).toBe("warn");
+    expect(edgeLive(edge(100, 0.2), false).status).toBe("fail");
+  });
+
+  it("is down, without dots, when either end is down", () => {
+    expect(edgeLive(edge(100, 1), true)).toMatchObject({ status: "down", dots: 0 });
+  });
+
+  it("labels its rate, p99 and errors", () => {
+    expect(edgeLive(edge(1480, 0.003), false)).toMatchObject({
+      rate: "1.48k",
+      latency: { value: "84", unit: "ms" },
+      errors: { value: "0.3", unit: "%" },
+    });
+  });
+
+  it("is keyed by the document's edges, and kept when unchanged", () => {
+    const docEdges = [{ id: "e1", source: "a", target: "b" }];
+    const nodes = { a: metrics(), b: metrics() };
+    const first = nextLiveState(
+      EMPTY,
+      null,
+      snapshot(0, nodes, { "a→b": edge(100) }),
+      p99,
+      docEdges,
+    );
+    expect(first.edges.e1).toMatchObject({ rate: "100" });
+    const second = nextLiveState(
+      first,
+      0,
+      snapshot(250, nodes, { "a→b": edge(100.2) }),
+      p99,
+      docEdges,
+    );
+    expect(second.edges).toBe(first.edges);
+    const down = nextLiveState(
+      second,
+      250,
+      snapshot(500, { a: metrics(), b: metrics({ down: true }) }, { "a→b": edge(100) }),
+      p99,
+      docEdges,
+    );
+    expect(down.edges.e1?.status).toBe("down");
   });
 });
 

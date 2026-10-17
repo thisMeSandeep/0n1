@@ -254,3 +254,46 @@ describe("where failures start", () => {
     expect(nodes.lb?.failures).toBe(0);
   });
 });
+
+describe("connections", () => {
+  it("records traffic, failures and round trips on each connection", () => {
+    const engine = runningSystem(
+      {
+        users: { type: "client", params: { rate: 400, retries: 0, timeout: 5000 } },
+        api: { type: "service", params: roomy },
+        db: { type: "database", params: { ...roomy, errorRate: 20 } },
+      },
+      [
+        ["users", "api"],
+        ["api", "db"],
+      ],
+      { window },
+    );
+    engine.runUntil(8000);
+    const { edges, nodes } = engine.snapshot();
+    const toApi = edges["users→api"];
+    const toDb = edges["api→db"];
+    expect(toApi?.rate).toBeCloseTo(nodes.api?.arrivals ?? 0, -1);
+    expect(toDb?.errorRate).toBeCloseTo(0.2, 1);
+    expect(toApi?.errorRate).toBeCloseTo(0.2, 1); // the failures come back this way too
+    // The round trip from the client includes the database call and two network hops each way.
+    expect(toApi?.latency?.p50 ?? 0).toBeGreaterThan(
+      toDb?.latency?.p50 ?? Number.POSITIVE_INFINITY,
+    );
+    expect(Object.keys(edges).sort()).toEqual(["api→db", "users→api"]);
+  });
+
+  it("counts requests to a component that's down as failures on the way to it", () => {
+    const engine = runningSystem(
+      {
+        users: { type: "client", params: { rate: 200, retries: 0, timeout: 5000 } },
+        api: { type: "service", params: roomy },
+      },
+      [["users", "api"]],
+      { window },
+    );
+    engine.takeDown("api");
+    engine.runUntil(4000);
+    expect(engine.snapshot().edges["users→api"]?.errorRate).toBe(1);
+  });
+});

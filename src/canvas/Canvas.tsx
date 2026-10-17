@@ -27,7 +27,9 @@ import {
 } from "react";
 import { registry } from "../components/index.ts";
 import { checkConnection } from "../model/connections.ts";
+import { useSimulation } from "../simulation/store.ts";
 import { designStore, selectionStore, useDesign, useSelection, useUi } from "../store/index.ts";
+import { usePrefersReducedMotion } from "../ui/hooks/useMediaQuery.ts";
 import { useTheme } from "../ui/theme/ThemeProvider.tsx";
 import { ComponentEdge } from "./ComponentEdge.tsx";
 import { ComponentNode } from "./ComponentNode.tsx";
@@ -39,6 +41,7 @@ import {
   toFlowEdges,
   toFlowNodes,
 } from "./flow.ts";
+import { setPlaying } from "./flowDots.ts";
 import { COMPONENT_DRAG_TYPE } from "./placement.ts";
 import { QuickAdd, type QuickAddRequest } from "./QuickAdd.tsx";
 import { useAddComponent } from "./useAddComponent.ts";
@@ -79,6 +82,7 @@ export function Canvas() {
   }, [docNodes, docEdges, selectedNodes]);
 
   useFitViewOnOpen(docNodes.length);
+  useFlowDots();
 
   const edges = useMemo(
     () => toFlowEdges(docEdges, new Set(selectedEdgeIds)),
@@ -217,6 +221,16 @@ export function Canvas() {
  * Never while building: adding the first component to an empty system must
  * not move the view out from under the cursor.
  */
+/** Flow dots move while the system runs, and freeze where they are when it pauses. */
+function useFlowDots() {
+  const running = useSimulation((s) => s.running);
+  const reducedMotion = usePrefersReducedMotion();
+  useEffect(() => {
+    setPlaying(running && !reducedMotion);
+    return () => setPlaying(false);
+  }, [running, reducedMotion]);
+}
+
 function useFitViewOnOpen(nodeCount: number) {
   const docId = useDesign((s) => s.doc.id);
   const nodesInitialized = useNodesInitialized();

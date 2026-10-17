@@ -237,6 +237,54 @@ export class SystemRecorder {
   }
 }
 
+/** Traffic on one connection, as the sending component sees it. */
+export type EdgeMetrics = {
+  /** Requests sent per second. */
+  rate: number;
+  /** Share of replies that were failures, 0–1, wherever they failed. */
+  errorRate: number;
+  /** From sending to the reply arriving back, network included. Null if nothing came back. */
+  latency: NodeMetrics["latency"];
+};
+
+/** Key for a connection's metrics: one per pair of components. */
+export function edgeKey(source: string, target: string): string {
+  return `${source}→${target}`;
+}
+
+export class EdgeRecorder {
+  #sent: RateCounter;
+  #replies: RateCounter;
+  #failed: RateCounter;
+  #latency: WindowedHistogram;
+
+  constructor(options: WindowOptions = DEFAULT_WINDOW) {
+    this.#sent = new RateCounter(options);
+    this.#replies = new RateCounter(options);
+    this.#failed = new RateCounter(options);
+    this.#latency = new WindowedHistogram(options);
+  }
+
+  send(time: number, weight = 1): void {
+    this.#sent.add(time, weight);
+  }
+
+  reply(time: number, latencyMs: number, ok: boolean, weight = 1): void {
+    this.#replies.add(time, weight);
+    if (!ok) this.#failed.add(time, weight);
+    this.#latency.record(time, latencyMs, weight);
+  }
+
+  snapshot(now: number): EdgeMetrics {
+    const replies = this.#replies.sum(now);
+    return {
+      rate: this.#sent.rate(now),
+      errorRate: replies > 0 ? this.#failed.sum(now) / replies : 0,
+      latency: latencySummary(this.#latency.merged(now)),
+    };
+  }
+}
+
 /** Everything the UI needs for one moment of a run. */
 export type MetricsSnapshot = {
   /** Simulated time (ms). */
@@ -245,4 +293,6 @@ export type MetricsSnapshot = {
   sampling: { weight: number };
   system: SystemMetrics;
   nodes: Record<string, NodeMetrics>;
+  /** By edgeKey(source, target); only connections that have carried traffic. */
+  edges: Record<string, EdgeMetrics>;
 };

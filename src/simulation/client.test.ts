@@ -56,6 +56,7 @@ describe("simulation client", () => {
       sampling: { weight: 1 },
       system: { goodput: 1, throughput: 1, errorRate: 0, latency: null },
       nodes: {},
+      edges: {},
     };
     fake.emit({ type: "snapshot", snapshot, running: true, speed: 2, traffic: 1.5 });
     expect(store.getState()).toMatchObject({ snapshot, running: true, speed: 2, traffic: 1.5 });

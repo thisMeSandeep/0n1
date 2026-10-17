@@ -20,15 +20,17 @@ const Gallery =
     ? lazy(() => import("./ui/gallery/Gallery.tsx"))
     : null;
 
-// Dev-only: `?sample` opens the mockup's URL shortener without touching storage.
+// Dev-only: `?sample` opens the mockup's URL shortener without touching storage
+// (`?sample=large`: 30 components, for performance checks).
 // Excluded from production builds.
 let initialTheme = readThemeMirror() ?? "system";
 if (import.meta.env.DEV && new URLSearchParams(location.search).has("sample")) {
-  const [{ sampleSystem }, { designStore }] = await Promise.all([
+  const [{ sampleSystem, largeSampleSystem }, { designStore }] = await Promise.all([
     import("./canvas/sample.ts"),
     import("./store/index.ts"),
   ]);
-  designStore.getState().load(sampleSystem());
+  const large = new URLSearchParams(location.search).get("sample") === "large";
+  designStore.getState().load(large ? largeSampleSystem() : sampleSystem());
 } else if (!Gallery) {
   // Reopen the last system and preferences from this browser before the first paint.
   initialTheme = await startStorage();
