@@ -8,7 +8,8 @@ import "./ui/styles/global.css";
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
-import { startStorage } from "./storage/index.ts";
+import { saveThemePreference, startStorage } from "./storage/index.ts";
+import { readThemeMirror } from "./storage/preferences.ts";
 import { ThemeProvider } from "./ui/theme/ThemeProvider.tsx";
 import { UIProvider } from "./ui/UIProvider.tsx";
 
@@ -21,6 +22,7 @@ const Gallery =
 
 // Dev-only: `?sample` opens the mockup's URL shortener without touching storage.
 // Excluded from production builds.
+let initialTheme = readThemeMirror() ?? "system";
 if (import.meta.env.DEV && new URLSearchParams(location.search).has("sample")) {
   const [{ sampleSystem }, { designStore }] = await Promise.all([
     import("./canvas/sample.ts"),
@@ -28,8 +30,8 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("sample")) {
   ]);
   designStore.getState().load(sampleSystem());
 } else if (!Gallery) {
-  // Reopen the last system from this browser before the first paint.
-  await startStorage();
+  // Reopen the last system and preferences from this browser before the first paint.
+  initialTheme = await startStorage();
 }
 
 const root = document.getElementById("root");
@@ -37,7 +39,7 @@ if (!root) throw new Error("Root element #root not found");
 
 createRoot(root).render(
   <StrictMode>
-    <ThemeProvider>
+    <ThemeProvider initialPreference={initialTheme} onPreferenceChange={saveThemePreference}>
       <UIProvider>
         {Gallery ? (
           <Suspense>

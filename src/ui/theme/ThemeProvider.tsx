@@ -23,12 +23,20 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-/**
- * Follows the OS colour scheme unless the user picks light or dark.
- * The override lives in memory for now; it is persisted in S16.
- */
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [preference, setPreference] = useState<ThemePreference>("system");
+type ThemeProviderProps = {
+  children: ReactNode;
+  initialPreference?: ThemePreference;
+  /** Called when the user picks a theme, e.g. to save it. */
+  onPreferenceChange?: (preference: ThemePreference) => void;
+};
+
+/** Follows the OS colour scheme unless the user picks light or dark. */
+export function ThemeProvider({
+  children,
+  initialPreference = "system",
+  onPreferenceChange,
+}: ThemeProviderProps) {
+  const [preference, setPreferenceState] = useState<ThemePreference>(initialPreference);
   const systemPrefersDark = useMediaQuery(DARK_SCHEME_QUERY);
   const resolved = resolveTheme(preference, systemPrefersDark);
 
@@ -36,7 +44,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(document.documentElement, resolved);
   }, [resolved]);
 
-  const value = useMemo(() => ({ preference, resolved, setPreference }), [preference, resolved]);
+  const value = useMemo(
+    () => ({
+      preference,
+      resolved,
+      setPreference: (next: ThemePreference) => {
+        setPreferenceState(next);
+        onPreferenceChange?.(next);
+      },
+    }),
+    [preference, resolved, onPreferenceChange],
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

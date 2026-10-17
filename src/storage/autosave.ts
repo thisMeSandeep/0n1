@@ -23,7 +23,7 @@ export async function openInitialSystem(
   };
 
   const lastId = await settings.get("lastSystemId");
-  const last = lastId ? await tryGet(lastId) : null;
+  const last = typeof lastId === "string" ? await tryGet(lastId) : null;
   if (last) return last;
 
   for (const summary of await systems.list()) {

@@ -1,4 +1,9 @@
 import { createStore } from "zustand/vanilla";
+import type { LayoutTier } from "../app/layout.ts";
+import type { Category } from "../model/component.ts";
+
+/** Panel open state, remembered for the layout tier it was set at. */
+export type PanelPrefs = { tier: LayoutTier; paletteOpen: boolean; inspectorOpen: boolean };
 
 /**
  * - saved / saving: autosave state for the top bar.
@@ -9,10 +14,15 @@ import { createStore } from "zustand/vanilla";
 export type SaveStatus = "saved" | "saving" | "error" | "unavailable" | null;
 
 /**
- * Lab UI state that several parts of the app reach for: overlays opened by
- * shortcuts, the minimap and the save status. Not undoable. Persisted in S16.
+ * Lab UI state that several parts of the app reach for: panels, palette
+ * groups, the minimap, overlays opened by shortcuts and the save status.
+ * Not undoable. Preferences are saved by storage/preferences.ts.
  */
 export type UiState = {
+  panels: PanelPrefs | null;
+  setPanels(panels: PanelPrefs): void;
+  collapsedGroups: readonly Category[];
+  setGroupOpen(category: Category, open: boolean): void;
   saveStatus: SaveStatus;
   setSaveStatus(status: SaveStatus): void;
   minimap: boolean;
@@ -28,6 +38,17 @@ export type UiState = {
 
 export function createUiStore() {
   return createStore<UiState>()((set) => ({
+    panels: null,
+    setPanels: (panels) => set({ panels }),
+    collapsedGroups: [],
+    setGroupOpen: (category, open) =>
+      set((s) => ({
+        collapsedGroups: open
+          ? s.collapsedGroups.filter((c) => c !== category)
+          : s.collapsedGroups.includes(category)
+            ? s.collapsedGroups
+            : [...s.collapsedGroups, category],
+      })),
     saveStatus: null,
     setSaveStatus: (saveStatus) => set({ saveStatus }),
     minimap: false,

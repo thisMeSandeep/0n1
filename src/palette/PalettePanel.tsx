@@ -4,9 +4,9 @@ import { shortcutKeys } from "../app/shortcuts.ts";
 import { COMPONENT_DRAG_TYPE } from "../canvas/placement.ts";
 import { useAddComponent } from "../canvas/useAddComponent.ts";
 import { registry } from "../components/index.ts";
-import type { Category, ComponentDefinition } from "../model/component.ts";
+import type { ComponentDefinition } from "../model/component.ts";
 import { midSentence } from "../model/text.ts";
-import { useUi } from "../store/index.ts";
+import { uiStore, useUi } from "../store/index.ts";
 import { IconButton } from "../ui/Button.tsx";
 import { CollapsibleSection } from "../ui/Collapsible.tsx";
 import { CATEGORY_LABEL, CATEGORY_TINT, componentIcon } from "../ui/componentIcons.tsx";
@@ -30,7 +30,7 @@ function startDrag(event: DragEvent, type: string) {
 export function PalettePanel({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   const { addAtCentre } = useAddComponent();
   const [query, setQuery] = useState("");
-  const [collapsed, setCollapsed] = useState<ReadonlySet<Category>>(new Set());
+  const collapsed = useUi((s) => s.collapsedGroups);
   const [focusSearch, setFocusSearch] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -57,14 +57,6 @@ export function PalettePanel({ open, onToggle }: { open: boolean; onToggle: () =
       else event.currentTarget.blur();
     }
   };
-
-  const setGroupOpen = (category: Category, isOpen: boolean) =>
-    setCollapsed((current) => {
-      const next = new Set(current);
-      if (isOpen) next.delete(category);
-      else next.add(category);
-      return next;
-    });
 
   return (
     <aside
@@ -133,8 +125,8 @@ export function PalettePanel({ open, onToggle }: { open: boolean; onToggle: () =
                     <CollapsibleSection
                       key={category}
                       title={CATEGORY_LABEL[category]}
-                      open={!collapsed.has(category)}
-                      onOpenChange={(isOpen) => setGroupOpen(category, isOpen)}
+                      open={!collapsed.includes(category)}
+                      onOpenChange={(isOpen) => uiStore.getState().setGroupOpen(category, isOpen)}
                       className="[&>button]:px-2"
                     >
                       <ul>
