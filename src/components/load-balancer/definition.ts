@@ -34,6 +34,7 @@ export const loadBalancer: ComponentDefinition = {
   },
   connections: {
     incoming: true,
+    outgoingRequired: true,
     outgoing: ["service", "api-gateway"],
   },
 };

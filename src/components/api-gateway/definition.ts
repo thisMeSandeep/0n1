@@ -36,6 +36,7 @@ export const apiGateway: ComponentDefinition = {
   },
   connections: {
     incoming: true,
+    outgoingRequired: true,
     outgoing: ["load-balancer", "service"],
   },
 };

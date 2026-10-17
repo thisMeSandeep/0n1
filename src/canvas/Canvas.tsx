@@ -5,7 +5,9 @@ import {
   applyNodeChanges,
   Background,
   BackgroundVariant,
+  type Connection,
   type EdgeChange,
+  type IsValidConnection,
   type NodeChange,
   Panel,
   ReactFlow,
@@ -14,10 +16,12 @@ import {
 } from "@xyflow/react";
 import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { registry } from "../components/index.ts";
+import { checkConnection } from "../model/connections.ts";
 import { designStore, selectionStore, useDesign, useSelection } from "../store/index.ts";
 import { useTheme } from "../ui/theme/ThemeProvider.tsx";
 import { ComponentEdge } from "./ComponentEdge.tsx";
 import { ComponentNode } from "./ComponentNode.tsx";
+import { ConnectionLine } from "./ConnectionLine.tsx";
 import {
   applySelectChanges,
   type ComponentFlowNode,
@@ -39,6 +43,14 @@ const MULTI_SELECT_KEYS = ["Shift", "Meta", "Control"];
 
 const { beginDrag, endDrag } = designStore.getState();
 
+const isValidConnection: IsValidConnection = ({ source, target }) =>
+  checkConnection(designStore.getState().doc, registry, source, target).ok;
+
+function onConnect({ source, target }: Connection) {
+  const result = designStore.getState().connect(source, target);
+  if (result.ok) selectionStore.getState().select({ nodeIds: [], edgeIds: [result.edgeId] });
+}
+
 /** The editable canvas, driven by the design and selection stores. */
 export function Canvas() {
   const docNodes = useDesign((s) => s.doc.nodes);
@@ -48,10 +60,10 @@ export function Canvas() {
   const { resolved } = useTheme();
 
   const selectedNodes = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
-  const [nodes, setNodes] = useState(() => toFlowNodes([], docNodes, selectedNodes));
+  const [nodes, setNodes] = useState(() => toFlowNodes([], docNodes, docEdges, selectedNodes));
   useEffect(() => {
-    setNodes((previous) => toFlowNodes(previous, docNodes, selectedNodes));
-  }, [docNodes, selectedNodes]);
+    setNodes((previous) => toFlowNodes(previous, docNodes, docEdges, selectedNodes));
+  }, [docNodes, docEdges, selectedNodes]);
 
   useFitViewOnOpen(docNodes.length);
 
@@ -105,6 +117,10 @@ export function Canvas() {
         onSelectionDragStop={endDrag}
         onDragOver={onDragOver}
         onDrop={onDrop}
+        onConnect={onConnect}
+        isValidConnection={isValidConnection}
+        connectionLineComponent={ConnectionLine}
+        connectionRadius={32}
         snapToGrid
         snapGrid={SNAP_GRID}
         selectionOnDrag
@@ -117,7 +133,6 @@ export function Canvas() {
         panActivationKeyCode={null}
         deleteKeyCode={null}
         zoomOnDoubleClick={false}
-        nodesConnectable={false}
         minZoom={0.2}
         maxZoom={2}
         colorMode={resolved}

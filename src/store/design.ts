@@ -1,7 +1,8 @@
 import { temporal } from "zundo";
 import { immer } from "zustand/middleware/immer";
 import { createStore } from "zustand/vanilla";
-import { canConnect, defaultParams, type Params, paramsSchema } from "../model/component.ts";
+import { defaultParams, type Params, paramsSchema } from "../model/component.ts";
+import { checkConnection } from "../model/connections.ts";
 import type { Position, SystemDocument, SystemNode } from "../model/document.ts";
 import type { Registry } from "../model/registry.ts";
 
@@ -174,18 +175,8 @@ export function createDesignStore({
           },
 
           connect(source, target) {
-            const from = nodeById(source);
-            const to = nodeById(target);
-            if (!from || !to) return { ok: false, reason: "That component no longer exists." };
-            if (source === target) {
-              return { ok: false, reason: "A component can't connect to itself." };
-            }
-            if (get().doc.edges.some((e) => e.source === source && e.target === target)) {
-              return { ok: false, reason: "These components are already connected." };
-            }
-            const check = canConnect(registry.require(from.type), registry.require(to.type));
+            const check = checkConnection(get().doc, registry, source, target);
             if (!check.ok) return check;
-
             const edgeId = newId();
             edit((d) => void d.edges.push({ id: edgeId, source, target }));
             return { ok: true, edgeId };

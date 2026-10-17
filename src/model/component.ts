@@ -62,6 +62,8 @@ export type ComponentDefinition = {
     incoming: boolean;
     /** Component types this one may send requests to. */
     outgoing: readonly string[];
+    /** It only makes sense when it passes requests on (e.g. a load balancer). */
+    outgoingRequired?: boolean;
   };
 };
 

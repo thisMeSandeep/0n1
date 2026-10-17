@@ -1,4 +1,6 @@
 import type { Edge, EdgeChange, Node, NodeChange } from "@xyflow/react";
+import { registry } from "../components/index.ts";
+import { connectionHint, edgeCounts } from "../model/connections.ts";
 import type { SystemEdge, SystemNode } from "../model/document.ts";
 
 /*
@@ -7,7 +9,12 @@ import type { SystemEdge, SystemNode } from "../model/document.ts";
  * what it measures (node sizes) between renders.
  */
 
-export type ComponentNodeData = { name: string; type: string };
+export type ComponentNodeData = {
+  name: string;
+  type: string;
+  /** Why this component isn't wired up enough to do anything, if it isn't. */
+  hint: string | null;
+};
 export type ComponentFlowNode = Node<ComponentNodeData, "component">;
 export type ComponentFlowEdge = Edge<Record<string, never>, "component">;
 
@@ -18,17 +25,30 @@ export type ComponentFlowEdge = Edge<Record<string, never>, "component">;
 export function toFlowNodes(
   previous: readonly ComponentFlowNode[],
   nodes: readonly SystemNode[],
+  edges: readonly SystemEdge[],
   selected: ReadonlySet<string>,
 ): ComponentFlowNode[] {
   const byId = new Map(previous.map((n) => [n.id, n]));
+  const counts = edgeCounts({ edges });
   return nodes.map((node) => {
     const prior = byId.get(node.id);
+    const definition = registry.get(node.type);
+    const count = counts.get(node.id) ?? { incoming: 0, outgoing: 0 };
+    const hint = definition ? connectionHint(definition, count.incoming, count.outgoing) : null;
+    // Keep the same data object when nothing changed, so memoized nodes skip re-rendering.
+    const data =
+      prior &&
+      prior.data.name === node.name &&
+      prior.data.type === node.type &&
+      prior.data.hint === hint
+        ? prior.data
+        : { name: node.name, type: node.type, hint };
     return {
       ...prior,
       id: node.id,
       type: "component",
       position: node.position,
-      data: { name: node.name, type: node.type },
+      data,
       selected: selected.has(node.id),
     };
   });

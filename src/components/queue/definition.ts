@@ -43,6 +43,7 @@ export const queue: ComponentDefinition = {
   },
   connections: {
     incoming: true,
+    outgoingRequired: true,
     outgoing: ["worker"],
   },
 };

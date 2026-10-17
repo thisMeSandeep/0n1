@@ -23,13 +23,48 @@
   border-radius: var(--radius-card);
 }
 
-/* Handles stay out of sight until connecting arrives (S11). */
+/*
+ * Connection handles. The source dot on the right appears on hover or
+ * selection; drag from it to connect. The target only matters during a drag,
+ * when it grows to cover the whole card so the drop can land anywhere on it.
+ */
 .react-flow__handle.handle {
-  width: 8px;
-  height: 8px;
-  border: 0;
-  background: transparent;
+  width: 12px;
+  height: 12px;
+  min-width: 0;
+  min-height: 0;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  opacity: 0;
+  transition:
+    opacity var(--duration-fast) ease-out,
+    border-color var(--duration-fast) ease-out,
+    transform var(--duration-fast) ease-out;
+}
+.react-flow__node:hover .handle-source,
+.react-flow__node.selected .handle-source,
+.react-flow__node:focus-visible .handle-source,
+.handle-source.connectingfrom {
+  opacity: 1;
+}
+.handle-source:hover,
+.handle-source.connectingfrom {
+  border-color: var(--accent);
+  transform: translate(50%, -50%) scale(1.15);
+}
+.react-flow__handle.handle-target {
   pointer-events: none;
+}
+.react-flow__handle.handle-target-active {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: transparent;
+  pointer-events: all;
 }
 
 /* React Flow's attribution stays visible (React Flow asks that only Pro subscribers hide it), styled quietly. */
