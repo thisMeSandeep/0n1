@@ -4,7 +4,8 @@ import { createSystemDocument, type SystemDocument } from "../model/document.ts"
 
 /**
  * The URL shortener from the mockup, for development (`?sample`) and
- * end-to-end tests. Real blueprints arrive in S33.
+ * end-to-end tests: a fixed fixture they rely on. The URL shortener users
+ * open is a blueprint (src/blueprints/catalog), and differs.
  */
 export function sampleSystem(): SystemDocument {
   const node = (id: string, type: string, name: string, x: number, y: number) => ({

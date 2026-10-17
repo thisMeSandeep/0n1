@@ -49,11 +49,8 @@ async function setup() {
 describe("library actions", () => {
   it("opens a blueprint as a copy that can be edited and saved without touching the original", async () => {
     const { library, open, store, systems, flushes } = await setup();
-    const shipped = structuredClone(BLUEPRINT_FILES["./catalog/url-shortener.json"]);
-    const blueprint: Blueprint = parseBlueprint(
-      BLUEPRINT_FILES["./catalog/url-shortener.json"],
-      registry,
-    );
+    const shipped = structuredClone(BLUEPRINT_FILES["url-shortener.json"]);
+    const blueprint: Blueprint = parseBlueprint(BLUEPRINT_FILES["url-shortener.json"], registry);
 
     const copy = await library.createFromBlueprint(blueprint);
     expect(flushes).toEqual(["first"]); // the open system was saved first
@@ -69,17 +66,19 @@ describe("library actions", () => {
     const users = open().nodes.find((n) => n.type === "client")?.id as string;
     store.getState().updateParams(users, { rate: 5000 });
     store.getState().renameNode(users, "Everyone");
-    store.getState().removeNodes([open().nodes.find((n) => n.type === "cache")?.id as string]);
+    store
+      .getState()
+      .removeNodes([open().nodes.find((n) => n.type === "load-balancer")?.id as string]);
     await systems.save(open());
-    expect(BLUEPRINT_FILES["./catalog/url-shortener.json"]).toEqual(shipped);
-    expect(blueprint.system.nodes).toHaveLength(6);
+    expect(BLUEPRINT_FILES["url-shortener.json"]).toEqual(shipped);
+    expect(blueprint.system.nodes).toHaveLength(5);
 
     // Opening it again makes a second, untouched copy.
     const again = await library.createFromBlueprint(blueprint);
     expect(again).toMatchObject({ id: "id2", name: "URL shortener 2" });
-    expect(again.nodes).toHaveLength(6);
+    expect(again.nodes).toHaveLength(5);
     expect(again.nodes.find((n) => n.type === "client")?.name).toBe("Users");
-    expect((await systems.get("id1"))?.nodes).toHaveLength(5);
+    expect((await systems.get("id1"))?.nodes).toHaveLength(4);
   });
 
   it("creates and opens numbered blank systems, saving the old one first", async () => {

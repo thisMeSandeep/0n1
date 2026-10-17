@@ -3,14 +3,15 @@
   "version": 1,
   "id": "url-shortener",
   "title": "URL shortener",
-  "summary": "Read-heavy: almost every request looks up a link.",
-  "description": "People open short links far more often than they create them, and a few links are much more popular than the rest. Two services behind a load balancer look up links in a cache first, and in the database when the cache doesn't have them.",
+  "summary": "Read-heavy: the database melts until you add a cache.",
+  "description": "People open short links far more often than they make them, and a few links are much more popular than the rest. Two services behind a load balancer look up every link in the database. That's fine at today's traffic. It won't be for long.",
   "experiments": [
-    "Press Space to run. At the default traffic everything copes, and the cache answers about half of the lookups.",
-    "Set Traffic to 1000%. Both services get busy and p99 climbs.",
-    "Select Shortener API · 2 and press K to take it down. The other service can't keep up on its own, and users start seeing errors.",
-    "Bring it back, then add a third service behind the load balancer and watch p99 come down.",
-    "Select Users and set Key popularity to Every key equally likely. With no popular links the cache's hit ratio collapses, and the database does more of the work."
+    "Press Space to run. At 200 requests a second everything copes, and Links DB is only lightly busy.",
+    "Set Traffic to 300%. Links DB gets busy but keeps up.",
+    "Set Traffic to 500%. Links DB runs out of connections: requests wait in line, p99 climbs to the 2 second timeout, and soon every request fails. The services keep working on requests users have already given up on.",
+    "Add a cache: drag Cache from the left panel onto the canvas, then connect both services to it. Adding a component restarts the run; this time Links DB stays calm, and p99 stays around 50 ms.",
+    "Select the cache and press K to take it down. Every lookup lands on the database again, and it melts.",
+    "Press K again to bring the cache back, then select Users and set Key popularity to Every key equally likely. With no popular links most lookups miss, and the database is back where it started."
   ],
   "order": 1,
   "system": {
@@ -20,53 +21,94 @@
         "id": "users",
         "type": "client",
         "name": "Users",
-        "position": { "x": 56, "y": 328 },
-        "params": {}
+        "position": {
+          "x": 56,
+          "y": 328
+        },
+        "params": {
+          "rate": 200,
+          "readShare": 95,
+          "timeout": 2000
+        }
       },
       {
         "id": "lb",
         "type": "load-balancer",
         "name": "Load balancer",
-        "position": { "x": 328, "y": 328 },
+        "position": {
+          "x": 328,
+          "y": 328
+        },
         "params": {}
       },
       {
         "id": "api-1",
         "type": "service",
         "name": "Shortener API · 1",
-        "position": { "x": 600, "y": 192 },
-        "params": {}
+        "position": {
+          "x": 600,
+          "y": 192
+        },
+        "params": {
+          "concurrency": 128,
+          "workTime": 5
+        }
       },
       {
         "id": "api-2",
         "type": "service",
         "name": "Shortener API · 2",
-        "position": { "x": 600, "y": 472 },
-        "params": {}
-      },
-      {
-        "id": "cache",
-        "type": "cache",
-        "name": "Link cache",
-        "position": { "x": 872, "y": 112 },
-        "params": {}
+        "position": {
+          "x": 600,
+          "y": 472
+        },
+        "params": {
+          "concurrency": 128,
+          "workTime": 5
+        }
       },
       {
         "id": "db",
         "type": "database",
         "name": "Links DB",
-        "position": { "x": 872, "y": 392 },
-        "params": {}
+        "position": {
+          "x": 872,
+          "y": 332
+        },
+        "params": {
+          "connections": 8,
+          "readTime": 10,
+          "writeTime": 20,
+          "maxWaiting": 300
+        }
       }
     ],
     "edges": [
-      { "id": "users-lb", "source": "users", "target": "lb" },
-      { "id": "lb-api-1", "source": "lb", "target": "api-1" },
-      { "id": "lb-api-2", "source": "lb", "target": "api-2" },
-      { "id": "api-1-cache", "source": "api-1", "target": "cache" },
-      { "id": "api-1-db", "source": "api-1", "target": "db" },
-      { "id": "api-2-cache", "source": "api-2", "target": "cache" },
-      { "id": "api-2-db", "source": "api-2", "target": "db" }
+      {
+        "id": "users-lb",
+        "source": "users",
+        "target": "lb"
+      },
+      {
+        "id": "lb-api-1",
+        "source": "lb",
+        "target": "api-1"
+      },
+      {
+        "id": "lb-api-2",
+        "source": "lb",
+        "target": "api-2"
+      },
+      {
+        "id": "api-1-db",
+        "source": "api-1",
+        "target": "db"
+      },
+      {
+        "id": "api-2-db",
+        "source": "api-2",
+        "target": "db"
+      }
     ]
   }
 }

@@ -2,7 +2,8 @@
 
 A blueprint is a pre-designed system shipped with 0n1. Each one is a single
 JSON file in [`catalog/`](./catalog), named after its id
-(`catalog/url-shortener.json`). Opening a blueprint always makes a copy in the
+(`catalog/url-shortener.json`), and listed with one line in
+[`catalog.ts`](./catalog.ts). Opening a blueprint always makes a copy in the
 user's library, so the blueprint itself never changes.
 
 ## Format
@@ -37,6 +38,11 @@ user's library, so the blueprint itself never changes.
 
 ## Checks
 
-`bun run test` checks every blueprint. Each must be valid, be named after its
-id, and compile into a runnable system with no errors or warnings. CI runs the
-same checks on every pull request.
+`bun run test` checks every blueprint. Each must be listed in `catalog.ts`, be
+valid, be named after its id, and compile into a runnable system with no
+errors or warnings. CI runs the same checks on every pull request.
+
+A blueprint should also tell a story: it copes, something breaks it, and its
+experiments fix it. Add tests for that story to
+[`stories.test.ts`](./stories.test.ts). They run the experiments on the
+engine, so a change to a component's model can't quietly break a blueprint.

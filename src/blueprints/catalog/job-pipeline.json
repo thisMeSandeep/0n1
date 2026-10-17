@@ -1,0 +1,125 @@
+{
+  "format": "0n1-blueprint",
+  "version": 1,
+  "id": "job-pipeline",
+  "title": "Job pipeline",
+  "summary": "Slow jobs on a queue: the backlog grows when workers fall behind.",
+  "description": "Users upload photos to be resized. The API puts each one on a queue and answers at once; two workers take jobs off the queue, a few at a time, and store the results. Users never wait for the work itself, but somebody has to keep up.",
+  "experiments": [
+    "Press Space to run. The workers keep up with 25 uploads a second, and the queue stays nearly empty.",
+    "Set Traffic to 200%. Uploads now arrive faster than two workers can finish them. Users still get quick answers, but Jobs queue's backlog grows and every job waits longer.",
+    "While it runs, select Resizer · 1 and set Jobs at once to 8, then do the same for Resizer · 2. The workers now finish more than arrives: the backlog stops growing and drains.",
+    "Or add a third worker instead: drag Worker onto the canvas, connect the queue to it and it to Results DB, and set its Work per job to 200 ms like the others. Adding a component restarts the run; with three workers, the backlog stays near empty even at 200%."
+  ],
+  "order": 3,
+  "system": {
+    "schemaVersion": 1,
+    "nodes": [
+      {
+        "id": "users",
+        "type": "client",
+        "name": "Users",
+        "position": {
+          "x": 56,
+          "y": 328
+        },
+        "params": {
+          "rate": 25,
+          "readShare": 0,
+          "timeout": 2000
+        }
+      },
+      {
+        "id": "api",
+        "type": "service",
+        "name": "Upload API",
+        "position": {
+          "x": 328,
+          "y": 328
+        },
+        "params": {
+          "concurrency": 64,
+          "workTime": 5
+        }
+      },
+      {
+        "id": "queue",
+        "type": "queue",
+        "name": "Jobs queue",
+        "position": {
+          "x": 600,
+          "y": 328
+        },
+        "params": {}
+      },
+      {
+        "id": "worker-1",
+        "type": "worker",
+        "name": "Resizer · 1",
+        "position": {
+          "x": 872,
+          "y": 192
+        },
+        "params": {
+          "concurrency": 4,
+          "workTime": 200
+        }
+      },
+      {
+        "id": "worker-2",
+        "type": "worker",
+        "name": "Resizer · 2",
+        "position": {
+          "x": 872,
+          "y": 472
+        },
+        "params": {
+          "concurrency": 4,
+          "workTime": 200
+        }
+      },
+      {
+        "id": "db",
+        "type": "database",
+        "name": "Results DB",
+        "position": {
+          "x": 1144,
+          "y": 332
+        },
+        "params": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "users-api",
+        "source": "users",
+        "target": "api"
+      },
+      {
+        "id": "api-queue",
+        "source": "api",
+        "target": "queue"
+      },
+      {
+        "id": "queue-worker-1",
+        "source": "queue",
+        "target": "worker-1"
+      },
+      {
+        "id": "queue-worker-2",
+        "source": "queue",
+        "target": "worker-2"
+      },
+      {
+        "id": "worker-1-db",
+        "source": "worker-1",
+        "target": "db"
+      },
+      {
+        "id": "worker-2-db",
+        "source": "worker-2",
+        "target": "db"
+      }
+    ]
+  }
+}

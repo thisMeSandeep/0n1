@@ -1,13 +1,23 @@
 import { registry } from "../components/index.ts";
+import jobPipeline from "./catalog/job-pipeline.json";
+import urlShortener from "./catalog/url-shortener.json";
+import writeHeavy from "./catalog/write-heavy.json";
 import { type Blueprint, compareBlueprints, parseBlueprint } from "./format.ts";
 
 /*
- * The blueprints shipped with 0n1: every JSON file in ./catalog. Adding a
- * blueprint means adding one file; CI checks that each one is valid and
- * compiles (catalog.test.ts).
+ * The blueprints shipped with 0n1: the JSON files in ./catalog. Adding a
+ * blueprint means adding its file and one line here; CI checks that every
+ * file is listed, valid, compiles, and tells its story (catalog.test.ts,
+ * stories.test.ts).
+ *
+ * An explicit list rather than a glob: it works outside Vite too, and test
+ * caches can't miss a new file.
  */
-
-const files = import.meta.glob<unknown>("./catalog/*.json", { eager: true, import: "default" });
+const files: Readonly<Record<string, unknown>> = {
+  "url-shortener.json": urlShortener,
+  "write-heavy.json": writeHeavy,
+  "job-pipeline.json": jobPipeline,
+};
 
 function load(): Blueprint[] {
   const blueprints: Blueprint[] = [];
@@ -28,5 +38,5 @@ export function findBlueprint(id: string): Blueprint | undefined {
   return BLUEPRINTS.find((b) => b.id === id);
 }
 
-/** For the catalog test: every file, by path, as shipped. */
+/** For the catalog test: every listed file, by file name, as shipped. */
 export const BLUEPRINT_FILES: Readonly<Record<string, unknown>> = files;

@@ -293,7 +293,12 @@ function NewSystemMenu() {
           <CaretDownIcon className="size-3!" />
         </Button>
       </MenuTrigger>
-      <MenuContent className="w-72">
+      <MenuContent
+        className="w-72"
+        // The library closes once the system is made, taking this trigger with it:
+        // don't hand focus back to it, or it's stranded. The library returns focus instead.
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
         <MenuItem icon={<FileIcon />} onSelect={() => create(() => library.createAndOpen())}>
           Blank system
         </MenuItem>

@@ -1,0 +1,141 @@
+{
+  "format": "0n1-blueprint",
+  "version": 1,
+  "id": "write-heavy",
+  "title": "Write-heavy system",
+  "summary": "Writes outpace the database. A replica can't help; a queue can.",
+  "description": "An app records every like, view and check-in, so four requests in five are writes. Reads already go to a read replica, which keeps them off the primary. Writes can only go to the primary, and it has a limit.",
+  "experiments": [
+    "Press Space to run. At 300 requests a second Primary DB is busy, but copes.",
+    "Set Traffic to 200%. Primary DB can't write fast enough: requests back up in the services, p99 climbs to the 2 second timeout, and soon every request fails. Feeds DB, the replica, is barely busy: it only takes reads.",
+    "Add a Queue and a Worker. Connect both services to the queue, the queue to the worker, and the worker to Primary DB. On the worker, set Jobs at once to 7 and Work per job to 1 ms: it only passes each write on, never more than 7 at a time, just under Primary DB's 8 connections.",
+    "The run restarts. Writes now go on the queue and users get an answer straight away. The worker writes them as fast as Primary DB can take, so the backlog grows while traffic is high.",
+    "After 20 seconds or so, set Traffic back to 100%. Writes arrive slower than the worker clears them, and the backlog drains in under a minute."
+  ],
+  "order": 2,
+  "system": {
+    "schemaVersion": 1,
+    "nodes": [
+      {
+        "id": "users",
+        "type": "client",
+        "name": "Users",
+        "position": {
+          "x": 56,
+          "y": 328
+        },
+        "params": {
+          "rate": 300,
+          "readShare": 20,
+          "timeout": 2000
+        }
+      },
+      {
+        "id": "lb",
+        "type": "load-balancer",
+        "name": "Load balancer",
+        "position": {
+          "x": 328,
+          "y": 328
+        },
+        "params": {}
+      },
+      {
+        "id": "api-1",
+        "type": "service",
+        "name": "Activity API · 1",
+        "position": {
+          "x": 600,
+          "y": 192
+        },
+        "params": {
+          "concurrency": 128,
+          "workTime": 5
+        }
+      },
+      {
+        "id": "api-2",
+        "type": "service",
+        "name": "Activity API · 2",
+        "position": {
+          "x": 600,
+          "y": 472
+        },
+        "params": {
+          "concurrency": 128,
+          "workTime": 5
+        }
+      },
+      {
+        "id": "primary",
+        "type": "database",
+        "name": "Primary DB",
+        "position": {
+          "x": 872,
+          "y": 472
+        },
+        "params": {
+          "connections": 8,
+          "readTime": 5,
+          "writeTime": 20,
+          "maxWaiting": 300
+        }
+      },
+      {
+        "id": "replica",
+        "type": "read-replica",
+        "name": "Feeds DB",
+        "position": {
+          "x": 1144,
+          "y": 192
+        },
+        "params": {
+          "connections": 8,
+          "readTime": 5
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "users-lb",
+        "source": "users",
+        "target": "lb"
+      },
+      {
+        "id": "lb-api-1",
+        "source": "lb",
+        "target": "api-1"
+      },
+      {
+        "id": "lb-api-2",
+        "source": "lb",
+        "target": "api-2"
+      },
+      {
+        "id": "api-1-primary",
+        "source": "api-1",
+        "target": "primary"
+      },
+      {
+        "id": "api-2-primary",
+        "source": "api-2",
+        "target": "primary"
+      },
+      {
+        "id": "api-1-replica",
+        "source": "api-1",
+        "target": "replica"
+      },
+      {
+        "id": "api-2-replica",
+        "source": "api-2",
+        "target": "replica"
+      },
+      {
+        "id": "primary-replica",
+        "source": "primary",
+        "target": "replica"
+      }
+    ]
+  }
+}

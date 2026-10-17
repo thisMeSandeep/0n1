@@ -4,19 +4,27 @@ import { compile } from "../engine/compile.ts";
 import { BLUEPRINT_FILES, BLUEPRINTS } from "./catalog.ts";
 import { blueprintDocument, parseBlueprint } from "./format.ts";
 
+// Node's fs, typed by hand: the app's tsconfig leaves out Node's types on purpose.
+const { readdirSync }: { readdirSync(path: URL): string[] } = await import(
+  /* @vite-ignore */ "node:fs" as string
+);
+
 /** CI's check on shipped blueprints: each must be valid, and must compile into a runnable system. */
 describe("the blueprint catalog", () => {
   const files = Object.entries(BLUEPRINT_FILES);
 
-  it("has blueprints", () => {
-    expect(files.length).toBeGreaterThan(0);
-    expect(BLUEPRINTS).toHaveLength(files.length); // none was skipped as invalid
+  it("lists every file in catalog/, and skips none as invalid", () => {
+    const onDisk = readdirSync(new URL("./catalog", import.meta.url)).filter((f) =>
+      f.endsWith(".json"),
+    );
+    expect(Object.keys(BLUEPRINT_FILES).sort()).toEqual(onDisk.sort());
+    expect(BLUEPRINTS).toHaveLength(onDisk.length);
   });
 
   describe.each(files)("%s", (path, raw) => {
     it("is a valid blueprint, named after its id", () => {
       const blueprint = parseBlueprint(raw, registry);
-      expect(path).toBe(`./catalog/${blueprint.id}.json`);
+      expect(path).toBe(`${blueprint.id}.json`);
     });
 
     it("compiles without errors or warnings", () => {
