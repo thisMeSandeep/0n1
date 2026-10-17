@@ -12,6 +12,7 @@ export const service: ComponentDefinition = {
     "It then calls what it's connected to: reads try a cache first and fall back to a database or replica; " +
     "writes go to the database or onto a queue.",
   icon: "cube",
+  keywords: ["server", "backend", "app", "api", "instance"],
   params: {
     concurrency: concurrencyParam("Requests at once", 16),
     workTime: workTimeParam("Work per request", 20),

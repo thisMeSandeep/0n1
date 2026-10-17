@@ -11,6 +11,7 @@ export const readReplica: ComponentDefinition = {
     "Writes reach it from the primary database after the replication lag, so recent writes may not be visible yet. " +
     "Connect a database to it to set up replication.",
   icon: "copy",
+  keywords: ["replica", "db", "copy", "follower"],
   params: {
     connections: concurrencyParam("Connections", 50),
     readTime: workTimeParam("Read time", 5),

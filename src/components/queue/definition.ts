@@ -10,6 +10,7 @@ export const queue: ComponentDefinition = {
     "Connected workers pull jobs in order as they free up. " +
     "When the queue is full, new jobs are rejected. Failed jobs can be put back to try again.",
   icon: "stack",
+  keywords: ["message", "jobs", "broker", "async"],
   params: {
     capacity: {
       kind: "number",

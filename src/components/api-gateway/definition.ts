@@ -11,6 +11,7 @@ export const apiGateway: ComponentDefinition = {
     "With rate limiting on, requests above the limit are rejected straight away instead of reaching your services. " +
     "Authentication and routing rules are not modelled.",
   icon: "shield-check",
+  keywords: ["gateway", "rate limit", "front door"],
   params: {
     delay: addedDelayParam(2),
     throughputLimit: throughputLimitParam(20_000),

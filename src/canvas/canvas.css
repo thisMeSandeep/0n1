@@ -31,3 +31,13 @@
   background: transparent;
   pointer-events: none;
 }
+
+/* React Flow's attribution stays visible (React Flow asks that only Pro subscribers hide it), styled quietly. */
+.react-flow__attribution {
+  background: transparent;
+  padding: 2px 8px;
+  font-size: 10px;
+}
+.react-flow__attribution a {
+  color: var(--text-3);
+}

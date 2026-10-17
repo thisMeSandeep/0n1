@@ -10,6 +10,7 @@ export const client: ComponentDefinition = {
     "Each one is a read or a write for a key; with hot keys, a few keys get most of the traffic (Zipf). " +
     "The client doesn't slow down when the system struggles, which is how real traffic behaves.",
   icon: "desktop",
+  keywords: ["user", "browser", "traffic", "load"],
   params: {
     rate: {
       kind: "number",

@@ -54,6 +54,8 @@ export type ComponentDefinition = {
   modelNote: string;
   /** Icon key, resolved to a Phosphor icon by the UI. */
   icon: string;
+  /** Extra search terms for the palette, e.g. "db". Generic words only, no vendor names. */
+  keywords?: readonly string[];
   params: Readonly<Record<string, ParamSpec>>;
   connections: {
     /** Whether other components can send requests to this one. */

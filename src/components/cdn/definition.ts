@@ -10,6 +10,7 @@ export const cdn: ComponentDefinition = {
     "Misses and all writes go on to the connected origin. " +
     "Capacity is treated as unlimited, which is close to true for large CDNs.",
   icon: "globe-hemisphere-west",
+  keywords: ["edge", "static", "content delivery"],
   params: {
     hitRatio: {
       kind: "number",

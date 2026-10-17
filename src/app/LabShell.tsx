@@ -1,7 +1,9 @@
+import { ReactFlowProvider } from "@xyflow/react";
 import { useState } from "react";
 import { Canvas } from "../canvas/Canvas.tsx";
+import { PalettePanel } from "../palette/PalettePanel.tsx";
 import { DesktopNotice } from "./DesktopNotice.tsx";
-import { InspectorPanel, OpenInspectorButton, PalettePanel } from "./Panels.tsx";
+import { InspectorPanel, OpenInspectorButton } from "./Panels.tsx";
 import { TopBar } from "./TopBar.tsx";
 import { useLabLayout } from "./useLabLayout.ts";
 
@@ -22,18 +24,21 @@ export function LabShell() {
     />
   );
 
+  // The provider lets the palette (outside the canvas) place components in view.
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-canvas text-fg">
-      <TopBar />
-      <div className="flex min-h-0 flex-1">
-        <PalettePanel open={layout.paletteOpen} onToggle={layout.togglePalette} />
-        <main aria-label="Canvas" className="relative min-w-0 flex-1">
-          <Canvas />
-          {!layout.inspectorOpen && <OpenInspectorButton onClick={layout.toggleInspector} />}
-          {!layout.inspectorDocked && inspector}
-        </main>
-        {layout.inspectorDocked && inspector}
+    <ReactFlowProvider>
+      <div className="flex h-dvh flex-col overflow-hidden bg-canvas text-fg">
+        <TopBar />
+        <div className="flex min-h-0 flex-1">
+          <PalettePanel open={layout.paletteOpen} onToggle={layout.togglePalette} />
+          <main aria-label="Canvas" className="relative min-w-0 flex-1">
+            <Canvas />
+            {!layout.inspectorOpen && <OpenInspectorButton onClick={layout.toggleInspector} />}
+            {!layout.inspectorDocked && inspector}
+          </main>
+          {layout.inspectorDocked && inspector}
+        </div>
       </div>
-    </div>
+    </ReactFlowProvider>
   );
 }

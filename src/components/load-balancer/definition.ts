@@ -11,6 +11,7 @@ export const loadBalancer: ComponentDefinition = {
     "It adds a small fixed delay and turns requests away above its throughput limit. " +
     "With health checks on, it skips targets that are down; with them off, requests to a down target fail.",
   icon: "git-fork",
+  keywords: ["lb", "proxy", "balance"],
   params: {
     strategy: {
       kind: "choice",

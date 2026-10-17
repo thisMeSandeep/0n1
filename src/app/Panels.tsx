@@ -2,39 +2,6 @@ import { SidebarSimpleIcon } from "@phosphor-icons/react";
 import { IconButton } from "../ui/Button.tsx";
 import { cx } from "../ui/cx.ts";
 
-const panelTransition = "transition-[width] duration-(--duration-panel) ease-standard";
-
-/** Left panel (264px), collapsing to a 56px icon rail. Filled in S10. */
-export function PalettePanel({ open, onToggle }: { open: boolean; onToggle: () => void }) {
-  return (
-    <aside
-      aria-label="Components"
-      className={cx(
-        "flex shrink-0 flex-col overflow-hidden border-r border-line bg-surface",
-        panelTransition,
-        open ? "w-66" : "w-14",
-      )}
-    >
-      <div
-        className={cx(
-          "flex h-14 items-center",
-          open ? "justify-between pr-3 pl-5" : "justify-center",
-        )}
-      >
-        {open && <h2 className="text-sm font-medium text-fg-2">Components</h2>}
-        <IconButton
-          label={open ? "Collapse components panel" : "Expand components panel"}
-          shortcut="["
-          onClick={onToggle}
-          aria-expanded={open}
-        >
-          <SidebarSimpleIcon />
-        </IconButton>
-      </div>
-    </aside>
-  );
-}
-
 type InspectorPanelProps = {
   open: boolean;
   docked: boolean;

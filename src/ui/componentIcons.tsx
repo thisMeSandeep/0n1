@@ -32,6 +32,14 @@ export function componentIcon(key: string): Icon {
   return COMPONENT_ICONS[key] ?? QuestionIcon;
 }
 
+export const CATEGORY_LABEL: Readonly<Record<Category, string>> = {
+  traffic: "Traffic",
+  network: "Network",
+  compute: "Compute",
+  data: "Data",
+  messaging: "Messaging",
+};
+
 /** Category tint for the duotone icon layer (UIUX §5). */
 export const CATEGORY_TINT: Readonly<Record<Category, string>> = {
   traffic: "text-cat-traffic",

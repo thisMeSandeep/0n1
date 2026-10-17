@@ -12,6 +12,7 @@ export const database: ComponentDefinition = {
     "Connected read replicas receive every write after a delay. " +
     "Indexes, locks and disk details are not modelled; query time stands in for all of them.",
   icon: "database",
+  keywords: ["db", "sql", "storage", "primary"],
   params: {
     connections: concurrencyParam("Connections", 50),
     readTime: workTimeParam("Read time", 5),

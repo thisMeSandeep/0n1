@@ -12,6 +12,7 @@ export const cache: ComponentDefinition = {
     "The hit ratio isn't a setting: it emerges from the cache size and how popular keys are. " +
     "Services use it cache-aside: they check it first, and on a miss read the database and store the result.",
   icon: "lightning",
+  keywords: ["memory", "in-memory", "key value"],
   params: {
     size: {
       kind: "number",

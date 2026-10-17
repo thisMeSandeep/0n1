@@ -11,6 +11,7 @@ export const worker: ComponentDefinition = {
     "the backlog stays in the queue instead. " +
     "Each job takes a random amount of work around the average you set, and may call what it's connected to.",
   icon: "gear-six",
+  keywords: ["job", "background", "consumer"],
   params: {
     concurrency: concurrencyParam("Jobs at once", 4),
     workTime: workTimeParam("Work per job", 200, 60_000),
