@@ -1,5 +1,6 @@
 import { createStore } from "zustand/vanilla";
 import type { LayoutTier } from "../app/layout.ts";
+import type { RestorePreview } from "../library/backup.ts";
 import type { Category } from "../model/component.ts";
 
 /** Panel open state, remembered for the layout tier it was set at. */
@@ -29,12 +30,15 @@ export type UiState = {
   commandPaletteOpen: boolean;
   shortcutsOpen: boolean;
   libraryOpen: boolean;
+  /** What a picked backup file would restore, shown in RestoreDialog. */
+  restore: RestorePreview | null;
   /** Bumped to ask the palette to focus its search. */
   paletteSearchRequest: number;
   toggleMinimap(): void;
   setCommandPaletteOpen(open: boolean): void;
   setShortcutsOpen(open: boolean): void;
   setLibraryOpen(open: boolean): void;
+  setRestore(preview: RestorePreview | null): void;
   requestPaletteSearch(): void;
 };
 
@@ -57,11 +61,13 @@ export function createUiStore() {
     commandPaletteOpen: false,
     shortcutsOpen: false,
     libraryOpen: false,
+    restore: null,
     paletteSearchRequest: 0,
     toggleMinimap: () => set((s) => ({ minimap: !s.minimap })),
     setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
     setShortcutsOpen: (open) => set({ shortcutsOpen: open }),
     setLibraryOpen: (open) => set({ libraryOpen: open }),
+    setRestore: (restore) => set({ restore }),
     requestPaletteSearch: () => set((s) => ({ paletteSearchRequest: s.paletteSearchRequest + 1 })),
   }));
 }

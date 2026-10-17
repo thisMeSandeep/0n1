@@ -1,6 +1,7 @@
 import { ReactFlowProvider } from "@xyflow/react";
 import { useEffect, useState } from "react";
 import { Canvas } from "../canvas/Canvas.tsx";
+import { RestoreDialog } from "../library/RestoreDialog.tsx";
 import { PalettePanel } from "../palette/PalettePanel.tsx";
 import { selectionStore } from "../store/index.ts";
 import { CommandPalette } from "./CommandPalette.tsx";
@@ -53,6 +54,7 @@ export function LabShell() {
           {layout.inspectorDocked && inspector}
         </div>
         <CommandPalette />
+        <RestoreDialog />
         <LabShortcuts
           paletteOpen={layout.paletteOpen}
           togglePalette={layout.togglePalette}

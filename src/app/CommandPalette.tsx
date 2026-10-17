@@ -1,16 +1,19 @@
 import {
   CornersOutIcon,
+  DownloadSimpleIcon,
   FolderOpenIcon,
   KeyboardIcon,
   MagnifyingGlassPlusIcon,
   MoonIcon,
   PlusIcon,
   SunIcon,
+  UploadSimpleIcon,
 } from "@phosphor-icons/react";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { useAddComponent } from "../canvas/useAddComponent.ts";
 import { useViewActions } from "../canvas/useViewActions.ts";
 import { registry } from "../components/index.ts";
+import { backUpAll, startRestore } from "../library/backup.ts";
 import { library } from "../library/index.ts";
 import { useSystemsList } from "../library/useSystemsList.ts";
 import { midSentence } from "../model/text.ts";
@@ -162,6 +165,22 @@ function SystemsCommands({ run, onBrowse }: SystemsCommandsProps) {
         icon={<PlusIcon aria-hidden className="text-fg-2" />}
       >
         New system
+      </CommandItem>
+      <CommandItem
+        value="Back up all systems"
+        keywords={["export", "download", "save", "json"]}
+        onSelect={run(() => void backUpAll())}
+        icon={<DownloadSimpleIcon aria-hidden className="text-fg-2" />}
+      >
+        Back up all systems
+      </CommandItem>
+      <CommandItem
+        value="Restore from backup"
+        keywords={["import", "upload", "open file", "json"]}
+        onSelect={run(() => void startRestore())}
+        icon={<UploadSimpleIcon aria-hidden className="text-fg-2" />}
+      >
+        Restore from backup…
       </CommandItem>
       <CommandItem
         value="Browse systems"

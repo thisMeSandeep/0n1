@@ -36,7 +36,7 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
   const view = useViewActions();
 
   // Handlers read live values through a ref, so the listener is attached once.
-  const handlers = useRef<Record<ShortcutId, (event: KeyboardEvent) => void>>(null!);
+  const handlers = useRef<Record<ShortcutId, (event: KeyboardEvent) => void> | null>(null);
   handlers.current = {
     commandPalette: () => {
       const ui = uiStore.getState();
@@ -105,7 +105,7 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
       const shortcut = findShortcut(event);
       if (!shortcut || !shouldHandle(shortcut, event.target)) return;
       event.preventDefault();
-      handlers.current[shortcut.id](event);
+      handlers.current?.[shortcut.id](event);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);

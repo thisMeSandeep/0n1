@@ -54,6 +54,41 @@ export function createLibraryActions({
   }
 
   return {
+    /** Every saved system for a backup, with the open one's unsaved edits. Unreadable ones are left out. */
+    async collectAll(): Promise<SystemDocument[]> {
+      const docs: SystemDocument[] = [];
+      for (const summary of await systems.list()) {
+        try {
+          const doc = await latest(summary.id);
+          if (doc) docs.push(doc);
+        } catch (error) {
+          console.warn(`0n1: leaving unreadable system ${summary.id} out of the backup`, error);
+        }
+      }
+      if (!docs.some((d) => d.id === current().id)) docs.unshift(current());
+      return docs;
+    },
+
+    /** The latest version of one system, for backing it up. */
+    latest,
+
+    /**
+     * Add systems from a backup. Each gets a new id, so nothing existing is
+     * ever overwritten, and a unique name ("Checkout 2" if "Checkout" exists).
+     */
+    async restore(docs: readonly SystemDocument[]): Promise<SystemDocument[]> {
+      const taken = await takenNames();
+      const restored: SystemDocument[] = [];
+      for (const doc of docs) {
+        const name = uniqueName(doc.name, taken);
+        taken.add(name);
+        const copy = { ...structuredClone(doc), id: newId(), name };
+        await systems.save(copy);
+        restored.push(copy);
+      }
+      return restored;
+    },
+
     /** A new blank system, opened. */
     async createAndOpen(): Promise<void> {
       await flush();

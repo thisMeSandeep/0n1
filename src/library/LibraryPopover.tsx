@@ -2,6 +2,7 @@ import {
   CaretDownIcon,
   CopyIcon,
   DotsThreeIcon,
+  DownloadSimpleIcon,
   MagnifyingGlassIcon,
   PencilSimpleIcon,
   PlusIcon,
@@ -16,6 +17,7 @@ import { cx } from "../ui/cx.ts";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../ui/Menu.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/Popover.tsx";
 import { toast } from "../ui/Toast.tsx";
+import { backUpAll, backUpSystem } from "./backup.ts";
 import { library } from "./index.ts";
 import { formatEdited } from "./time.ts";
 import { useSystemsList } from "./useSystemsList.ts";
@@ -156,6 +158,9 @@ function LibraryPanel() {
                 onDuplicate={() =>
                   void attempt(() => library.duplicate(system.id), "Couldn't duplicate that system")
                 }
+                onBackUp={() =>
+                  void attempt(() => backUpSystem(system.id), "Couldn't back up that system")
+                }
                 onDelete={() => void remove(system)}
               />
             </li>
@@ -163,9 +168,16 @@ function LibraryPanel() {
         )}
       </ul>
 
-      <p className="border-t border-line px-4 py-3 text-xs text-fg-2">
-        Your systems live only in this browser.
-      </p>
+      <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3 text-xs text-fg-2">
+        <p>Your systems live only in this browser.</p>
+        <button
+          type="button"
+          onClick={() => void attempt(backUpAll, "Couldn't back up your systems")}
+          className="shrink-0 rounded-kbd font-medium text-accent hover:underline"
+        >
+          Back up now
+        </button>
+      </div>
     </div>
   );
 }
@@ -179,6 +191,7 @@ type SystemRowProps = {
   /** The new name, or null when cancelled. */
   onRenameDone: (name: string | null) => void;
   onDuplicate: () => void;
+  onBackUp: () => void;
   onDelete: () => void;
 };
 
@@ -190,6 +203,7 @@ function SystemRow({
   onRename,
   onRenameDone,
   onDuplicate,
+  onBackUp,
   onDelete,
 }: SystemRowProps) {
   const subtitle = `Edited ${formatEdited(system.updatedAt)}`;
@@ -259,6 +273,9 @@ function SystemRow({
           </MenuItem>
           <MenuItem icon={<CopyIcon />} onSelect={onDuplicate}>
             Duplicate
+          </MenuItem>
+          <MenuItem icon={<DownloadSimpleIcon />} onSelect={onBackUp}>
+            Back up this system
           </MenuItem>
           <MenuSeparator />
           <MenuItem icon={<TrashIcon />} tone="danger" onSelect={onDelete}>

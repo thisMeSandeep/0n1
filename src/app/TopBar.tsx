@@ -13,6 +13,7 @@ import {
   UploadSimpleIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
+import { backUpAll, startRestore } from "../library/backup.ts";
 import { LibraryPopover } from "../library/LibraryPopover.tsx";
 import { uiStore, useUi } from "../store/index.ts";
 import type { SaveStatus } from "../store/ui.ts";
@@ -136,10 +137,10 @@ function LabMenu() {
           </IconButton>
         </MenuTrigger>
         <MenuContent>
-          <MenuItem icon={<DownloadSimpleIcon />} disabled>
-            Back up all systems…
+          <MenuItem icon={<DownloadSimpleIcon />} onSelect={() => void backUpAll()}>
+            Back up all systems
           </MenuItem>
-          <MenuItem icon={<UploadSimpleIcon />} disabled>
+          <MenuItem icon={<UploadSimpleIcon />} onSelect={() => void startRestore()}>
             Restore from backup…
           </MenuItem>
           <MenuItem icon={<ImageIcon />} disabled>

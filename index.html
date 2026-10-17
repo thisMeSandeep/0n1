@@ -13,7 +13,7 @@
         var choice = "system";
         try {
           choice = localStorage.getItem("0n1:theme") || "system";
-        } catch (e) {}
+        } catch {}
         var dark =
           choice === "dark" ||
           (choice !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);

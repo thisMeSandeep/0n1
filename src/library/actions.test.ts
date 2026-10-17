@@ -127,4 +127,28 @@ describe("library actions", () => {
     expect(await names()).toEqual(["First"]);
     expect(await systems.list()).toHaveLength(1);
   });
+
+  it("collects every system for a backup, with the open one's unsaved edits", async () => {
+    const { library, store, systems } = await setup();
+    await systems.save(createSystemDocument({ id: "other", name: "Other", now: 50 }));
+    store.getState().addNode("cache", { x: 0, y: 0 });
+
+    const docs = await library.collectAll();
+    expect(docs.map((d) => d.id).sort()).toEqual(["first", "other"]);
+    expect(docs.find((d) => d.id === "first")?.nodes).toHaveLength(1);
+  });
+
+  it("restores systems with new ids and unique names, never overwriting", async () => {
+    const { library, systems, names } = await setup();
+    const backup = [
+      { ...createSystemDocument({ id: "first", name: "First", now: 10 }), nodes: [] },
+      createSystemDocument({ id: "x", name: "Imported", now: 20 }),
+    ];
+
+    const restored = await library.restore(backup);
+    expect(restored.map((d) => d.name)).toEqual(["First 2", "Imported"]);
+    expect(restored.every((d) => d.id !== "first" && d.id !== "x")).toBe(true);
+    expect((await systems.get("first"))?.name).toBe("First");
+    expect((await names()).sort()).toEqual(["First", "First 2", "Imported"]);
+  });
 });
