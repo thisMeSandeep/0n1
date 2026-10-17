@@ -1,5 +1,6 @@
 import { CornersOutIcon, MinusIcon, PlusIcon } from "@phosphor-icons/react";
 import { useViewport } from "@xyflow/react";
+import { shortcutKeys } from "../app/shortcuts.ts";
 import { IconButton } from "../ui/Button.tsx";
 import { Tooltip } from "../ui/Tooltip.tsx";
 import { useViewActions } from "./useViewActions.ts";
@@ -13,7 +14,7 @@ export function ZoomControls() {
       <IconButton label="Zoom out" size="sm" onClick={view.zoomOut}>
         <MinusIcon />
       </IconButton>
-      <Tooltip content="Zoom to 100%" shortcut="1">
+      <Tooltip content="Zoom to 100%" shortcut={shortcutKeys("zoomToActual")}>
         <button
           type="button"
           onClick={view.zoomToActual}
@@ -25,7 +26,12 @@ export function ZoomControls() {
       <IconButton label="Zoom in" size="sm" onClick={view.zoomIn}>
         <PlusIcon />
       </IconButton>
-      <IconButton label="Fit to view" shortcut="F" size="sm" onClick={view.fitView}>
+      <IconButton
+        label="Fit to view"
+        shortcut={shortcutKeys("fitView")}
+        size="sm"
+        onClick={view.fitView}
+      >
         <CornersOutIcon />
       </IconButton>
     </div>

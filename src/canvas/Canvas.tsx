@@ -8,6 +8,7 @@ import {
   type Connection,
   type EdgeChange,
   type IsValidConnection,
+  MiniMap,
   type NodeChange,
   type OnConnectEnd,
   Panel,
@@ -26,7 +27,7 @@ import {
 } from "react";
 import { registry } from "../components/index.ts";
 import { checkConnection } from "../model/connections.ts";
-import { designStore, selectionStore, useDesign, useSelection } from "../store/index.ts";
+import { designStore, selectionStore, useDesign, useSelection, useUi } from "../store/index.ts";
 import { useTheme } from "../ui/theme/ThemeProvider.tsx";
 import { ComponentEdge } from "./ComponentEdge.tsx";
 import { ComponentNode } from "./ComponentNode.tsx";
@@ -69,6 +70,7 @@ export function Canvas() {
   const selectedNodeIds = useSelection((s) => s.nodeIds);
   const selectedEdgeIds = useSelection((s) => s.edgeIds);
   const { resolved } = useTheme();
+  const minimap = useUi((s) => s.minimap);
 
   const selectedNodes = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
   const [nodes, setNodes] = useState(() => toFlowNodes([], docNodes, docEdges, selectedNodes));
@@ -189,6 +191,19 @@ export function Canvas() {
         <Panel position="bottom-left" className="m-0! mb-6! ml-5!">
           <ZoomControls />
         </Panel>
+        {minimap && (
+          <MiniMap
+            position="bottom-right"
+            pannable
+            zoomable
+            ariaLabel="Minimap"
+            bgColor="var(--surface)"
+            maskColor="var(--scrim)"
+            nodeColor="var(--line-strong)"
+            nodeBorderRadius={4}
+            className="m-0! mr-5! mb-6! overflow-hidden rounded-card border border-line"
+          />
+        )}
       </ReactFlow>
       {quickAdd && (
         <QuickAdd key={quickAdd.key} request={quickAdd} onClose={() => setQuickAdd(null)} />

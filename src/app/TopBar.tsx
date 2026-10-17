@@ -13,11 +13,12 @@ import {
   UploadSimpleIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
-import { useDesign } from "../store/index.ts";
+import { uiStore, useDesign } from "../store/index.ts";
 import { Button, IconButton } from "../ui/Button.tsx";
 import { Dialog, DialogClose, DialogContent, DialogFooter } from "../ui/Dialog.tsx";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../ui/Menu.tsx";
 import { useTheme } from "../ui/theme/ThemeProvider.tsx";
+import { shortcutKeys } from "./shortcuts.ts";
 
 /**
  * The 52px top bar (UIUX §3). Run controls and most menu items are
@@ -107,7 +108,11 @@ function LabMenu() {
             Download image…
           </MenuItem>
           <MenuSeparator />
-          <MenuItem icon={<KeyboardIcon />} shortcut="?" disabled>
+          <MenuItem
+            icon={<KeyboardIcon />}
+            shortcut={shortcutKeys("shortcuts")}
+            onSelect={() => uiStore.getState().setShortcutsOpen(true)}
+          >
             Keyboard shortcuts
           </MenuItem>
           <MenuItem icon={<InfoIcon />} onSelect={() => setAboutOpen(true)}>

@@ -1,11 +1,12 @@
 import { MagnifyingGlassIcon, SidebarSimpleIcon } from "@phosphor-icons/react";
 import { type DragEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
-import { isTypingTarget } from "../app/layout.ts";
+import { shortcutKeys } from "../app/shortcuts.ts";
 import { COMPONENT_DRAG_TYPE } from "../canvas/placement.ts";
 import { useAddComponent } from "../canvas/useAddComponent.ts";
 import { registry } from "../components/index.ts";
 import type { Category, ComponentDefinition } from "../model/component.ts";
 import { midSentence } from "../model/text.ts";
+import { useUi } from "../store/index.ts";
 import { IconButton } from "../ui/Button.tsx";
 import { CollapsibleSection } from "../ui/Collapsible.tsx";
 import { CATEGORY_LABEL, CATEGORY_TINT, componentIcon } from "../ui/componentIcons.tsx";
@@ -35,18 +36,11 @@ export function PalettePanel({ open, onToggle }: { open: boolean; onToggle: () =
 
   const results = useMemo(() => filterComponents(registry.list(), query), [query]);
 
-  // `/` focuses search from anywhere, opening the panel first if needed.
+  // `/` (see shortcuts.ts) opens the panel if needed, then asks for focus here.
+  const searchRequest = useUi((s) => s.paletteSearchRequest);
   useEffect(() => {
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (isTypingTarget(event.target)) return;
-      event.preventDefault();
-      if (!open) onToggle();
-      setFocusSearch(true);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onToggle]);
+    if (searchRequest > 0) setFocusSearch(true);
+  }, [searchRequest]);
 
   useEffect(() => {
     if (focusSearch && open) {
@@ -90,7 +84,7 @@ export function PalettePanel({ open, onToggle }: { open: boolean; onToggle: () =
         {open && <h2 className="text-sm font-medium text-fg-2">Components</h2>}
         <IconButton
           label={open ? "Collapse components panel" : "Expand components panel"}
-          shortcut="["
+          shortcut={shortcutKeys("togglePalette")}
           onClick={onToggle}
           aria-expanded={open}
         >
@@ -115,7 +109,7 @@ export function PalettePanel({ open, onToggle }: { open: boolean; onToggle: () =
                 spellCheck={false}
                 className="w-full min-w-0 bg-transparent text-sm text-fg outline-none placeholder:text-fg-3 [&::-webkit-search-cancel-button]:appearance-none"
               />
-              {!query && <Kbd>/</Kbd>}
+              {!query && <Kbd>{shortcutKeys("searchComponents")}</Kbd>}
             </label>
           </div>
 

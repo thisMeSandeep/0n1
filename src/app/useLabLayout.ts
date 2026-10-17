@@ -3,7 +3,6 @@ import { useMediaQuery } from "../ui/hooks/useMediaQuery.ts";
 import {
   defaultPanels,
   FINE_POINTER_QUERY,
-  isTypingTarget,
   type LayoutTier,
   type PanelState,
   TIER_QUERIES,
@@ -21,7 +20,7 @@ export type LabLayout = PanelState & {
 
 /**
  * Panel state for the lab. Each layout tier has its own defaults; crossing a
- * breakpoint resets to them, and `[` / `]` toggle the panels within a tier.
+ * breakpoint resets to them. `[` / `]` (see shortcuts.ts) toggle the panels.
  * Persisted in S16.
  */
 export function useLabLayout(): LabLayout {
@@ -46,16 +45,6 @@ export function useLabLayout(): LabLayout {
     () => setPanels((p) => (p.inspectorOpen ? p : { ...p, inspectorOpen: true })),
     [],
   );
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target)) return;
-      if (event.key === "[") togglePalette();
-      else if (event.key === "]") toggleInspector();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [togglePalette, toggleInspector]);
 
   return {
     ...panels,

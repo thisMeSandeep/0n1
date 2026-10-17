@@ -1,5 +1,6 @@
 import { SidebarSimpleIcon } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
+import { shortcutKeys } from "../app/shortcuts.ts";
 import { IconButton } from "../ui/Button.tsx";
 
 type InspectorHeaderProps = {
@@ -24,7 +25,11 @@ export function InspectorHeader({ icon, title, subtitle, actions, onClose }: Ins
       </div>
       <div className="flex shrink-0 items-center">
         {actions}
-        <IconButton label="Close inspector" shortcut="]" onClick={onClose}>
+        <IconButton
+          label="Close inspector"
+          shortcut={shortcutKeys("toggleInspector")}
+          onClick={onClose}
+        >
           <SidebarSimpleIcon className="-scale-x-100" />
         </IconButton>
       </div>

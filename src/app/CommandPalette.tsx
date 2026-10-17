@@ -1,10 +1,16 @@
-import { CornersOutIcon, MagnifyingGlassPlusIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
+import {
+  CornersOutIcon,
+  KeyboardIcon,
+  MagnifyingGlassPlusIcon,
+  MoonIcon,
+  SunIcon,
+} from "@phosphor-icons/react";
 import * as RadixDialog from "@radix-ui/react-dialog";
-import { useEffect, useState } from "react";
 import { useAddComponent } from "../canvas/useAddComponent.ts";
 import { useViewActions } from "../canvas/useViewActions.ts";
 import { registry } from "../components/index.ts";
 import { midSentence } from "../model/text.ts";
+import { uiStore, useUi } from "../store/index.ts";
 import {
   Command,
   CommandEmpty,
@@ -16,27 +22,18 @@ import {
 import { CATEGORY_TINT, componentIcon } from "../ui/componentIcons.tsx";
 import { cx } from "../ui/cx.ts";
 import { useTheme } from "../ui/theme/ThemeProvider.tsx";
+import { shortcutKeys } from "./shortcuts.ts";
 
 /**
- * ⌘K / Ctrl+K: every action by name (UIUX §11). Later steps add their
- * commands here (systems, run controls, backup…).
+ * ⌘K / Ctrl+K (see shortcuts.ts): every action by name (UIUX §11). Later
+ * steps add their commands here (systems, run controls, backup…).
  */
 export function CommandPalette() {
-  const [open, setOpen] = useState(false);
+  const open = useUi((s) => s.commandPaletteOpen);
+  const setOpen = (next: boolean) => uiStore.getState().setCommandPaletteOpen(next);
   const { addAtCentre } = useAddComponent();
   const view = useViewActions();
   const { resolved, setPreference } = useTheme();
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setOpen((current) => !current);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   const run = (action: () => void) => () => {
     setOpen(false);
@@ -86,7 +83,7 @@ export function CommandPalette() {
               <CommandGroup heading="View">
                 <CommandItem
                   value="Fit to view"
-                  shortcut="F"
+                  shortcut={shortcutKeys("fitView")}
                   onSelect={run(view.fitView)}
                   icon={<CornersOutIcon aria-hidden className="text-fg-2" />}
                 >
@@ -94,11 +91,22 @@ export function CommandPalette() {
                 </CommandItem>
                 <CommandItem
                   value="Zoom to 100%"
-                  shortcut="1"
+                  shortcut={shortcutKeys("zoomToActual")}
                   onSelect={run(view.zoomToActual)}
                   icon={<MagnifyingGlassPlusIcon aria-hidden className="text-fg-2" />}
                 >
                   Zoom to 100%
+                </CommandItem>
+              </CommandGroup>
+              <CommandGroup heading="Help">
+                <CommandItem
+                  value="Keyboard shortcuts"
+                  keywords={["keys", "hotkeys", "help"]}
+                  shortcut={shortcutKeys("shortcuts")}
+                  onSelect={run(() => uiStore.getState().setShortcutsOpen(true))}
+                  icon={<KeyboardIcon aria-hidden className="text-fg-2" />}
+                >
+                  Keyboard shortcuts
                 </CommandItem>
               </CommandGroup>
               <CommandGroup heading="Appearance">

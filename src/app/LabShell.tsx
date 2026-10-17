@@ -5,6 +5,7 @@ import { PalettePanel } from "../palette/PalettePanel.tsx";
 import { selectionStore } from "../store/index.ts";
 import { CommandPalette } from "./CommandPalette.tsx";
 import { DesktopNotice } from "./DesktopNotice.tsx";
+import { LabShortcuts } from "./LabShortcuts.tsx";
 import { InspectorPanel, OpenInspectorButton } from "./Panels.tsx";
 import { TopBar } from "./TopBar.tsx";
 import { useLabLayout } from "./useLabLayout.ts";
@@ -52,6 +53,11 @@ export function LabShell() {
           {layout.inspectorDocked && inspector}
         </div>
         <CommandPalette />
+        <LabShortcuts
+          paletteOpen={layout.paletteOpen}
+          togglePalette={layout.togglePalette}
+          toggleInspector={layout.toggleInspector}
+        />
       </div>
     </ReactFlowProvider>
   );

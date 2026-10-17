@@ -1,4 +1,5 @@
 import { CopyIcon, DotsThreeIcon, TrashIcon } from "@phosphor-icons/react";
+import { shortcutKeys } from "../app/shortcuts.ts";
 import { registry } from "../components/index.ts";
 import { designStore, selectionStore, useDesign } from "../store/index.ts";
 import { IconButton } from "../ui/Button.tsx";
@@ -90,14 +91,14 @@ function ComponentMenu({ nodeId }: { nodeId: string }) {
         </IconButton>
       </MenuTrigger>
       <MenuContent>
-        <MenuItem icon={<CopyIcon />} shortcut="⌘D" onSelect={duplicate}>
+        <MenuItem icon={<CopyIcon />} shortcut={shortcutKeys("duplicate")} onSelect={duplicate}>
           Duplicate
         </MenuItem>
         <MenuSeparator />
         <MenuItem
           icon={<TrashIcon />}
           tone="danger"
-          shortcut="⌫"
+          shortcut={shortcutKeys("delete")}
           onSelect={() => designStore.getState().removeNodes([nodeId])}
         >
           Delete

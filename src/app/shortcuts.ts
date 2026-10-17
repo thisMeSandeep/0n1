@@ -1,0 +1,177 @@
+import { isTypingTarget } from "./layout.ts";
+
+/**
+ * Every keyboard shortcut in the lab (UIUX §11), in one place. The global
+ * handler, the `?` sheet, tooltips and menus all read from here, so they
+ * can't drift apart. Run controls (Space, `.`, Shift R) join in S29 and
+ * take down (K) in S30.
+ */
+
+export type KeyCombo = {
+  /** `KeyboardEvent.key`: "z", "Backspace", "ArrowUp", "?", "[". */
+  key: string;
+  /** ⌘ on Mac, Ctrl elsewhere. */
+  mod?: boolean;
+  /** Only checked for letters; for symbols the key itself already says it ("?" is Shift + /). */
+  shift?: boolean;
+};
+
+export type ShortcutGroup = "General" | "Editing" | "View" | "Panels";
+
+export type Shortcut = {
+  id: ShortcutId;
+  label: string;
+  group: ShortcutGroup;
+  combos: readonly KeyCombo[];
+  /** Global shortcuts also work while typing or inside menus and dialogs (e.g. ⌘K). */
+  global?: boolean;
+  /** Override how the keys are shown in the sheet. */
+  display?: string;
+};
+
+export const SHORTCUT_IDS = [
+  "commandPalette",
+  "shortcuts",
+  "searchComponents",
+  "undo",
+  "redo",
+  "duplicate",
+  "delete",
+  "selectAll",
+  "deselect",
+  "move",
+  "fitView",
+  "zoomToActual",
+  "toggleMinimap",
+  "togglePalette",
+  "toggleInspector",
+] as const;
+export type ShortcutId = (typeof SHORTCUT_IDS)[number];
+
+const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].map((key) => ({ key }));
+
+export const SHORTCUTS: readonly Shortcut[] = [
+  {
+    id: "commandPalette",
+    label: "Command palette",
+    group: "General",
+    combos: [{ key: "k", mod: true }],
+    global: true,
+  },
+  { id: "shortcuts", label: "Keyboard shortcuts", group: "General", combos: [{ key: "?" }] },
+  { id: "searchComponents", label: "Search components", group: "General", combos: [{ key: "/" }] },
+  { id: "undo", label: "Undo", group: "Editing", combos: [{ key: "z", mod: true }] },
+  {
+    id: "redo",
+    label: "Redo",
+    group: "Editing",
+    combos: [
+      { key: "z", mod: true, shift: true },
+      { key: "y", mod: true },
+    ],
+  },
+  {
+    id: "duplicate",
+    label: "Duplicate selection",
+    group: "Editing",
+    combos: [{ key: "d", mod: true }],
+  },
+  {
+    id: "delete",
+    label: "Delete selection",
+    group: "Editing",
+    combos: [{ key: "Backspace" }, { key: "Delete" }],
+  },
+  {
+    id: "selectAll",
+    label: "Select everything",
+    group: "Editing",
+    combos: [{ key: "a", mod: true }],
+  },
+  { id: "deselect", label: "Deselect", group: "Editing", combos: [{ key: "Escape" }] },
+  {
+    id: "move",
+    label: "Move selected components (hold Shift to move further)",
+    group: "Editing",
+    combos: arrows,
+    display: "← ↑ → ↓",
+  },
+  { id: "fitView", label: "Fit to view", group: "View", combos: [{ key: "f" }] },
+  { id: "zoomToActual", label: "Zoom to 100%", group: "View", combos: [{ key: "1" }] },
+  { id: "toggleMinimap", label: "Show or hide the minimap", group: "View", combos: [{ key: "m" }] },
+  {
+    id: "togglePalette",
+    label: "Collapse or expand the components panel",
+    group: "Panels",
+    combos: [{ key: "[" }],
+  },
+  {
+    id: "toggleInspector",
+    label: "Collapse or expand the inspector",
+    group: "Panels",
+    combos: [{ key: "]" }],
+  },
+];
+
+export const isMac =
+  typeof navigator !== "undefined" &&
+  /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+
+type KeyLike = Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey">;
+
+const isLetter = (key: string) => /^[a-z]$/i.test(key);
+
+export function matchesCombo(event: KeyLike, combo: KeyCombo, mac = isMac): boolean {
+  if (event.altKey) return false;
+  const mod = mac ? event.metaKey : event.ctrlKey;
+  const otherMod = mac ? event.ctrlKey : event.metaKey;
+  if (Boolean(combo.mod) !== mod || otherMod) return false;
+  if (isLetter(combo.key)) {
+    return event.key.toLowerCase() === combo.key && Boolean(combo.shift) === event.shiftKey;
+  }
+  return event.key === combo.key;
+}
+
+export function findShortcut(event: KeyLike, mac = isMac): Shortcut | null {
+  return SHORTCUTS.find((s) => s.combos.some((c) => matchesCombo(event, c, mac))) ?? null;
+}
+
+/** Inside a menu, dialog, popover list or command palette: leave keys to it. */
+function isOverlayTarget(target: EventTarget | null): boolean {
+  if (!target || typeof (target as Element).closest !== "function") return false;
+  return (
+    (target as Element).closest('[role="dialog"], [role="menu"], [role="listbox"], [cmdk-root]') !==
+    null
+  );
+}
+
+/** Whether a matched shortcut should run for this event's target. */
+export function shouldHandle(shortcut: Shortcut, target: EventTarget | null): boolean {
+  return shortcut.global === true || (!isTypingTarget(target) && !isOverlayTarget(target));
+}
+
+const MAC_KEYS: Record<string, string> = {
+  Backspace: "⌫",
+  Delete: "⌦",
+  Escape: "Esc",
+  ArrowUp: "↑",
+  ArrowDown: "↓",
+  ArrowLeft: "←",
+  ArrowRight: "→",
+};
+const OTHER_KEYS: Record<string, string> = { ...MAC_KEYS, Backspace: "Backspace", Delete: "Del" };
+
+/** "⌘⇧Z" on Mac, "Ctrl+Shift+Z" elsewhere. */
+export function formatCombo(combo: KeyCombo, mac = isMac): string {
+  const names = mac ? MAC_KEYS : OTHER_KEYS;
+  const key = names[combo.key] ?? (isLetter(combo.key) ? combo.key.toUpperCase() : combo.key);
+  if (mac) return `${combo.mod ? "⌘" : ""}${combo.shift ? "⇧" : ""}${key}`;
+  return [combo.mod && "Ctrl", combo.shift && "Shift", key].filter(Boolean).join("+");
+}
+
+/** The primary keys for a shortcut, for tooltips and menus. */
+export function shortcutKeys(id: ShortcutId, mac = isMac): string {
+  const shortcut = SHORTCUTS.find((s) => s.id === id);
+  const combo = shortcut?.combos[0];
+  return combo ? formatCombo(combo, mac) : "";
+}

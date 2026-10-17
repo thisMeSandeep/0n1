@@ -2,6 +2,7 @@ import { SidebarSimpleIcon } from "@phosphor-icons/react";
 import { Inspector } from "../inspector/Inspector.tsx";
 import { IconButton } from "../ui/Button.tsx";
 import { cx } from "../ui/cx.ts";
+import { shortcutKeys } from "./shortcuts.ts";
 
 type InspectorPanelProps = {
   open: boolean;
@@ -33,7 +34,7 @@ export function OpenInspectorButton({ onClick }: { onClick: () => void }) {
   return (
     <IconButton
       label="Open inspector"
-      shortcut="]"
+      shortcut={shortcutKeys("toggleInspector")}
       variant="secondary"
       onClick={onClick}
       className="absolute top-3 right-3 z-10"
