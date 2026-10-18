@@ -1,5 +1,5 @@
 import type { SimulationCommand, SimulationEvent } from "../engine/worker/protocol.ts";
-import { type SimulationStore, simulationStore } from "./store.ts";
+import { MAX_TRACES, type SimulationStore, simulationStore } from "./store.ts";
 
 /** The part of a Worker the client needs; a fake in tests. */
 export type WorkerLike = {
@@ -12,13 +12,25 @@ export type WorkerLike = {
 export function applyEvent(store: SimulationStore, event: SimulationEvent): void {
   switch (event.type) {
     case "loaded":
+      // A new run: traces from the last one no longer apply.
       store.setState({
         errors: event.errors,
         warnings: event.warnings,
         lastError: null,
+        traces: [],
+        tracesPending: 0,
         ...(event.ok ? {} : { snapshot: null, running: false }),
       });
       return;
+    case "trace": {
+      const { traces, tracesPending } = store.getState();
+      store.setState({
+        traces: [event.trace, ...traces].slice(0, MAX_TRACES),
+        tracesPending:
+          event.trace.reason === "asked" ? Math.max(0, tracesPending - 1) : tracesPending,
+      });
+      return;
+    }
     case "snapshot":
       store.setState({
         snapshot: event.snapshot,

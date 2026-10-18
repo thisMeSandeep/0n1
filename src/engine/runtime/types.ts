@@ -2,6 +2,7 @@ import type { RuntimeNode } from "../compile.ts";
 import type { ScheduledEvent } from "../core/eventQueue.ts";
 import type { Rng } from "../core/prng.ts";
 import type { NodeRecorder, SystemRecorder } from "../metrics/recorder.ts";
+import type { Trace } from "./trace.ts";
 
 /** One request travelling through the system. Retries are new attempts of the same request. */
 export type Request = {
@@ -22,6 +23,10 @@ export type Request = {
    * read or write: cache lookups, fills and invalidations, and replication.
    */
   op?: "get" | "set" | "delete" | "replicate";
+  /** Set when this request is being traced (S42): every hop records a span. */
+  trace?: Trace;
+  /** The span of the visit this copy belongs to, so calls it makes become its children. */
+  span?: number;
 };
 
 export type FailureReason =
@@ -71,6 +76,8 @@ export type BehaviourContext = {
   isUp(id: string): boolean;
   /** The Traffic % control as a multiplier (1 = as configured); clients scale their rate by it. */
   traffic(): number;
+  /** Request tracing (S42): a trace for a client's new request, when one is wanted. */
+  tracing: { begin(kind: "read" | "write", at: number): Trace | undefined };
   nextRequestId(): number;
   /** Request sampling (S26): clients send one request per `weight` real ones. */
   sampling: {

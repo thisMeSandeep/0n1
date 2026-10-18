@@ -1,4 +1,5 @@
 import { edgeKey, type MetricsSnapshot, type NodeMetrics } from "../engine/metrics/recorder.ts";
+import type { TraceRecord } from "../engine/runtime/trace.ts";
 import type { SystemDocument, SystemNode } from "../model/document.ts";
 import {
   formatCompact,
@@ -6,6 +7,7 @@ import {
   formatPercent,
   type Measure,
 } from "../simulation/format.ts";
+import { whereTimeWent } from "../tracing/waterfall.ts";
 
 /*
  * Bottleneck explanations (S41): rules over a live snapshot that say what's
@@ -87,19 +89,48 @@ const failedHere = (m: NodeMetrics) => (m.arrivals > 0 ? Math.min(1, m.failures 
 /** Little's law: time in line ≈ requests waiting ÷ rate they're served at. */
 const waitMs = (m: NodeMetrics) => (m.throughput > 0 ? (m.waiting / m.throughput) * 1000 : null);
 
-/**
- * The insights for one snapshot, worst first. `backlogGrowth` is how fast
- * each queue's backlog grew lately (jobs per second), from InsightTracker.
- */
+/** p99 users see from which "requests are slow" is worth a note (the vitals' amber, live.ts). */
+export const SLOW_P99_MS = 500;
+/** A slow trace this recent (simulated ms) still describes the system. */
+export const TRACE_FRESH_MS = 15_000;
+/** One component took at least this share of a slow request's time. */
+export const TIME_SHARE = 0.5;
+
+export type InsightContext = {
+  /** How fast each queue's backlog grew lately (jobs per second), from InsightTracker. */
+  backlogGrowth?: ReadonlyMap<string, number>;
+  /** The run's slowest recent request (S42): where its time went. */
+  slowTrace?: TraceRecord | null;
+};
+
+/** The insights for one snapshot, worst first. */
 export function findInsights(
   snapshot: MetricsSnapshot,
   doc: SystemDocument,
-  backlogGrowth: ReadonlyMap<string, number> = new Map(),
+  { backlogGrowth = new Map(), slowTrace = null }: InsightContext = {},
 ): Insight[] {
   const insights: Insight[] = [];
   const nodes = new Map(doc.nodes.map((n) => [n.id, n]));
   const metricsOf = (id: string) => snapshot.nodes[id];
   const nameOf = (id: string) => nodes.get(id)?.name ?? id;
+  const spent = timeSpent(snapshot, slowTrace);
+  // Waiting at a component that's only full because what it calls is
+  // overloaded: the time belongs to that, further down.
+  let blamed = spent?.node;
+  for (let hops = 0; blamed && hops < doc.nodes.length; hops++) {
+    if (!overloaded(metricsOf(blamed))) break;
+    const next = downstream(doc, blamed).find((id) => overloaded(metricsOf(id)));
+    if (!next) break;
+    blamed = next;
+  }
+  const spentText = spent
+    ? spentSentence(
+        spent,
+        nameOf(spent.node),
+        blamed && blamed !== spent.node ? nameOf(blamed) : null,
+      )
+    : "";
+  const spentAt = (id: string) => (spent && blamed === id ? ` ${spentText}` : "");
 
   // Components down, and connections cut: the plainest causes.
   for (const node of doc.nodes) {
@@ -164,7 +195,7 @@ export function findInsights(
         severity: "fail",
         nodeId: node.id,
         title: `${node.name} ${capacity?.full ?? "is overloaded"}.`,
-        detail: waiting + turnedAway,
+        detail: waiting + turnedAway + spentAt(node.id),
         ...(fix ? { fix } : {}),
       });
       continue;
@@ -208,9 +239,12 @@ export function findInsights(
       severity: "fail",
       nodeId: culprit?.id ?? client.id,
       title: `Requests from ${client.name} are timing out.`,
-      detail: culprit
-        ? `${percent(m.errorRate)} give up after ${duration(timeout)}. The wait is in ${culprit.name}.`
-        : `${percent(m.errorRate)} give up after ${duration(timeout)}.`,
+      detail:
+        (culprit
+          ? `${percent(m.errorRate)} give up after ${duration(timeout)}. The wait is in ${culprit.name}.`
+          : `${percent(m.errorRate)} give up after ${duration(timeout)}.`) +
+        // Once only: a bottleneck's own note already says where the time went.
+        (culprit && !bottlenecks.includes(culprit) ? spentAt(culprit.id) : ""),
     });
   }
 
@@ -285,8 +319,48 @@ export function findInsights(
     });
   }
 
+  // Slow, with nothing above explaining it: say where a slow request's time went.
+  const p99 = snapshot.system.latency?.p99 ?? 0;
+  if (spent && blamed && p99 >= SLOW_P99_MS && !insights.some((i) => i.nodeId === blamed)) {
+    const node = nodes.get(blamed);
+    const capacity = node ? CAPACITY[node.type] : undefined;
+    insights.push({
+      id: `slow:${blamed}`,
+      severity: "warn",
+      nodeId: blamed,
+      title: `Requests are slow: p99 is ${duration(p99)}.`,
+      detail: spentText,
+      ...(spent.waited >= spent.worked
+        ? capacity
+          ? { fix: capacity.fix }
+          : {}
+        : { fix: "That's its own work: a cache in front of it would let requests skip it." }),
+    });
+  }
+
   // Worst first: failures before warnings, keeping the order found within each.
   return insights.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "fail" ? -1 : 1));
+}
+
+type Spent = { node: string; share: number; waited: number; worked: number; total: number };
+
+/** The component that took most of a recent slow request's time, if one took at least TIME_SHARE. */
+function timeSpent(snapshot: MetricsSnapshot, trace: TraceRecord | null): Spent | null {
+  if (!trace || snapshot.time - trace.finishedAt > TRACE_FRESH_MS) return null;
+  const top = whereTimeWent(trace)[0];
+  if (!top || top.share < TIME_SHARE) return null;
+  return { ...top, total: trace.finishedAt - trace.startedAt };
+}
+
+/**
+ * "In a slow request just now, 82% of its 2 s was spent waiting in line at
+ * Links DB." With `behind`: "…at Shortener API · 1, whose requests are all
+ * waiting on Links DB."
+ */
+function spentSentence(spent: Spent, name: string, behind: string | null): string {
+  const how = spent.waited >= spent.worked ? "waiting in line at" : "being worked on at";
+  const why = behind ? `, whose requests are all waiting on ${behind}` : "";
+  return `In a slow request just now, ${percent(spent.share)} of its ${duration(spent.total)} was spent ${how} ${name}${why}.`;
 }
 
 /** "A", "A and B", "A, B and C". */

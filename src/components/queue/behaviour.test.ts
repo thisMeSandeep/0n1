@@ -46,6 +46,7 @@ function pipeline(
     sampling: { weight: () => 1, countRequest: () => {} },
     isUp: () => true,
     traffic: () => 1,
+    tracing: { begin: () => undefined },
     send: (to: string, request: Request, reply: Reply) => {
       sim.schedule(0, () =>
         behaviours[to]?.handle(request, (outcome) => {

@@ -1,4 +1,4 @@
-import { CopyIcon, DotsThreeIcon, PowerIcon, TrashIcon } from "@phosphor-icons/react";
+import { CopyIcon, DotsThreeIcon, PathIcon, PowerIcon, TrashIcon } from "@phosphor-icons/react";
 import { Fragment } from "react";
 import { shortcutKeys } from "../app/shortcuts.ts";
 import type { ShapeSettings } from "../components/client/shape.ts";
@@ -101,6 +101,7 @@ function ComponentMenu({ nodeId }: { nodeId: string }) {
     if (copy) selectionStore.getState().select({ nodeIds: [copy], edgeIds: [] });
   };
   const down = useLive((s) => s.nodes[nodeId]?.status === "down");
+  const isClient = useDesign((s) => s.doc.nodes.find((n) => n.id === nodeId)?.type === "client");
   return (
     <Menu>
       <MenuTrigger asChild>
@@ -112,6 +113,11 @@ function ComponentMenu({ nodeId }: { nodeId: string }) {
         <MenuItem icon={<CopyIcon />} shortcut={shortcutKeys("duplicate")} onSelect={duplicate}>
           Duplicate
         </MenuItem>
+        {isClient && (
+          <MenuItem icon={<PathIcon />} onSelect={() => simulation.trace(nodeId)}>
+            Trace a request
+          </MenuItem>
+        )}
         <MenuItem
           icon={<PowerIcon />}
           shortcut={shortcutKeys("takeDown")}

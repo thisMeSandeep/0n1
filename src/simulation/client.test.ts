@@ -79,4 +79,28 @@ describe("simulation client", () => {
     expect(store.getState()).toMatchObject({ snapshot: null, running: false });
     expect(store.getState().errors[0]?.message).toMatch(/Add a Client/);
   });
+
+  it("keeps traces from the run, newest first, and clears them for a new run", () => {
+    const store = createSimulationStore();
+    store.setState({ tracesPending: 1 });
+    const trace = (id: string, reason: "asked" | "slow") => ({
+      type: "trace" as const,
+      trace: {
+        id,
+        reason,
+        client: "users",
+        kind: "read" as const,
+        startedAt: 0,
+        finishedAt: 10,
+        outcome: "ok" as const,
+        spans: [],
+      },
+    });
+    applyEvent(store, trace("a", "slow"));
+    applyEvent(store, trace("b", "asked"));
+    expect(store.getState().traces.map((t) => t.id)).toEqual(["b", "a"]);
+    expect(store.getState().tracesPending).toBe(0);
+    applyEvent(store, { type: "loaded", ok: true, errors: [], warnings: [] });
+    expect(store.getState().traces).toEqual([]);
+  });
 });

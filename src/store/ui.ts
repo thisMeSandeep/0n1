@@ -1,5 +1,6 @@
 import { createStore } from "zustand/vanilla";
 import type { LayoutTier } from "../app/layout.ts";
+import type { TraceRecord } from "../engine/runtime/trace.ts";
 import type { RestorePreview } from "../library/backup.ts";
 import type { Category } from "../model/component.ts";
 
@@ -43,6 +44,9 @@ export type UiState = {
   /** The chaos timeline strip under the canvas (S40). */
   timelineOpen: boolean;
   setTimelineOpen(open: boolean): void;
+  /** The request trace shown in the inspector and lit up on the canvas (S42). */
+  openTrace: TraceRecord | null;
+  setOpenTrace(trace: TraceRecord | null): void;
   toggleMinimap(): void;
   setCommandPaletteOpen(open: boolean): void;
   setShortcutsOpen(open: boolean): void;
@@ -78,6 +82,8 @@ export function createUiStore() {
     setImageExportOpen: (imageExportOpen) => set({ imageExportOpen }),
     timelineOpen: false,
     setTimelineOpen: (timelineOpen) => set({ timelineOpen }),
+    openTrace: null,
+    setOpenTrace: (openTrace) => set({ openTrace }),
     toggleMinimap: () => set((s) => ({ minimap: !s.minimap })),
     setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
     setShortcutsOpen: (open) => set({ shortcutsOpen: open }),

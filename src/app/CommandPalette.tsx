@@ -10,6 +10,7 @@ import {
   KeyboardIcon,
   MagnifyingGlassPlusIcon,
   MoonIcon,
+  PathIcon,
   PlayIcon,
   PlusIcon,
   SkipForwardIcon,
@@ -104,6 +105,14 @@ export function CommandPalette() {
                   icon={<ArrowCounterClockwiseIcon aria-hidden className="text-fg-2" />}
                 >
                   Reset the run
+                </CommandItem>
+                <CommandItem
+                  value="Trace a request"
+                  keywords={["follow", "path", "hops", "waterfall", "latency"]}
+                  onSelect={run(() => simulation.trace())}
+                  icon={<PathIcon aria-hidden className="text-fg-2" />}
+                >
+                  Trace a request
                 </CommandItem>
                 <CommandItem
                   value={timelineOpen ? "Hide the chaos timeline" : "Show the chaos timeline"}

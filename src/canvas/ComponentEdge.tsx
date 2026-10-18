@@ -2,6 +2,7 @@ import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getBezierPath } from "@xyf
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLive } from "../simulation/index.ts";
 import type { EdgeLive, EdgeStatus } from "../simulation/live.ts";
+import { useTracedLink } from "../tracing/TraceViews.tsx";
 import { cx } from "../ui/cx.ts";
 import { usePrefersReducedMotion } from "../ui/hooks/useMediaQuery.ts";
 import type { ComponentFlowEdge } from "./flow.ts";
@@ -26,6 +27,8 @@ const STROKE: Record<EdgeStatus, string> = {
  */
 export const ComponentEdge = memo(function ComponentEdge({
   id,
+  source,
+  target,
   sourceX,
   sourceY,
   targetX,
@@ -43,6 +46,8 @@ export const ComponentEdge = memo(function ComponentEdge({
     targetPosition,
   });
   const view = useLive((s) => s.edges[id]);
+  // A request trace is open (S42): the connections it used light up.
+  const traced = useTracedLink(source, target);
   const reducedMotion = usePrefersReducedMotion();
   const [hovered, setHovered] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
@@ -70,9 +75,18 @@ export const ComponentEdge = memo(function ComponentEdge({
         path={path}
         interactionWidth={16}
         style={{
-          stroke: selected ? "var(--accent)" : STROKE[status],
-          strokeWidth: selected ? Math.max(2, width) : width,
-          strokeOpacity: selected ? 1 : tinted ? 0.55 : status === "down" ? 0.6 : 1,
+          stroke: selected || traced ? "var(--accent)" : STROKE[status],
+          strokeWidth: selected || traced ? Math.max(2, width) : width,
+          strokeOpacity:
+            traced === false
+              ? 0.25
+              : selected || traced
+                ? 1
+                : tinted
+                  ? 0.55
+                  : status === "down"
+                    ? 0.6
+                    : 1,
           // Down: a dead end. Cut (chaos timeline): broken right through.
           strokeDasharray: status === "down" ? "4 6" : status === "cut" ? "2 6" : undefined,
           strokeLinecap: "round",

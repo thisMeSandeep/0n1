@@ -2,6 +2,10 @@ import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
 import type { CompileIssue } from "../engine/compile.ts";
 import type { MetricsSnapshot } from "../engine/metrics/recorder.ts";
+import type { TraceRecord } from "../engine/runtime/trace.ts";
+
+/** Traces kept for the current run, newest first. */
+export const MAX_TRACES = 30;
 
 /**
  * Live simulation state on the main thread, fed by the worker. Kept apart
@@ -20,6 +24,10 @@ export type SimulationState = {
   lastError: string | null;
   /** The user pressed Run; problems stopping it should be shown. */
   runAttempted: boolean;
+  /** Request traces from this run (S42), newest first. */
+  traces: TraceRecord[];
+  /** Traces asked for that haven't arrived yet. */
+  tracesPending: number;
 };
 
 export const initialSimulationState: SimulationState = {
@@ -31,6 +39,8 @@ export const initialSimulationState: SimulationState = {
   warnings: [],
   lastError: null,
   runAttempted: false,
+  traces: [],
+  tracesPending: 0,
 };
 
 export function createSimulationStore() {

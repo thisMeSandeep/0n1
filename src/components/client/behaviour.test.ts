@@ -40,6 +40,7 @@ function sentBy(params: Record<string, unknown>, durationMs = 100_000) {
     sampling: { weight: () => 1, countRequest: () => {} },
     isUp: () => true,
     traffic: () => 1,
+    tracing: { begin: () => undefined },
     send: (_to, request, reply) => {
       sent.push(request);
       reply({ ok: true });

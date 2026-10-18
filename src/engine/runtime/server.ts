@@ -75,6 +75,7 @@ export class QueueingServer {
   }
 
   #start(entry: Waiting): void {
+    entry.request.trace?.start(entry.request.span, this.sim.now);
     const { slots, stretch } = slotsFor(
       entry.request.weight,
       this.options.concurrency - this.#busy,

@@ -93,6 +93,9 @@ export class SimulationHost {
       case "bringBack":
         this.#engine?.bringBack(command.nodeId);
         break;
+      case "trace":
+        this.#engine?.traceNext(command.clientId);
+        return; // nothing to show until it finishes
     }
     this.#sendSnapshot();
   }
@@ -113,6 +116,7 @@ export class SimulationHost {
       eventBudget: DEFAULT_EVENT_BUDGET / this.#speed,
     });
     if (this.#traffic !== 1) this.#engine.setTrafficMultiplier(this.#traffic);
+    this.#engine.onTrace = (trace) => this.emit({ type: "trace", trace });
     this.emit({ type: "loaded", ok: true, errors: [], warnings: plain(warnings) });
     if (this.#running) this.#ensureTimer();
     this.#sendSnapshot();

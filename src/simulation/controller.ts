@@ -137,6 +137,15 @@ export function createSimulationController({
         else if (!down.has(id)) takeDown(id);
       }
     },
+    /**
+     * Trace the next request from a client, or any client (S42). It arrives
+     * once that request is done; if the system isn't running, once it runs.
+     */
+    trace: (clientId: string | null = null) => {
+      ensureLoaded();
+      store.setState((s) => ({ tracesPending: s.tracesPending + 1 }));
+      client.send({ type: "trace", clientId });
+    },
     /** Hide the problems popover until the next Run. */
     dismissProblems: () => store.setState({ runAttempted: false }),
   };

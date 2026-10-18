@@ -2,6 +2,7 @@ import type { Params } from "../../model/component.ts";
 import type { SystemDocument } from "../../model/document.ts";
 import type { CompileIssue } from "../compile.ts";
 import type { MetricsSnapshot } from "../metrics/recorder.ts";
+import type { TraceRecord } from "../runtime/trace.ts";
 
 /*
  * Messages between the lab (main thread) and the simulation worker.
@@ -26,7 +27,9 @@ export type SimulationCommand =
   /** Change settings while running; no reset needed. */
   | { type: "updateParams"; nodeId: string; params: Params }
   | { type: "takeDown"; nodeId: string }
-  | { type: "bringBack"; nodeId: string };
+  | { type: "bringBack"; nodeId: string }
+  /** Trace the next request from a client, or from any client (S42). */
+  | { type: "trace"; clientId: string | null };
 
 export type SimulationEvent =
   /** The result of `load`: errors mean it can't run. */
@@ -40,4 +43,6 @@ export type SimulationEvent =
       traffic: number;
     }
   /** Something went wrong handling a command. The run carries on if it can. */
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  /** A finished request trace (S42): one asked for, or the slowest or a failed one. */
+  | { type: "trace"; trace: TraceRecord };

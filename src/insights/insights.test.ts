@@ -5,6 +5,7 @@ import { registry } from "../components/index.ts";
 import { compile } from "../engine/compile.ts";
 import { type MetricsSnapshot, NO_FAULTS, type NodeMetrics } from "../engine/metrics/recorder.ts";
 import { Engine } from "../engine/runtime/engine.ts";
+import type { TraceRecord } from "../engine/runtime/trace.ts";
 import { systemDocument } from "../engine/testing.ts";
 import type { SystemDocument } from "../model/document.ts";
 import { findInsights, type Insight } from "./rules.ts";
@@ -173,14 +174,51 @@ function story(
   if (!model) throw new Error("didn't compile");
   const engine = new Engine(model);
   engine.setTrafficMultiplier(traffic);
+  // The run's slowest recent request (S42), as the lab passes it on.
+  let slow: TraceRecord | null = null;
+  engine.onTrace = (trace) => {
+    if (trace.reason === "slow") slow = trace;
+  };
   const tracker = new InsightTracker();
   let shown: Insight[] = [];
   for (let t = 250; t <= ms; t += 250) {
     engine.runUntil(t);
-    shown = tracker.update(engine.snapshot(), doc);
+    shown = tracker.update(engine.snapshot(), doc, slow);
   }
   return shown;
 }
+
+describe("where a slow request's time went", () => {
+  it("names a component whose own work is slow, even when nothing is overloaded", () => {
+    const doc = systemDocument(
+      {
+        users: { type: "client", name: "Users", params: { rate: 50, timeout: 10_000 } },
+        api: { type: "service", name: "Report API", params: { concurrency: 256, workTime: 700 } },
+      },
+      [["users", "api"]],
+    );
+    const { model } = compile(doc, registry);
+    if (!model) throw new Error("didn't compile");
+    const engine = new Engine(model);
+    let slow: TraceRecord | null = null;
+    engine.onTrace = (trace) => {
+      if (trace.reason === "slow") slow = trace;
+    };
+    const tracker = new InsightTracker();
+    let shown: Insight[] = [];
+    for (let t = 250; t <= 15_000; t += 250) {
+      engine.runUntil(t);
+      shown = tracker.update(engine.snapshot(), doc, slow);
+    }
+    expect(shown[0]).toMatchObject({
+      id: "slow:api",
+      severity: "warn",
+      title: expect.stringMatching(/^Requests are slow: p99 is .* s\.$/),
+      detail: expect.stringMatching(/was spent being worked on at Report API\.$/),
+      fix: "That's its own work: a cache in front of it would let requests skip it.",
+    });
+  });
+});
 
 describe("each blueprint's break gets the insight you'd hope for", () => {
   it("URL shortener at 500%: the database is the bottleneck, and users time out because of it", () => {
@@ -194,6 +232,12 @@ describe("each blueprint's break gets the insight you'd hope for", () => {
     );
     // The services are waiting on the database: they're not blamed.
     expect(ids(insights)).not.toContain("overloaded:api-1");
+    // Where a slow request's time went, told once, and put down to the database.
+    expect(insights[0]?.detail).toMatch(
+      /In a slow request just now, \d+% of its .* was spent waiting in line at Shortener API · [12], whose requests are all waiting on Links DB\./,
+    );
+    expect(insights.filter((i) => i.detail.includes("In a slow request"))).toHaveLength(1);
+    expect(ids(insights).some((id) => id.startsWith("slow:"))).toBe(false);
   });
 
   it("URL shortener at 100%: nothing to say", () => {

@@ -14,6 +14,7 @@ import {
 import { DEFAULT_WINDOW, type WindowOptions } from "../metrics/windows.ts";
 import { DEFAULT_NETWORK_LATENCY_MS } from "../network.ts";
 import { SamplingController } from "./sampling.ts";
+import { Trace, type TraceReason, type TraceRecord } from "./trace.ts";
 import type { Behaviour, BehaviourContext, Clock, Outcome, Reply, Request } from "./types.ts";
 
 export type EngineOptions = {
@@ -38,6 +39,13 @@ export type EngineOptions = {
 export const DEFAULT_EVENT_BUDGET = 300_000;
 /** How often (simulated ms) the sampling weight is reconsidered. */
 const SAMPLING_INTERVAL_MS = 500;
+
+/** Request tracing (S42): each client has a request traced this often, in the background… */
+const AUTO_TRACE_EVERY_MS = 200;
+/** …and every this often the engine keeps the slowest of those, and a failed one. */
+export const TRACE_WINDOW_MS = 5000;
+/** How long after the client's answer a trace waits for the rest of its calls (simulated ms). */
+export const TRACE_SETTLE_MS = 10_000;
 
 export { DEFAULT_NETWORK_LATENCY_MS } from "../network.ts";
 
@@ -75,6 +83,17 @@ export class Engine {
   #latency: number;
   #requestId = 0;
   #traffic = 1;
+  /**
+   * Finished traces (S42) go here: ones asked for, and the slowest and a
+   * failed one from the background every TRACE_WINDOW_MS. Background
+   * tracing only runs while someone is listening.
+   */
+  onTrace: ((trace: TraceRecord) => void) | null = null;
+  #asked: (string | null)[] = [];
+  #autoNext = new Map<string, number>();
+  #slowest: TraceRecord | null = null;
+  #failed: TraceRecord | null = null;
+  #traceIds = 0;
   /** Chaos timeline state (S40). */
   #slow = new Map<string, number>();
   #cut = new Set<string>();
@@ -106,6 +125,12 @@ export class Engine {
     }
     for (const life of this.#current.values()) life.behaviour.start?.();
     this.#scheduleEvents();
+
+    const pickTraces = () => {
+      this.#emitPicks();
+      this.sim.schedule(TRACE_WINDOW_MS, pickTraces);
+    };
+    this.sim.schedule(TRACE_WINDOW_MS, pickTraces);
 
     const reconsider = () => {
       // A traffic shape moves the rate, so the sampling weight follows it.
@@ -148,6 +173,7 @@ export class Engine {
       peer: (other) => this.model.nodes.get(other),
       isUp: (other) => this.isUp(other),
       traffic: () => this.#traffic * this.#surge,
+      tracing: { begin: (kind, at) => this.#beginTrace(id, kind, at) },
       sampling: {
         weight: () => this.sampling.weight,
         countRequest: () => this.sampling.countRequest(),
@@ -173,9 +199,26 @@ export class Engine {
     const edge = this.#edge(from.id, to);
     const sentAt = this.sim.now;
     edge.send(sentAt, request.weight);
+    // A traced request records this hop as a span (S42).
+    // Recording goes on after the client's answer (a worker's job), until the trace is reported.
+    const trace = request.trace && !request.trace.settled ? request.trace : undefined;
+    const span =
+      trace?.send(
+        request.span ?? trace.root,
+        to,
+        sentAt,
+        request.attempt,
+        request.op ?? request.kind,
+      ) ?? -1;
+    const failed = (outcome: Outcome) => (outcome.ok ? "ok" : outcome.reason);
     // A reply only reaches the sender if it's still the same, living component.
     const deliver: Reply = (outcome) => {
       edge.reply(this.sim.now, this.sim.now - sentAt, outcome.ok, request.weight);
+      if (trace) {
+        // Failed before reaching it (cut, or down): it answered as it was refused.
+        trace.reply(span, this.sim.now - this.#latency, failed(outcome));
+        trace.receive(span, this.sim.now);
+      }
       if (from.alive) onReply(outcome);
     };
     const back = (outcome: Outcome) => this.sim.schedule(this.#latency, () => deliver(outcome));
@@ -194,10 +237,14 @@ export class Engine {
       const pending: Pending = { settled: false, reply: back };
       target.pending.add(pending);
       request.path.push(to);
-      target.behaviour.handle(request, (outcome) => {
+      trace?.arrive(span, this.sim.now);
+      // A traced copy knows its span, so the calls it makes become its children.
+      const delivered = trace ? { ...request, span } : request;
+      target.behaviour.handle(delivered, (outcome) => {
         if (pending.settled) return;
         pending.settled = true;
         target.pending.delete(pending);
+        trace?.reply(span, this.sim.now, failed(outcome));
         if (!outcome.ok && outcome.at === undefined) {
           // It failed here, not behind this component.
           this.recorders.get(to)?.originate(this.sim.now, request.weight);
@@ -217,6 +264,49 @@ export class Engine {
       return sum + Number(rate ?? 0);
     }, 0);
     return base * this.#traffic * this.#surge;
+  }
+
+  /** Trace the next request from `client` (or from any client). */
+  traceNext(client: string | null = null): void {
+    this.#asked.push(client);
+  }
+
+  #beginTrace(client: string, kind: "read" | "write", at: number): Trace | undefined {
+    const asked = this.#asked.findIndex((c) => c === null || c === client);
+    let reason: TraceReason | null = null;
+    if (asked >= 0) {
+      this.#asked.splice(asked, 1);
+      reason = "asked";
+    } else if (this.onTrace && at >= (this.#autoNext.get(client) ?? 0)) {
+      this.#autoNext.set(client, at + AUTO_TRACE_EVERY_MS);
+      reason = "slow"; // a candidate; it only shows if it's the slowest or fails
+    }
+    if (!reason) return undefined;
+    return new Trace(`trace-${++this.#traceIds}`, reason, client, kind, at, {
+      onFinish: (trace) => this.sim.schedule(TRACE_SETTLE_MS, () => trace.settle()),
+      onSettle: (trace) => this.#traced(trace),
+    });
+  }
+
+  #traced(trace: Trace): void {
+    const record = trace.record();
+    if (record.reason === "asked") {
+      this.onTrace?.(record);
+      return;
+    }
+    const took = (r: TraceRecord) => r.finishedAt - r.startedAt;
+    if (record.outcome !== "ok") {
+      this.#failed ??= { ...record, reason: "failed" };
+    } else if (!this.#slowest || took(record) > took(this.#slowest)) {
+      this.#slowest = record;
+    }
+  }
+
+  #emitPicks(): void {
+    if (this.#slowest) this.onTrace?.(this.#slowest);
+    if (this.#failed) this.onTrace?.(this.#failed);
+    this.#slowest = null;
+    this.#failed = null;
   }
 
   /** Put the chaos timeline (S40) on the clock. A reset builds a new engine, so it replays the same. */

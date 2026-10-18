@@ -27,6 +27,7 @@ export const client: BehaviourFactory = ({
   nextRequestId,
   sampling,
   traffic,
+  tracing,
 }) => {
   // Read live, so changes while running take effect (S28).
   const params = () =>
@@ -56,10 +57,11 @@ export const client: BehaviourFactory = ({
     return target;
   };
 
-  const finish = (request: Request, ok: boolean) => {
+  const finish = (request: Request, outcome: Outcome) => {
     const latency = sim.now - request.createdAt;
-    system.respond(sim.now, latency, ok, request.weight);
-    recorder.complete(sim.now, latency, ok, request.weight);
+    system.respond(sim.now, latency, outcome.ok, request.weight);
+    recorder.complete(sim.now, latency, outcome.ok, request.weight);
+    request.trace?.finish(sim.now, outcome.ok ? "ok" : outcome.reason);
   };
 
   const attempt = (request: Request) => {
@@ -70,10 +72,10 @@ export const client: BehaviourFactory = ({
       if (settled) return;
       settled = true;
       if (timer) sim.cancel(timer);
-      if (outcome.ok) finish(request, true);
+      if (outcome.ok) finish(request, outcome);
       else if (request.attempt <= params().retries)
         attempt({ ...request, attempt: request.attempt + 1, path: [node.id] });
-      else finish(request, false);
+      else finish(request, outcome);
     };
 
     timer = sim.schedule(params().timeout, () => settle({ ok: false, reason: "timeout" }));
@@ -83,15 +85,21 @@ export const client: BehaviourFactory = ({
   const sendOne = () => {
     const weight = sampling.weight();
     sampling.countRequest();
+    const kind = rng.next() < params().readShare / 100 ? "read" : "write";
     const request: Request = {
       id: nextRequestId(),
       weight,
-      kind: rng.next() < params().readShare / 100 ? "read" : "write",
+      kind,
       key: pickKey(),
       createdAt: sim.now,
       attempt: 1,
       path: [node.id],
     };
+    const trace = tracing.begin(kind, sim.now);
+    if (trace) {
+      request.trace = trace;
+      request.span = trace.root;
+    }
     recorder.arrive(sim.now, request.weight);
     attempt(request);
   };

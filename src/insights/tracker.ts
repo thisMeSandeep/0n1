@@ -1,4 +1,5 @@
 import type { MetricsSnapshot } from "../engine/metrics/recorder.ts";
+import type { TraceRecord } from "../engine/runtime/trace.ts";
 import type { SystemDocument } from "../model/document.ts";
 import { findInsights, type Insight } from "./rules.ts";
 
@@ -22,12 +23,19 @@ export class InsightTracker {
   #lastTime = -1;
 
   /** The insights to show now. Call with each snapshot, in time order. */
-  update(snapshot: MetricsSnapshot, doc: SystemDocument): Insight[] {
+  update(
+    snapshot: MetricsSnapshot,
+    doc: SystemDocument,
+    slowTrace: TraceRecord | null = null,
+  ): Insight[] {
     const now = snapshot.time;
     if (now < this.#lastTime) this.reset(); // a reset or reload: start over
     this.#lastTime = now;
 
-    const found = findInsights(snapshot, doc, this.#growth(snapshot, doc));
+    const found = findInsights(snapshot, doc, {
+      backlogGrowth: this.#growth(snapshot, doc),
+      slowTrace,
+    });
     for (const insight of found) {
       const seen = this.#seen.get(insight.id);
       this.#seen.set(insight.id, { first: seen?.first ?? now, last: now, insight });

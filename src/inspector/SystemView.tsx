@@ -3,6 +3,7 @@ import type { Blueprint } from "../blueprints/format.ts";
 import { InsightList } from "../insights/InsightViews.tsx";
 import { useLive } from "../simulation/index.ts";
 import { designStore, useDesign } from "../store/index.ts";
+import { TracesSection } from "../tracing/TraceViews.tsx";
 import { EditableTitle } from "./EditableTitle.tsx";
 import { InspectorHeader, InspectorSection } from "./InspectorHeader.tsx";
 import { ClientTraffic, HealthSummary, SystemCharts } from "./SystemLive.tsx";
@@ -40,6 +41,7 @@ export function SystemView({ onClose }: { onClose: () => void }) {
             <HealthSummary />
             <ClientTraffic />
             <SystemCharts />
+            <TracesSection />
             {blueprint && <Experiments blueprint={blueprint} />}
           </>
         ) : (

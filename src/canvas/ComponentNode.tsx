@@ -5,6 +5,7 @@ import { registry } from "../components/index.ts";
 import { checkConnection } from "../model/connections.ts";
 import { useLive } from "../simulation/index.ts";
 import { designStore } from "../store/index.ts";
+import { useTracedNode } from "../tracing/TraceViews.tsx";
 import { CATEGORY_TINT, componentIcon } from "../ui/componentIcons.tsx";
 import { cx } from "../ui/cx.ts";
 import { Tooltip } from "../ui/Tooltip.tsx";
@@ -67,8 +68,10 @@ export const ComponentNode = memo(function ComponentNode({
   );
   const hovered = overId === id;
   const details = useHoverDetails(started && !dragging && fromId === null);
+  // A request trace is open (S42): its path stands out, everything else steps back.
+  const traced = useTracedNode(id);
   const ring =
-    selected || (check?.ok && hovered)
+    selected || traced || (check?.ok && hovered)
       ? "outline-accent"
       : check?.ok
         ? "outline-accent/40"
@@ -91,6 +94,7 @@ export const ComponentNode = memo(function ComponentNode({
                 : "border-line",
           ring,
           check && !check.ok && "opacity-45",
+          traced === false && "opacity-40",
         )}
       >
         <Handle

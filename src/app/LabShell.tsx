@@ -5,7 +5,8 @@ import { TimelineStrip } from "../chaos/TimelineStrip.tsx";
 import { ImageExportDialog } from "../export/ImageExportDialog.tsx";
 import { RestoreDialog } from "../library/RestoreDialog.tsx";
 import { PalettePanel } from "../palette/PalettePanel.tsx";
-import { selectionStore, useUi } from "../store/index.ts";
+import { simulationStore } from "../simulation/store.ts";
+import { selectionStore, uiStore, useUi } from "../store/index.ts";
 import { CommandPalette } from "./CommandPalette.tsx";
 import { DesktopNotice } from "./DesktopNotice.tsx";
 import { LabShortcuts } from "./LabShortcuts.tsx";
@@ -21,6 +22,30 @@ export function LabShell() {
 
   // Below 1440px the inspector floats closed; selecting something opens it (UIUX §3).
   const { inspectorDocked, openInspector } = layout;
+
+  // Request traces (S42): one you asked for opens when it arrives; selecting
+  // something else, or a new run, closes it.
+  useEffect(() => {
+    const offTraces = simulationStore.subscribe((state, previous) => {
+      const newest = state.traces[0];
+      if (newest && newest !== previous.traces[0] && newest.reason === "asked") {
+        uiStore.getState().setOpenTrace(newest);
+        openInspector();
+      } else if (state.traces.length === 0 && previous.traces.length > 0) {
+        uiStore.getState().setOpenTrace(null);
+      }
+    });
+    const offSelection = selectionStore.subscribe((selection, previous) => {
+      if (selection.nodeIds !== previous.nodeIds || selection.edgeIds !== previous.edgeIds) {
+        uiStore.getState().setOpenTrace(null);
+      }
+    });
+    return () => {
+      offTraces();
+      offSelection();
+    };
+  }, [openInspector]);
+
   useEffect(() => {
     if (inspectorDocked) return;
     return selectionStore.subscribe((selection, previous) => {

@@ -410,7 +410,8 @@ export function createLiveView({
     const previous = store.getState();
     const next = nextLiveState(previous, lastTime, snapshot, detailOfNode, doc.edges);
     if (!snapshot) tracker.reset();
-    const insights = snapshot ? tracker.update(snapshot, doc) : [];
+    const slowTrace = simulation.getState().traces.find((t) => t.reason === "slow") ?? null;
+    const insights = snapshot ? tracker.update(snapshot, doc, slowTrace) : [];
     store.setState(
       {
         ...next,
