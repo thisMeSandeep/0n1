@@ -33,6 +33,8 @@ import { useSimulation } from "../simulation/store.ts";
 import { designStore, selectionStore, useDesign, useSelection, useUi } from "../store/index.ts";
 import { usePrefersReducedMotion } from "../ui/hooks/useMediaQuery.ts";
 import { useTheme } from "../ui/theme/ThemeProvider.tsx";
+import { AlignmentGuides } from "./AlignmentGuides.tsx";
+import { ALIGN_THRESHOLD_PX, alignDrag, type Guide, shiftDrag } from "./alignment.ts";
 import { ComponentEdge } from "./ComponentEdge.tsx";
 import { ComponentNode } from "./ComponentNode.tsx";
 import { ConnectionLine } from "./ConnectionLine.tsx";
@@ -92,7 +94,19 @@ export function Canvas() {
     [docEdges, selectedEdgeIds],
   );
 
-  const onNodesChange = useCallback((changes: NodeChange<ComponentFlowNode>[]) => {
+  // Alignment guides (M02): a drag lines up with other components as it goes.
+  const { screenToFlowPosition, getNodes, getZoom } = useReactFlow<ComponentFlowNode>();
+  const [guides, setGuides] = useState<Guide[]>([]);
+  /** How far the drag in progress was moved to line up. */
+  const dragShift = useRef({ x: 0, y: 0 });
+  const endDrag = useCallback(() => {
+    endGesture();
+    dragShift.current = { x: 0, y: 0 };
+    setGuides([]);
+  }, []);
+
+  /** Apply node changes to the canvas, the document (moves) and the selection. */
+  const applyChanges = useCallback((changes: NodeChange<ComponentFlowNode>[]) => {
     setNodes((current) => applyNodeChanges(changes, current));
     const moves = positionMoves(changes);
     if (moves.length > 0) designStore.getState().moveNodes(moves);
@@ -100,13 +114,30 @@ export function Canvas() {
     selection.select({ nodeIds: applySelectChanges(selection.nodeIds, changes) });
   }, []);
 
+  const onNodesChange = useCallback(
+    (incoming: NodeChange<ComponentFlowNode>[]) => {
+      let changes = incoming;
+      if (changes.some((c) => c.type === "position" && c.dragging)) {
+        const aligned = alignDrag(changes, getNodes(), ALIGN_THRESHOLD_PX / getZoom());
+        changes = aligned.changes;
+        dragShift.current = aligned.shift;
+        setGuides(aligned.guides);
+      } else if (changes.some((c) => c.type === "position")) {
+        // The drop repeats where the drag was before lining up: keep it lined up.
+        changes = shiftDrag(changes, dragShift.current);
+        dragShift.current = { x: 0, y: 0 };
+      }
+      applyChanges(changes);
+    },
+    [getNodes, getZoom, applyChanges],
+  );
+
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
     const selection = selectionStore.getState();
     selection.select({ edgeIds: applySelectChanges(selection.edgeIds, changes) });
   }, []);
 
   // Quick add: double-click empty canvas, or drop a connection on empty canvas.
-  const { screenToFlowPosition } = useReactFlow();
   const [quickAdd, setQuickAdd] = useState<(QuickAddRequest & { key: number }) | null>(null);
   const openQuickAdd = useCallback(
     (screen: { x: number; y: number }, fromNodeId: string | null) =>
@@ -162,9 +193,9 @@ export function Canvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDragStart={beginGesture}
-        onNodeDragStop={endGesture}
+        onNodeDragStop={endDrag}
         onSelectionDragStart={beginGesture}
-        onSelectionDragStop={endGesture}
+        onSelectionDragStop={endDrag}
         onDragOver={onDragOver}
         onDrop={onDrop}
         onConnect={onConnect}
@@ -195,6 +226,7 @@ export function Canvas() {
           size={1.2}
           color="var(--grid-dot)"
         />
+        <AlignmentGuides guides={guides} />
         <Panel position="bottom-left" className="m-0! mb-6! ml-5!">
           <ZoomControls />
         </Panel>
