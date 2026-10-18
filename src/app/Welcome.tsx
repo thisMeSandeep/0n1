@@ -59,7 +59,10 @@ export function Welcome() {
   };
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center p-6">
+    <div
+      data-export-skip
+      className="pointer-events-none absolute inset-0 z-10 grid place-items-center p-6"
+    >
       <section
         aria-labelledby="welcome-title"
         className="pointer-events-auto relative w-full max-w-160 rounded-card border border-line bg-raised p-8 shadow-raised animate-pop-in"
@@ -120,7 +123,10 @@ export function EmptyCanvasHint() {
   const welcome = useUi((s) => s.welcomeOpen);
   if (!empty || welcome) return null;
   return (
-    <p className="pointer-events-none absolute inset-0 z-0 grid place-items-center text-base text-fg-2">
+    <p
+      data-export-skip
+      className="pointer-events-none absolute inset-0 z-0 grid place-items-center text-base text-fg-2"
+    >
       Double-click anywhere to add a component.
     </p>
   );

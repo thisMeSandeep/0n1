@@ -38,6 +38,8 @@ export type UiState = {
   /** The first-visit welcome card (UIUX §10). Closing it is remembered by preferences.ts. */
   welcomeOpen: boolean;
   setWelcomeOpen(open: boolean): void;
+  imageExportOpen: boolean;
+  setImageExportOpen(open: boolean): void;
   toggleMinimap(): void;
   setCommandPaletteOpen(open: boolean): void;
   setShortcutsOpen(open: boolean): void;
@@ -69,6 +71,8 @@ export function createUiStore() {
     paletteSearchRequest: 0,
     welcomeOpen: false,
     setWelcomeOpen: (welcomeOpen) => set({ welcomeOpen }),
+    imageExportOpen: false,
+    setImageExportOpen: (imageExportOpen) => set({ imageExportOpen }),
     toggleMinimap: () => set((s) => ({ minimap: !s.minimap })),
     setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
     setShortcutsOpen: (open) => set({ shortcutsOpen: open }),

@@ -109,7 +109,10 @@ function LabMenu() {
           <MenuItem icon={<UploadSimpleIcon />} onSelect={() => void startRestore()}>
             Restore from backup…
           </MenuItem>
-          <MenuItem icon={<ImageIcon />} disabled>
+          <MenuItem
+            icon={<ImageIcon />}
+            onSelect={() => uiStore.getState().setImageExportOpen(true)}
+          >
             Download image…
           </MenuItem>
           <MenuSeparator />

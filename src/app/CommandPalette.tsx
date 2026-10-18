@@ -5,6 +5,7 @@ import {
   DownloadSimpleIcon,
   FolderOpenIcon,
   HandWavingIcon,
+  ImageIcon,
   KeyboardIcon,
   MagnifyingGlassPlusIcon,
   MoonIcon,
@@ -237,6 +238,14 @@ function SystemsCommands({ run, onBrowse }: SystemsCommandsProps) {
         icon={<UploadSimpleIcon aria-hidden className="text-fg-2" />}
       >
         Restore from backup…
+      </CommandItem>
+      <CommandItem
+        value="Download image"
+        keywords={["export", "png", "svg", "picture", "screenshot"]}
+        onSelect={run(() => uiStore.getState().setImageExportOpen(true))}
+        icon={<ImageIcon aria-hidden className="text-fg-2" />}
+      >
+        Download image
       </CommandItem>
       <CommandItem
         value="Browse systems"

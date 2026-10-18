@@ -33,7 +33,8 @@ export function serializeBackup(backup: BackupFile): string {
   return `${JSON.stringify(backup, null, 2)}\n`;
 }
 
-function slug(name: string): string {
+/** A system's name as a file name part: "URL shortener" → "url-shortener". */
+export function slug(name: string): string {
   return (
     name
       .toLowerCase()
