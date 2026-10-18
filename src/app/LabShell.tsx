@@ -46,6 +46,15 @@ export function LabShell() {
     };
   }, [openInspector]);
 
+  // Clicking a component opens the inspector, wherever it's docked, if it was closed.
+  useEffect(
+    () =>
+      uiStore.subscribe((ui, previous) => {
+        if (ui.inspectorRequest !== previous.inspectorRequest) openInspector();
+      }),
+    [openInspector],
+  );
+
   useEffect(() => {
     if (inspectorDocked) return;
     return selectionStore.subscribe((selection, previous) => {

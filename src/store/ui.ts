@@ -36,6 +36,8 @@ export type UiState = {
   restore: RestorePreview | null;
   /** Bumped to ask the palette to focus its search. */
   paletteSearchRequest: number;
+  /** Bumped when a component is clicked: the inspector opens if it's closed. */
+  inspectorRequest: number;
   /** The first-visit welcome card (UIUX §10). Closing it is remembered by preferences.ts. */
   welcomeOpen: boolean;
   setWelcomeOpen(open: boolean): void;
@@ -53,6 +55,7 @@ export type UiState = {
   setLibraryOpen(open: boolean): void;
   setRestore(preview: RestorePreview | null): void;
   requestPaletteSearch(): void;
+  requestInspector(): void;
 };
 
 export function createUiStore() {
@@ -76,6 +79,7 @@ export function createUiStore() {
     libraryOpen: false,
     restore: null,
     paletteSearchRequest: 0,
+    inspectorRequest: 0,
     welcomeOpen: false,
     setWelcomeOpen: (welcomeOpen) => set({ welcomeOpen }),
     imageExportOpen: false,
@@ -90,5 +94,6 @@ export function createUiStore() {
     setLibraryOpen: (open) => set({ libraryOpen: open }),
     setRestore: (restore) => set({ restore }),
     requestPaletteSearch: () => set((s) => ({ paletteSearchRequest: s.paletteSearchRequest + 1 })),
+    requestInspector: () => set((s) => ({ inspectorRequest: s.inspectorRequest + 1 })),
   }));
 }

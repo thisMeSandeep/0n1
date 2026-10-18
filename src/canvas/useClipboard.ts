@@ -15,23 +15,31 @@ import { type Area, clipboardText, pasteShift, readClipboard } from "./clipboard
 /** What was last copied here, for menus when the clipboard can't be read. */
 let lastCopied: string | null = null;
 
-/** The selected components as clipboard text; null if none are selected. */
-export function copySelection(): string | null {
-  const text = clipboardText(designStore.getState().doc, selectionStore.getState().nodeIds);
+const selected = () => selectionStore.getState().nodeIds;
+
+/** Components (the selection, unless said) as clipboard text; null if there are none. */
+export function copySelection(ids: readonly string[] = selected()): string | null {
+  const text = clipboardText(designStore.getState().doc, ids);
   if (text) lastCopied = text;
   return text;
 }
 
-/** Copy the selected components and remove them: one undo step. */
-export function cutSelection(): string | null {
-  const text = copySelection();
-  if (text) designStore.getState().removeNodes(selectionStore.getState().nodeIds);
+/** Copy components (the selection, unless said) and remove them: one undo step. */
+export function cutSelection(ids: readonly string[] = selected()): string | null {
+  const text = copySelection(ids);
+  if (text) designStore.getState().removeNodes(ids);
   return text;
 }
 
-/** From a menu: copy the selected components to the system clipboard where allowed. */
-export async function copySelectionFromMenu(): Promise<void> {
-  const text = copySelection();
+/** From a menu: copy components to the system clipboard where allowed. */
+export async function copySelectionFromMenu(ids: readonly string[] = selected()): Promise<void> {
+  const text = copySelection(ids);
+  if (text) await navigator.clipboard?.writeText(text).catch(() => {});
+}
+
+/** From a menu: cut components, to the system clipboard where allowed. */
+export async function cutSelectionFromMenu(ids: readonly string[] = selected()): Promise<void> {
+  const text = cutSelection(ids);
   if (text) await navigator.clipboard?.writeText(text).catch(() => {});
 }
 

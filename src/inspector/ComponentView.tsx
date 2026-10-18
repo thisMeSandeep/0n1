@@ -1,26 +1,17 @@
-import {
-  ClipboardTextIcon,
-  CopyIcon,
-  DotsThreeIcon,
-  PathIcon,
-  PowerIcon,
-  TrashIcon,
-} from "@phosphor-icons/react";
+import { DotsThreeIcon } from "@phosphor-icons/react";
 import { Fragment } from "react";
-import { shortcutKeys } from "../app/shortcuts.ts";
-import { copySelectionFromMenu } from "../canvas/useClipboard.ts";
+import { ComponentActionItems } from "../canvas/ComponentActions.tsx";
 import type { ShapeSettings } from "../components/client/shape.ts";
 import { registry } from "../components/index.ts";
 import { ComponentCostSection } from "../cost/CostViews.tsx";
 import { InsightList } from "../insights/InsightViews.tsx";
 import type { Params } from "../model/component.ts";
-import { simulation, useLive } from "../simulation/index.ts";
-import { designStore, selectionStore, useDesign } from "../store/index.ts";
+import { designStore, useDesign } from "../store/index.ts";
 import { IconButton } from "../ui/Button.tsx";
 import { CollapsibleSection } from "../ui/Collapsible.tsx";
 import { CATEGORY_LABEL, CATEGORY_TINT, componentIcon } from "../ui/componentIcons.tsx";
 import { cx } from "../ui/cx.ts";
-import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../ui/Menu.tsx";
+import { Menu, MenuContent, MenuTrigger } from "../ui/Menu.tsx";
 import { EditableTitle } from "./EditableTitle.tsx";
 import { InspectorHeader, InspectorSection } from "./InspectorHeader.tsx";
 import { ComponentDetails, LiveSummary } from "./LiveSummary.tsx";
@@ -106,17 +97,6 @@ export function ComponentView({ nodeId, onClose }: { nodeId: string; onClose: ()
 }
 
 function ComponentMenu({ nodeId }: { nodeId: string }) {
-  const duplicate = () => {
-    const [copy] = designStore.getState().duplicateNodes([nodeId]);
-    if (copy) selectionStore.getState().select({ nodeIds: [copy], edgeIds: [] });
-  };
-  const down = useLive((s) => s.nodes[nodeId]?.status === "down");
-  const copy = () => {
-    // The menu is about this component, whatever else is selected.
-    selectionStore.getState().select({ nodeIds: [nodeId], edgeIds: [] });
-    void copySelectionFromMenu();
-  };
-  const isClient = useDesign((s) => s.doc.nodes.find((n) => n.id === nodeId)?.type === "client");
   return (
     <Menu>
       <MenuTrigger asChild>
@@ -125,33 +105,8 @@ function ComponentMenu({ nodeId }: { nodeId: string }) {
         </IconButton>
       </MenuTrigger>
       <MenuContent>
-        <MenuItem icon={<CopyIcon />} shortcut={shortcutKeys("duplicate")} onSelect={duplicate}>
-          Duplicate
-        </MenuItem>
-        <MenuItem icon={<ClipboardTextIcon />} shortcut={shortcutKeys("copy")} onSelect={copy}>
-          Copy
-        </MenuItem>
-        {isClient && (
-          <MenuItem icon={<PathIcon />} onSelect={() => simulation.trace(nodeId)}>
-            Trace a request
-          </MenuItem>
-        )}
-        <MenuItem
-          icon={<PowerIcon />}
-          shortcut={shortcutKeys("takeDown")}
-          onSelect={() => (down ? simulation.bringBack(nodeId) : simulation.takeDown(nodeId))}
-        >
-          {down ? "Bring back" : "Take down"}
-        </MenuItem>
-        <MenuSeparator />
-        <MenuItem
-          icon={<TrashIcon />}
-          tone="danger"
-          shortcut={shortcutKeys("delete")}
-          onSelect={() => designStore.getState().removeNodes([nodeId])}
-        >
-          Delete
-        </MenuItem>
+        {/* The same actions as right-clicking it on the canvas. */}
+        <ComponentActionItems nodeIds={[nodeId]} />
       </MenuContent>
     </Menu>
   );

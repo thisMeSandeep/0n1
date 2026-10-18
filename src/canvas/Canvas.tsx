@@ -30,11 +30,20 @@ import { registry } from "../components/index.ts";
 import { InsightNote } from "../insights/InsightViews.tsx";
 import { checkConnection } from "../model/connections.ts";
 import { useSimulation } from "../simulation/store.ts";
-import { designStore, selectionStore, useDesign, useSelection, useUi } from "../store/index.ts";
+import {
+  designStore,
+  selectionStore,
+  uiStore,
+  useDesign,
+  useSelection,
+  useUi,
+} from "../store/index.ts";
 import { usePrefersReducedMotion } from "../ui/hooks/useMediaQuery.ts";
+import { Menu, MenuContent, MenuTrigger } from "../ui/Menu.tsx";
 import { useTheme } from "../ui/theme/ThemeProvider.tsx";
 import { AlignmentGuides } from "./AlignmentGuides.tsx";
 import { ALIGN_THRESHOLD_PX, alignDrag, type Guide, shiftDrag } from "./alignment.ts";
+import { ComponentActionItems } from "./ComponentActions.tsx";
 import { ComponentEdge } from "./ComponentEdge.tsx";
 import { ComponentNode } from "./ComponentNode.tsx";
 import { ConnectionLine } from "./ConnectionLine.tsx";
@@ -139,6 +148,24 @@ export function Canvas() {
     selection.select({ edgeIds: applySelectChanges(selection.edgeIds, changes) });
   }, []);
 
+  // Clicking a component opens the inspector if it's closed.
+  const onNodeClick = useCallback(() => uiStore.getState().requestInspector(), []);
+
+  // Right-clicking a component: its actions, at the pointer. Right-clicking one
+  // in the selection acts on the whole selection; any other, on just that one.
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    nodeIds: string[];
+  } | null>(null);
+  const onNodeContextMenu = useCallback((event: MouseEvent, node: ComponentFlowNode) => {
+    event.preventDefault();
+    const selection = selectionStore.getState();
+    const nodeIds = selection.nodeIds.includes(node.id) ? [...selection.nodeIds] : [node.id];
+    if (nodeIds.length === 1) selection.select({ nodeIds, edgeIds: [] });
+    setContextMenu({ x: event.clientX, y: event.clientY, nodeIds });
+  }, []);
+
   // Quick add: double-click empty canvas, or drop a connection on empty canvas.
   const [quickAdd, setQuickAdd] = useState<(QuickAddRequest & { key: number }) | null>(null);
   const openQuickAdd = useCallback(
@@ -203,6 +230,8 @@ export function Canvas() {
         onConnect={onConnect}
         onConnectEnd={onConnectEnd}
         onDoubleClick={onDoubleClick}
+        onNodeClick={onNodeClick}
+        onNodeContextMenu={onNodeContextMenu}
         isValidConnection={isValidConnection}
         connectionLineComponent={ConnectionLine}
         connectionRadius={32}
@@ -256,6 +285,26 @@ export function Canvas() {
           />
         )}
       </ReactFlow>
+      <Menu open={contextMenu !== null} onOpenChange={(open) => !open && setContextMenu(null)}>
+        {/* An anchor at the pointer: the menu opens from where you clicked. */}
+        <MenuTrigger asChild>
+          <span
+            aria-hidden
+            className="pointer-events-none fixed size-0"
+            style={{ left: contextMenu?.x ?? 0, top: contextMenu?.y ?? 0 }}
+          />
+        </MenuTrigger>
+        <MenuContent
+          align="start"
+          side="bottom"
+          sideOffset={2}
+          aria-label="Component actions"
+          // Focus goes back to the canvas, not the invisible anchor.
+          onCloseAutoFocus={(event) => event.preventDefault()}
+        >
+          {contextMenu && <ComponentActionItems nodeIds={contextMenu.nodeIds} />}
+        </MenuContent>
+      </Menu>
       {quickAdd && (
         <QuickAdd key={quickAdd.key} request={quickAdd} onClose={() => setQuickAdd(null)} />
       )}
