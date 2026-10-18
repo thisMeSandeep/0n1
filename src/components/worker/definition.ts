@@ -19,6 +19,15 @@ export const worker: ComponentDefinition = {
   },
   connections: {
     incoming: true,
-    outgoing: ["service", "circuit-breaker", "cache", "database", "queue"],
+    outgoing: [
+      "service",
+      "circuit-breaker",
+      "cache",
+      "database",
+      "sharded-database",
+      "search-index",
+      "object-storage",
+      "queue",
+    ],
   },
 };

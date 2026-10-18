@@ -38,6 +38,7 @@ export const cdn: ComponentDefinition = {
   connections: {
     incoming: true,
     outgoingRequired: true,
-    outgoing: ["load-balancer", "api-gateway", "rate-limiter", "service"],
+    // Object storage: a CDN in front of a bucket of files, the classic origin.
+    outgoing: ["load-balancer", "api-gateway", "rate-limiter", "service", "object-storage"],
   },
 };

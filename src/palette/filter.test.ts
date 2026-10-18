@@ -16,7 +16,7 @@ describe("filterComponents", () => {
   });
 
   it("matches keywords, so short names work", () => {
-    expect(names("db")).toEqual(["Database", "Read replica"]);
+    expect(names("db")).toEqual(["Database", "Sharded database", "Read replica"]);
     expect(names("lb")).toEqual(["Load balancer"]);
   });
 

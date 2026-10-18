@@ -1,6 +1,11 @@
 import { createZipf, exponential, uniformInt } from "../../engine/core/distributions.ts";
 import type { ScheduledEvent } from "../../engine/core/eventQueue.ts";
-import type { BehaviourFactory, Outcome, Request } from "../../engine/runtime/types.ts";
+import type {
+  BehaviourFactory,
+  Outcome,
+  Request,
+  RequestKind,
+} from "../../engine/runtime/types.ts";
 import { maxShapeFactor, type ShapeSettings, shapeFactor } from "./shape.ts";
 
 /**
@@ -34,6 +39,7 @@ export const client: BehaviourFactory = ({
     node.params as ShapeSettings & {
       rate: number;
       readShare: number;
+      searchShare: number;
       keys: number;
       keyPopularity: "hot" | "uniform";
       timeout: number;
@@ -85,7 +91,16 @@ export const client: BehaviourFactory = ({
   const sendOne = () => {
     const weight = sampling.weight();
     sampling.countRequest();
-    const kind = rng.next() < params().readShare / 100 ? "read" : "write";
+    // One draw picks the kind: searches first, then reads and writes split the rest.
+    // With no searches it's the same draw as before, so earlier runs don't change.
+    const pick = rng.next();
+    const searches = params().searchShare / 100;
+    const kind: RequestKind =
+      pick < searches
+        ? "search"
+        : (pick - searches) / (1 - searches) < params().readShare / 100
+          ? "read"
+          : "write";
     const request: Request = {
       id: nextRequestId(),
       weight,

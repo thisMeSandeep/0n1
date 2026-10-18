@@ -32,6 +32,8 @@ export type NodeMetrics = {
   staleReads?: number | null;
   /** Queues: how long the oldest waiting job has waited (ms). Null when empty. */
   oldestJobAge?: number | null;
+  /** Sharded databases (S43b): each shard's share of capacity in use, 0–1. */
+  shards?: number[];
   /** Circuit breakers (S43a): closed, open or half-open. */
   breakerState?: BreakerState;
   /** Taken down (S27). */
@@ -88,6 +90,7 @@ export class NodeRecorder {
   #inFlight = 0;
   #waiting = 0;
   #breakerState: BreakerState | undefined = undefined;
+  #shards: ((now: number) => number[]) | null = null;
 
   constructor(options: WindowOptions = DEFAULT_WINDOW) {
     this.#window = options;
@@ -136,6 +139,11 @@ export class NodeRecorder {
     this.#inFlight = 0;
     this.#waiting = 0;
     if (this.#oldestSince !== undefined) this.#oldestSince = null;
+  }
+
+  /** Sharded databases: how to read each shard's utilization. */
+  reportShards(read: (now: number) => number[]): void {
+    this.#shards = read;
   }
 
   /** Circuit breakers: the state they're in now. */
@@ -190,6 +198,7 @@ export class NodeRecorder {
       ...(hitRatio === undefined ? {} : { hitRatio }),
       ...(staleReads === undefined ? {} : { staleReads }),
       ...(this.#breakerState === undefined ? {} : { breakerState: this.#breakerState }),
+      ...(this.#shards ? { shards: this.#shards(now) } : {}),
       ...(this.#oldestSince === undefined
         ? {}
         : { oldestJobAge: this.#oldestSince === null ? null : now - this.#oldestSince }),

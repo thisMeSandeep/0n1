@@ -66,7 +66,7 @@ test("search filters, Enter adds the top result, Escape clears", async ({ page }
 
   await page.keyboard.type("db");
   const results = palette(page).getByRole("list", { name: "Search results" }).getByRole("button");
-  await expect(results).toHaveText(["Database", "Read replica"]);
+  await expect(results).toHaveText(["Database", "Sharded database", "Read replica"]);
 
   await page.keyboard.press("Enter");
   await expect(node(page, "Database")).toBeVisible();

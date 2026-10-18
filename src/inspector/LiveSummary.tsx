@@ -165,6 +165,15 @@ export function detailRows(m: NodeMetrics): [string, string][] {
   if (m.hitRatio !== undefined) {
     rows.push(["Hit ratio", show(m.hitRatio === null ? null : formatPercent(m.hitRatio))]);
   }
+  if (m.shards && m.shards.length > 0) {
+    // Sharded databases (S43b): the busiest shard is the one that breaks first.
+    const busiest = m.shards.indexOf(Math.max(...m.shards));
+    rows.push([
+      "Busiest shard",
+      `${busiest + 1} of ${m.shards.length}, ${show(formatPercent(m.shards[busiest] ?? 0))}`,
+    ]);
+    rows.push(["Least busy shard", show(formatPercent(Math.min(...m.shards)))]);
+  }
   if (m.staleReads !== undefined) {
     rows.push(["Stale reads", show(m.staleReads === null ? null : formatPercent(m.staleReads))]);
   }

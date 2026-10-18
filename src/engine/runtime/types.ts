@@ -5,11 +5,14 @@ import type { NodeRecorder, SystemRecorder } from "../metrics/recorder.ts";
 import type { Trace } from "./trace.ts";
 
 /** One request travelling through the system. Retries are new attempts of the same request. */
+export type RequestKind = "read" | "write" | "search";
+
 export type Request = {
   id: number;
   /** How many real requests this one stands for (above 1 when sampling, S26). */
   weight: number;
-  kind: "read" | "write";
+  /** A read or write of one key, or a search (find by text: needs a search index, S43b). */
+  kind: RequestKind;
   /** Which item it's about: a rank, where 0 is the most popular key. */
   key: number;
   /** When the client first sent it (ms). */
@@ -22,7 +25,7 @@ export type Request = {
    * What's being asked of a data component, when it isn't the request's own
    * read or write: cache lookups, fills and invalidations, and replication.
    */
-  op?: "get" | "set" | "delete" | "replicate";
+  op?: "get" | "set" | "delete" | "replicate" | "index";
   /** Set when this request is being traced (S42): every hop records a span. */
   trace?: Trace;
   /** The span of the visit this copy belongs to, so calls it makes become its children. */
@@ -77,7 +80,7 @@ export type BehaviourContext = {
   /** The Traffic % control as a multiplier (1 = as configured); clients scale their rate by it. */
   traffic(): number;
   /** Request tracing (S42): a trace for a client's new request, when one is wanted. */
-  tracing: { begin(kind: "read" | "write", at: number): Trace | undefined };
+  tracing: { begin(kind: RequestKind, at: number): Trace | undefined };
   nextRequestId(): number;
   /** Request sampling (S26): clients send one request per `weight` real ones. */
   sampling: {

@@ -6,12 +6,14 @@ import type { BehaviourContext, Outcome, Request } from "./types.ts";
  *   otherwise the database, then store the result in the cache.
  * - Write: put it on a queue if there is one (a worker does it later),
  *   otherwise write the database, then invalidate the key in the cache.
+ * - Search (S43b): a search index if there is one; otherwise the database
+ *   scans for it, which is slow. Searches aren't cached.
  * With several caches or databases, the key picks one (sharding);
  * replicas take turns.
  */
 export function createDataAccess(ctx: Pick<BehaviourContext, "send" | "node">) {
   const { send, node } = ctx;
-  const { caches, databases, replicas, queues } = node.routes;
+  const { caches, databases, replicas, queues, search } = node.routes;
   let nextReplica = 0;
 
   const byKey = (targets: readonly string[], key: number) =>
@@ -27,6 +29,13 @@ export function createDataAccess(ctx: Pick<BehaviourContext, "send" | "node">) {
   };
 
   return function access(request: Request, done: (outcome: Outcome) => void): void {
+    if (request.kind === "search") {
+      const store = byKey(search, request.key) ?? byKey(databases, request.key);
+      if (store === null)
+        done({ ok: true }); // nothing to search
+      else send(store, { ...request, op: undefined }, done);
+      return;
+    }
     const cache = byKey(caches, request.key);
     const hasStore = databases.length + replicas.length > 0;
 

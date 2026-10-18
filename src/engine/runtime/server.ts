@@ -17,6 +17,12 @@ export type ServerOptions = {
 
 type Waiting = { request: Request; reply: Reply; arrivedAt: number };
 
+/** What a server reports to; a sharded database gives each shard its own (S43b). */
+export type ServerRecorder = Pick<
+  NodeRecorder,
+  "arrive" | "complete" | "drop" | "setBusy" | "setWaiting"
+>;
+
 /**
  * How a sampled request (weight w, standing for w real ones, S26) uses a
  * server: like w requests served side by side, it takes up to w slots, but
@@ -43,7 +49,7 @@ export class QueueingServer {
 
   constructor(
     private readonly sim: Clock,
-    private readonly recorder: NodeRecorder,
+    private readonly recorder: ServerRecorder,
     private readonly options: ServerOptions,
   ) {}
 

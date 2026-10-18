@@ -19,6 +19,8 @@ export type Routes = {
   replicas: string[];
   queues: string[];
   workers: string[];
+  /** Search indexes (S43b): where searches go, and where a database sends its writes to be indexed. */
+  search: string[];
 };
 
 export type RuntimeNode = {
@@ -75,6 +77,9 @@ const ROUTE_FOR_TYPE: Record<string, keyof Routes> = {
   cdn: "forward",
   "rate-limiter": "forward",
   "circuit-breaker": "forward",
+  "object-storage": "forward",
+  "sharded-database": "databases",
+  "search-index": "search",
   cache: "caches",
   database: "databases",
   "read-replica": "replicas",
@@ -89,6 +94,7 @@ const emptyRoutes = (): Routes => ({
   replicas: [],
   queues: [],
   workers: [],
+  search: [],
 });
 
 /** Params with defaults filled in; any invalid value is replaced by its default. */
@@ -259,6 +265,16 @@ export function compile(doc: SystemDocument, registry: Registry): CompileResult 
           nodeId: node.id,
         },
       );
+    }
+  }
+
+  // A search index nobody searches (S43b) only ever gets indexed.
+  const searching = [...nodes.values()].some(
+    (n) => n.type === "client" && Number(n.params.searchShare ?? 0) > 0,
+  );
+  for (const n of nodes.values()) {
+    if (n.type === "search-index" && !searching) {
+      warn(`${n.name} gets no searches: set Searches on a client to send some.`, { nodeId: n.id });
     }
   }
 

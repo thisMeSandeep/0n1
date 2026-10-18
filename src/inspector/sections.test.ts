@@ -10,6 +10,7 @@ describe("paramSections", () => {
       "connections",
       "readTime",
       "writeTime",
+      "searchTime",
     ]);
     expect(sections[1]?.params.map(([key]) => key)).toEqual(["maxWaiting", "errorRate"]);
   });

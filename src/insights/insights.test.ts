@@ -189,6 +189,88 @@ describe("resilience components", () => {
   });
 });
 
+describe("data components", () => {
+  it("a hot shard is named, with the fix that fits how keys are spread", () => {
+    const sharded = (spread: string) =>
+      systemDocument(
+        {
+          users: { type: "client", name: "Users" },
+          api: { type: "service", name: "API" },
+          db: { type: "sharded-database", name: "Orders DB", params: { spread } },
+        },
+        [
+          ["users", "api"],
+          ["api", "db"],
+        ],
+      );
+    const hot = snapshot(20_000, {
+      db: metrics({
+        utilization: 0.98,
+        waiting: 300,
+        throughput: 600,
+        shards: [0.98, 0.2, 0.25, 0.15],
+      }),
+    });
+    const byRange = findInsights(hot, sharded("range"))[0];
+    expect(byRange).toMatchObject({
+      title: "Orders DB has a shard with no free connections.",
+      fix: "Spread keys by hash, so the popular keys aren't all on one shard.",
+    });
+    expect(byRange?.detail).toContain("Shard 1 of 4 is 98% busy; the others average 20%.");
+    expect(findInsights(hot, sharded("hash"))[0]?.fix).toBe(
+      "A few very popular keys live on that shard. Put a cache in front of it.",
+    );
+    // Not overloaded yet, but heading there because of one shard.
+    const warm = snapshot(20_000, {
+      db: metrics({ utilization: 0.88, shards: [0.88, 0.1, 0.12, 0.05] }),
+    });
+    expect(findInsights(warm, sharded("range"))[0]).toMatchObject({
+      id: "near:db",
+      title: "Orders DB has a hot shard.",
+      fix: "Spread keys by hash, so the popular keys aren't all on one shard.",
+    });
+  });
+
+  it("a database scanning for searches is pointed at a search index", () => {
+    const searching = systemDocument(
+      {
+        users: { type: "client", name: "Users", params: { searchShare: 30 } },
+        api: { type: "service", name: "API" },
+        db: { type: "database", name: "Products DB" },
+      },
+      [
+        ["users", "api"],
+        ["api", "db"],
+      ],
+    );
+    const busy = snapshot(20_000, {
+      db: metrics({ utilization: 1, waiting: 200, throughput: 80 }),
+    });
+    expect(findInsights(busy, searching)[0]?.fix).toMatch(
+      /^Searches scan every row\. Add a search index/,
+    );
+  });
+
+  it("stale search results are explained by the indexing delay", () => {
+    const indexed = systemDocument(
+      {
+        users: { type: "client", name: "Users", params: { searchShare: 30 } },
+        api: { type: "service", name: "API" },
+        index: { type: "search-index", name: "Search", params: { indexingDelay: 5000 } },
+      },
+      [
+        ["users", "api"],
+        ["api", "index"],
+      ],
+    );
+    const stale = snapshot(20_000, { index: metrics({ staleReads: 0.12 }) });
+    expect(findInsights(stale, indexed)[0]).toMatchObject({
+      title: "12% of searches on Search miss recent writes.",
+      detail: "Writes take about 5 s to be indexed.",
+    });
+  });
+});
+
 describe("the insight tracker", () => {
   const busy = (time: number) =>
     snapshot(time, { users: metrics(), api: metrics(), db: metrics({ utilization: 0.88 }) });
@@ -203,6 +285,23 @@ describe("the insight tracker", () => {
     const cleared = 10_000 + APPEAR_MS + 250;
     expect(ids(tracker.update(calm(cleared), doc))).toEqual(["near:db"]); // lingers
     expect(tracker.update(calm(cleared + LINGER_MS + 250), doc)).toEqual([]);
+  });
+
+  it("keeps one note per component when its situation changes", () => {
+    const tracker = new InsightTracker();
+    const overloaded = (time: number) =>
+      snapshot(time, {
+        users: metrics(),
+        api: metrics(),
+        db: metrics({ utilization: 0.95, waiting: 20 }),
+      });
+    for (let t = 10_000; t <= 13_000; t += 500) tracker.update(overloaded(t), doc);
+    // Now merely close to its limit: the overloaded note lingers, but only one shows.
+    const shown = tracker.update(busy(13_500), doc);
+    expect(shown.filter((i) => i.nodeId === "db")).toHaveLength(1);
+    expect(shown[0]?.id).toBe("overloaded:db"); // the new one hasn't held long enough yet
+    for (let t = 14_000; t <= 16_000; t += 500) tracker.update(busy(t), doc);
+    expect(ids(tracker.update(busy(16_500), doc))).toEqual(["near:db"]);
   });
 
   it("starts over when time goes back", () => {

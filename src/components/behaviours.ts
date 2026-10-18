@@ -6,10 +6,13 @@ import { circuitBreaker } from "./circuit-breaker/behaviour.ts";
 import { client } from "./client/behaviour.ts";
 import { database } from "./database/behaviour.ts";
 import { loadBalancer } from "./load-balancer/behaviour.ts";
+import { objectStorage } from "./object-storage/behaviour.ts";
 import { queue } from "./queue/behaviour.ts";
 import { rateLimiter } from "./rate-limiter/behaviour.ts";
 import { readReplica } from "./read-replica/behaviour.ts";
+import { searchIndex } from "./search-index/behaviour.ts";
 import { service } from "./service/behaviour.ts";
+import { shardedDatabase } from "./sharded-database/behaviour.ts";
 import { worker } from "./worker/behaviour.ts";
 
 /** How each component type behaves in the simulation, by type id. */
@@ -24,6 +27,9 @@ export const BEHAVIOURS: Readonly<Partial<Record<string, BehaviourFactory>>> = {
   database,
   cache,
   "read-replica": readReplica,
+  "sharded-database": shardedDatabase,
+  "search-index": searchIndex,
+  "object-storage": objectStorage,
   queue,
   worker,
 };

@@ -1,4 +1,4 @@
-import type { FailureReason } from "./types.ts";
+import type { FailureReason, RequestKind } from "./types.ts";
 
 /*
  * Request tracing (S42): one request followed hop by hop. Only traced
@@ -30,7 +30,7 @@ export type Span = {
   /** The client's try this belongs to (1 = first, 2 = first retry…). */
   attempt: number;
   /** What was asked of it: the request's read or write, or a cache's get, set… */
-  op: "read" | "write" | "get" | "set" | "delete" | "replicate";
+  op: RequestKind | "get" | "set" | "delete" | "replicate" | "index";
 };
 
 /** Why it was traced: someone asked, or the engine kept it as the slowest or a failed one. */
@@ -41,7 +41,7 @@ export type TraceRecord = {
   id: string;
   reason: TraceReason;
   client: string;
-  kind: "read" | "write";
+  kind: RequestKind;
   startedAt: number;
   finishedAt: number;
   outcome: SpanOutcome;
@@ -70,7 +70,7 @@ export class Trace {
     readonly id: string,
     public reason: TraceReason,
     readonly client: string,
-    readonly kind: "read" | "write",
+    readonly kind: RequestKind,
     readonly startedAt: number,
     private readonly hooks: TraceHooks,
   ) {

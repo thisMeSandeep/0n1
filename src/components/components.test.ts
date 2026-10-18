@@ -16,15 +16,18 @@ describe("v1 components", () => {
       "service",
       "worker",
       "database",
+      "sharded-database",
       "cache",
       "read-replica",
+      "search-index",
+      "object-storage",
       "queue",
     ]);
     expect([...registry.byCategory()].map(([category, defs]) => [category, defs.length])).toEqual([
       ["traffic", 1],
       ["network", 5],
       ["compute", 2],
-      ["data", 3],
+      ["data", 6],
       ["messaging", 1],
     ]);
   });

@@ -18,7 +18,7 @@ describe("quickAddCandidates", () => {
       "service",
     ]);
     expect(types("queue")).toEqual(["worker"]);
-    expect(types("database")).toEqual(["read-replica"]);
+    expect(types("database")).toEqual(["read-replica", "search-index"]);
   });
 
   it("offers nothing for components that don't send requests", () => {

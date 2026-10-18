@@ -15,7 +15,15 @@ import { DEFAULT_WINDOW, type WindowOptions } from "../metrics/windows.ts";
 import { DEFAULT_NETWORK_LATENCY_MS } from "../network.ts";
 import { SamplingController } from "./sampling.ts";
 import { Trace, type TraceReason, type TraceRecord } from "./trace.ts";
-import type { Behaviour, BehaviourContext, Clock, Outcome, Reply, Request } from "./types.ts";
+import type {
+  Behaviour,
+  BehaviourContext,
+  Clock,
+  Outcome,
+  Reply,
+  Request,
+  RequestKind,
+} from "./types.ts";
 
 export type EngineOptions = {
   seed?: number;
@@ -271,7 +279,7 @@ export class Engine {
     this.#asked.push(client);
   }
 
-  #beginTrace(client: string, kind: "read" | "write", at: number): Trace | undefined {
+  #beginTrace(client: string, kind: RequestKind, at: number): Trace | undefined {
     const asked = this.#asked.findIndex((c) => c === null || c === client);
     let reason: TraceReason | null = null;
     if (asked >= 0) {

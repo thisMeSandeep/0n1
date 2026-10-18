@@ -7,10 +7,13 @@ import { circuitBreaker } from "./circuit-breaker/definition.ts";
 import { client } from "./client/definition.ts";
 import { database } from "./database/definition.ts";
 import { loadBalancer } from "./load-balancer/definition.ts";
+import { objectStorage } from "./object-storage/definition.ts";
 import { queue } from "./queue/definition.ts";
 import { rateLimiter } from "./rate-limiter/definition.ts";
 import { readReplica } from "./read-replica/definition.ts";
+import { searchIndex } from "./search-index/definition.ts";
 import { service } from "./service/definition.ts";
+import { shardedDatabase } from "./sharded-database/definition.ts";
 import { worker } from "./worker/definition.ts";
 
 /** Every component, in palette order within each category. */
@@ -24,8 +27,11 @@ export const componentDefinitions: readonly ComponentDefinition[] = [
   service,
   worker,
   database,
+  shardedDatabase,
   cache,
   readReplica,
+  searchIndex,
+  objectStorage,
   queue,
 ];
 

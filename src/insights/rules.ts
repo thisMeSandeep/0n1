@@ -73,7 +73,46 @@ const CAPACITY: Readonly<Record<string, { full: string; fix: string }>> = {
   cache: { full: "is answering as fast as it can", fix: "Raise its Requests at once." },
   "load-balancer": { full: "is at its throughput limit", fix: "Raise its Throughput limit." },
   "api-gateway": { full: "is at its throughput limit", fix: "Raise its Throughput limit." },
+  "sharded-database": {
+    full: "has a shard with no free connections",
+    fix: "Add shards, give each more connections, or put a cache in front of it.",
+  },
+  "search-index": { full: "has no free connections", fix: "Give it more connections." },
+  "object-storage": {
+    full: "can't take on any more requests",
+    fix: "Put a CDN in front of it for the files people fetch most.",
+  },
 };
+
+/** Whether any client sends searches (S43b). */
+function anySearches(doc: SystemDocument): boolean {
+  return doc.nodes.some((n) => n.type === "client" && Number(n.params.searchShare ?? 0) > 0);
+}
+
+/** "Shard 1 of 4 is 98% busy; the others average 20%." */
+function hotShardNote(hot: { index: number; busy: number; others: number }, count: number): string {
+  return `Shard ${hot.index + 1} of ${count} is ${percent(hot.busy)} busy; the others average ${percent(hot.others)}.`;
+}
+
+/** What helps a hot shard depends on how keys are spread. */
+function hotShardFix(spread: unknown): string {
+  return spread === "range"
+    ? "Spread keys by hash, so the popular keys aren't all on one shard."
+    : "A few very popular keys live on that shard. Put a cache in front of it.";
+}
+
+/** A sharded database's busiest shard, if it's much busier than the rest (S43b). */
+function hotShard(m: NodeMetrics): { index: number; busy: number; others: number } | null {
+  const shards = m.shards;
+  if (!shards || shards.length < 2) return null;
+  let index = 0;
+  shards.forEach((u, i) => {
+    if (u > (shards[index] ?? 0)) index = i;
+  });
+  const busy = shards[index] ?? 0;
+  const others = (shards.reduce((sum, u) => sum + u, 0) - busy) / (shards.length - 1);
+  return busy > NEAR_LIMIT && others < busy * 0.6 ? { index, busy, others } : null;
+}
 
 /** Components a request from `id` goes on to. */
 function downstream(doc: SystemDocument, id: string): string[] {
@@ -219,15 +258,22 @@ export function findInsights(
       // If what it calls is overloaded too, it's waiting on that: a symptom, not the cause.
       if (downstream(doc, node.id).some((id) => overloaded(metricsOf(id)))) continue;
       if (feedsFromBacklog(node.id)) continue; // the queue's note says it
+      const isDatabase = node.type === "database" || node.type === "sharded-database";
+      const hot = hotShard(m);
       const fix =
-        node.type === "database" && mostlyWrites(doc)
-          ? "Most of its work is writes, which a cache or a replica can't take. Put a queue in front to absorb them, or give it more connections."
-          : capacity?.fix;
+        isDatabase && anySearches(doc) && !doc.nodes.some((n) => n.type === "search-index")
+          ? "Searches scan every row. Add a search index: connect your services to it, and the database to it so it stays up to date."
+          : hot
+            ? hotShardFix(node.params.spread)
+            : isDatabase && mostlyWrites(doc)
+              ? "Most of its work is writes, which a cache or a replica can't take. Put a queue in front to absorb them, or give it more connections."
+              : capacity?.fix;
+      const shardNote = hot ? ` ${hotShardNote(hot, m.shards?.length ?? 0)}` : "";
       bottlenecks.push(node);
       const wait = waitMs(m);
       const waiting =
         m.waiting >= 1
-          ? `${count(m.waiting)} requests are waiting${wait !== null ? `, about ${duration(wait)} each` : ""}.`
+          ? `${Math.round(m.waiting) === 1 ? "1 request is" : `${count(m.waiting)} requests are`} waiting${wait !== null ? `, about ${duration(wait)} each` : ""}.`
           : `It's ${percent(m.utilization)} busy.`;
       const turnedAway =
         share >= FAILING ? ` It's turning away ${percent(share)} of requests.` : "";
@@ -236,7 +282,7 @@ export function findInsights(
         severity: "fail",
         nodeId: node.id,
         title: `${node.name} ${capacity?.full ?? "is overloaded"}.`,
-        detail: waiting + turnedAway + spentAt(node.id),
+        detail: waiting + shardNote + turnedAway + spentAt(node.id),
         ...(fix ? { fix } : {}),
       });
       continue;
@@ -258,13 +304,17 @@ export function findInsights(
     }
 
     if (m.utilization > NEAR_LIMIT && node.type in CAPACITY) {
+      // A hot shard is the reason a sharded database is near its limit: say so.
+      const hot = hotShard(m);
       insights.push({
         id: `near:${node.id}`,
         severity: "warn",
         nodeId: node.id,
-        title: `${node.name} is close to its limit.`,
-        detail: `It's ${percent(m.utilization)} busy: a little more traffic and requests start to wait.`,
-        ...(capacity ? { fix: capacity.fix } : {}),
+        title: hot ? `${node.name} has a hot shard.` : `${node.name} is close to its limit.`,
+        detail: hot
+          ? `${hotShardNote(hot, m.shards?.length ?? 0)} A little more traffic and requests start to wait.`
+          : `It's ${percent(m.utilization)} busy: a little more traffic and requests start to wait.`,
+        ...(hot ? { fix: hotShardFix(node.params.spread) } : capacity ? { fix: capacity.fix } : {}),
       });
     }
   }
@@ -360,17 +410,27 @@ export function findInsights(
     );
   }
 
-  // Replicas serving old data.
-  for (const replica of doc.nodes.filter((n) => n.type === "read-replica")) {
-    const m = metricsOf(replica.id);
+  // Replicas and search indexes serving old data.
+  for (const copy of doc.nodes.filter(
+    (n) => n.type === "read-replica" || n.type === "search-index",
+  )) {
+    const m = metricsOf(copy.id);
     if (!m || m.down || m.staleReads == null || m.staleReads < STALE) continue;
+    const index = copy.type === "search-index";
+    const lag = Number((index ? copy.params.indexingDelay : copy.params.replicationLag) ?? 0);
     insights.push({
-      id: `stale:${replica.id}`,
+      id: `stale:${copy.id}`,
       severity: "warn",
-      nodeId: replica.id,
-      title: `${percent(m.staleReads)} of reads from ${replica.name} miss recent writes.`,
-      detail: `Writes take about ${duration(Number(replica.params.replicationLag ?? 0))} to reach it.`,
-      fix: "A shorter replication lag means fewer stale reads.",
+      nodeId: copy.id,
+      title: index
+        ? `${percent(m.staleReads)} of searches on ${copy.name} miss recent writes.`
+        : `${percent(m.staleReads)} of reads from ${copy.name} miss recent writes.`,
+      detail: index
+        ? `Writes take about ${duration(lag)} to be indexed.`
+        : `Writes take about ${duration(lag)} to reach it.`,
+      fix: index
+        ? "A shorter indexing delay means fresher results."
+        : "A shorter replication lag means fewer stale reads.",
     });
   }
 

@@ -1,4 +1,5 @@
 import {
+  ArchiveIcon,
   CopyIcon,
   CubeIcon,
   DatabaseIcon,
@@ -9,8 +10,10 @@ import {
   GlobeHemisphereWestIcon,
   type Icon,
   LightningIcon,
+  ListMagnifyingGlassIcon,
   PlugsConnectedIcon,
   QuestionIcon,
+  RowsIcon,
   ShieldCheckIcon,
   StackIcon,
 } from "@phosphor-icons/react";
@@ -30,6 +33,9 @@ export const COMPONENT_ICONS: Readonly<Record<string, Icon>> = {
   stack: StackIcon,
   gauge: GaugeIcon,
   "plugs-connected": PlugsConnectedIcon,
+  rows: RowsIcon,
+  "list-magnifying-glass": ListMagnifyingGlassIcon,
+  archive: ArchiveIcon,
 };
 
 export function componentIcon(key: string): Icon {

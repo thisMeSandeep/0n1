@@ -28,7 +28,11 @@ const messages = (doc: SystemDocument) => {
   };
 };
 
-/** The mockup's URL shortener, plus a replica, an async job pipeline, a rate limiter and a circuit breaker. */
+/**
+ * The mockup's URL shortener, plus a replica, an async job pipeline, a rate
+ * limiter, a circuit breaker, a sharded database, a search index and
+ * object storage: every component.
+ */
 const full = system({
   nodes: [
     ["users", "client", "Users"],
@@ -44,6 +48,9 @@ const full = system({
     ["jobs", "queue", "Jobs"],
     ["worker", "worker", "Worker"],
     ["breaker", "circuit-breaker", "Breaker"],
+    ["shards", "sharded-database", "Shards"],
+    ["index", "search-index", "Search"],
+    ["files", "object-storage", "Files"],
   ],
   edges: [
     ["users", "cdn"],
@@ -63,8 +70,15 @@ const full = system({
     ["worker", "db"],
     ["worker", "breaker"],
     ["breaker", "api1"],
+    ["api2", "shards"],
+    ["api2", "index"],
+    ["db", "index"],
+    ["worker", "files"],
   ],
 });
+
+// Users send some searches, so the search index has work to do.
+(full.nodes[0] as { params: Record<string, unknown> }).params = { searchShare: 10 };
 
 describe("compile", () => {
   it("compiles a system using every component, cleanly", () => {
@@ -89,6 +103,7 @@ describe("compile", () => {
       replicas: ["replica"],
       queues: [],
       workers: [],
+      search: [],
     });
     expect(model.nodes.get("lb")!.routes.forward).toEqual(["api1", "api2"]);
     expect(model.nodes.get("jobs")!.routes.workers).toEqual(["worker"]);
@@ -174,6 +189,25 @@ describe("compile", () => {
       expect(result.warnings.map((w) => [w.message, w.nodeId])).toEqual([
         ["Nothing sends requests to Lonely cache, so it will sit idle.", "c"],
       ]);
+    });
+
+    it("flags a search index that nothing searches", () => {
+      const doc = system({
+        nodes: [
+          ["u", "client", "Users"],
+          ["s", "service", "API"],
+          ["i", "search-index", "Search"],
+        ],
+        edges: [
+          ["u", "s"],
+          ["s", "i"],
+        ],
+      });
+      expect(messages(doc).warnings).toEqual([
+        "Search gets no searches: set Searches on a client to send some.",
+      ]);
+      (doc.nodes[0] as { params: Record<string, unknown> }).params = { searchShare: 20 };
+      expect(messages(doc).warnings).toEqual([]);
     });
 
     it("flags a queue without workers, a replica without a database, and cache misses with nowhere to go", () => {

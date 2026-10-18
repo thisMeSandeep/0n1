@@ -17,6 +17,9 @@ const GROWTH_WINDOW_MS = 5000;
 
 type Seen = { first: number; last: number; insight: Insight };
 
+/** Notes about how a component itself is doing: it only ever gets one of these at a time. */
+const STATE = /^(overloaded|near|failing):/;
+
 export class InsightTracker {
   #seen = new Map<string, Seen>();
   #backlogs = new Map<string, { time: number; waiting: number }[]>();
@@ -44,8 +47,25 @@ export class InsightTracker {
       if (now - seen.last > LINGER_MS) this.#seen.delete(id);
     }
 
-    const shown = [...this.#seen.values()]
-      .filter((seen) => now - seen.first >= APPEAR_MS)
+    const ready = [...this.#seen.values()].filter((seen) => now - seen.first >= APPEAR_MS);
+    // One state note per component: what's true now beats one lingering after it
+    // cleared, then the more serious one wins. A component whose situation
+    // just changed doesn't get both its old note and its new one.
+    const rank = (seen: Seen) =>
+      (seen.last === now ? 2 : 0) + (seen.insight.severity === "fail" ? 1 : 0);
+    const best = new Map<string, Seen>();
+    for (const seen of ready) {
+      // Only notes about a component's own state; others (users timing out because of it) stay.
+      const node = STATE.test(seen.insight.id) ? seen.insight.nodeId : undefined;
+      if (node === undefined) continue;
+      const current = best.get(node);
+      if (!current || rank(seen) > rank(current)) best.set(node, seen);
+    }
+    const shown = ready
+      .filter((seen) => {
+        const node = STATE.test(seen.insight.id) ? seen.insight.nodeId : undefined;
+        return node === undefined || best.get(node) === seen;
+      })
       .map((seen) => seen.insight);
     return shown.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "fail" ? -1 : 1));
   }
