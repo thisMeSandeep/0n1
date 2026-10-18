@@ -54,6 +54,7 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
     step: simulation.step,
     reset: simulation.reset,
     takeDown: () => simulation.toggleDown(selectionStore.getState().nodeIds),
+    timeline: () => uiStore.getState().setTimelineOpen(!uiStore.getState().timelineOpen),
     undo: () => designStore.temporal.getState().undo(),
     redo: () => designStore.temporal.getState().redo(),
     duplicate: () => {
@@ -112,9 +113,20 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
     const onPointerDown = () => {
       keyboardFocus = false;
     };
-    const handle = (event: KeyboardEvent) => {
+    /**
+     * Whether each key press is a shortcut, decided when it first arrives
+     * (capture phase), before anything reacts to it. Escape closing a dialog
+     * marks it closing during the same press; deciding later would let that
+     * Escape also deselect.
+     */
+    const decided = new WeakMap<KeyboardEvent, ReturnType<typeof findShortcut>>();
+    const decide = (event: KeyboardEvent) => {
       const shortcut = findShortcut(event);
-      if (!shortcut || !shouldHandle(shortcut, event.target, { keyboardFocus })) return;
+      return shortcut && shouldHandle(shortcut, event.target, { keyboardFocus }) ? shortcut : null;
+    };
+    const run = (event: KeyboardEvent) => {
+      const shortcut = decided.get(event);
+      if (!shortcut) return;
       event.preventDefault();
       // A clicked button still has focus; move it off so the key's release can't press it too.
       if (event.key === " " && isSpaceControl(event.target)) (event.target as HTMLElement).blur();
@@ -124,10 +136,11 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
     // opens on Space keydown, and the prevented default tells it not to.
     const onKeyDownCapture = (event: KeyboardEvent) => {
       if (isNavigationKey(event.key)) keyboardFocus = true;
-      if (event.key === " ") handle(event);
+      decided.set(event, decide(event));
+      if (event.key === " ") run(event);
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== " ") handle(event);
+      if (event.key !== " ") run(event);
     };
     window.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("keydown", onKeyDownCapture, true);

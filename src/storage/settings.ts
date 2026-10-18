@@ -14,6 +14,7 @@ export type Settings = {
   panels: { tier: string; paletteOpen: boolean; inspectorOpen: boolean };
   /** The welcome card was dismissed; it doesn't open on its own again. */
   welcomeSeen: boolean;
+  timelineOpen: boolean;
 };
 
 export type SettingsRepository = ReturnType<typeof createSettingsRepository>;

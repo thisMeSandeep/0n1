@@ -8,11 +8,16 @@ export const STEP_MS = 1000;
 /** Traffic % choices in the top bar. */
 export const TRAFFIC_LEVELS = [0.1, 0.25, 0.5, 1, 1.5, 2, 3, 5, 10] as const;
 
-/** What the simulation depends on: components, their types and connections. Names and positions don't count. */
+/**
+ * What the simulation is built from: components, their types, connections,
+ * and the chaos timeline (events are scheduled when the run starts). Names
+ * and positions don't count.
+ */
 function structure(doc: SystemDocument): string {
   return JSON.stringify([
     doc.nodes.map((n) => [n.id, n.type]),
-    doc.edges.map((e) => [e.source, e.target]),
+    doc.edges.map((e) => [e.id, e.source, e.target]),
+    doc.scenario?.events ?? [],
   ]);
 }
 
@@ -20,8 +25,8 @@ function structure(doc: SystemDocument): string {
  * Keeps the worker in step with the design and turns run controls into
  * commands. The worker starts on the first Run or Step:
  * - settings changes go live (no reset);
- * - adding or removing components or connections reloads the system
- *   (time back to 0, still running if it was);
+ * - adding or removing components or connections, or changing the chaos
+ *   timeline, reloads the system (time back to 0, still running if it was);
  * - opening another system loads it, paused.
  *
  * Components taken down stay down through a reload, until they're brought

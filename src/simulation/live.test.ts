@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { registry } from "../components/index.ts";
-import type { MetricsSnapshot, NodeMetrics } from "../engine/metrics/recorder.ts";
+import { type MetricsSnapshot, NO_FAULTS, type NodeMetrics } from "../engine/metrics/recorder.ts";
 import { createSystemDocument } from "../model/document.ts";
 import { createDesignStore } from "../store/design.ts";
 import {
@@ -40,6 +40,7 @@ const snapshot = (
   system: { goodput: 0, throughput: 0, errorRate: 0, latency: null },
   nodes,
   edges,
+  faults: NO_FAULTS,
 });
 
 const EMPTY: LiveState = EMPTY_LIVE;
@@ -76,6 +77,11 @@ describe("a component's live view", () => {
     // Half its requests fail, all of them further on.
     const relaying = nodeLive(metrics({ errorRate: 0.5, failures: 0 }));
     expect(relaying).toMatchObject({ status: "healthy", hasErrors: false, errors: { value: "0" } });
+  });
+
+  it("says when the chaos timeline is slowing it down", () => {
+    expect(nodeLive(metrics(), "p99", 4).slowed).toBe(4);
+    expect(nodeLive(metrics({ down: true }), "p99", 4).slowed).toBeNull();
   });
 
   it("shows when it went down instead of numbers", () => {
@@ -178,6 +184,10 @@ describe("a connection's live view", () => {
 
   it("is down, without dots, when either end is down", () => {
     expect(edgeLive(edge(100, 1), true)).toMatchObject({ status: "down", dots: 0 });
+  });
+
+  it("is cut, without dots, when the chaos timeline cuts it", () => {
+    expect(edgeLive(edge(100, 1), false, true)).toMatchObject({ status: "cut", dots: 0 });
   });
 
   it("labels its rate, p99 and errors", () => {

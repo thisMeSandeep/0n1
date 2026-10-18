@@ -75,6 +75,10 @@ export class Engine {
   #latency: number;
   #requestId = 0;
   #traffic = 1;
+  /** Chaos timeline state (S40). */
+  #slow = new Map<string, number>();
+  #cut = new Set<string>();
+  #surge = 1;
 
   constructor(
     readonly model: RuntimeModel,
@@ -101,6 +105,7 @@ export class Engine {
       this.#current.set(id, this.#incarnate(id));
     }
     for (const life of this.#current.values()) life.behaviour.start?.();
+    this.#scheduleEvents();
 
     const reconsider = () => {
       // A traffic shape moves the rate, so the sampling weight follows it.
@@ -125,7 +130,9 @@ export class Engine {
       get now() {
         return sim.now;
       },
-      schedule: (delay, event) => sim.schedule(delay, () => life.alive && event()),
+      // A slowed component (S40) takes longer over everything it does.
+      schedule: (delay, event) =>
+        sim.schedule(delay * (this.#slow.get(id) ?? 1), () => life.alive && event()),
       at: (time, event) => sim.at(time, () => life.alive && event()),
       cancel: (event: ScheduledEvent) => sim.cancel(event),
     };
@@ -140,7 +147,7 @@ export class Engine {
       send: (to, request, onReply) => this.#send(life, to, request, onReply),
       peer: (other) => this.model.nodes.get(other),
       isUp: (other) => this.isUp(other),
-      traffic: () => this.#traffic,
+      traffic: () => this.#traffic * this.#surge,
       sampling: {
         weight: () => this.sampling.weight,
         countRequest: () => this.sampling.countRequest(),
@@ -162,6 +169,7 @@ export class Engine {
 
   #send(from: Incarnation, to: string, request: Request, onReply: Reply): void {
     if (!from.alive) return;
+    const key = edgeKey(from.id, to);
     const edge = this.#edge(from.id, to);
     const sentAt = this.sim.now;
     edge.send(sentAt, request.weight);
@@ -173,6 +181,11 @@ export class Engine {
     const back = (outcome: Outcome) => this.sim.schedule(this.#latency, () => deliver(outcome));
 
     this.sim.schedule(this.#latency, () => {
+      if (this.#cut.has(key)) {
+        // A cut connection: it fails at once, and it's no component's fault.
+        back({ ok: false, reason: "unavailable", at: key });
+        return;
+      }
       const target = this.#current.get(to);
       if (!target?.alive) {
         back(UNAVAILABLE); // like a refused connection: fails fast
@@ -203,7 +216,44 @@ export class Engine {
       const rate = life?.behaviour.offeredRate?.() ?? this.model.nodes.get(id)?.params.rate;
       return sum + Number(rate ?? 0);
     }, 0);
-    return base * this.#traffic;
+    return base * this.#traffic * this.#surge;
+  }
+
+  /** Put the chaos timeline (S40) on the clock. A reset builds a new engine, so it replays the same. */
+  #scheduleEvents(): void {
+    const at = (time: number | null, run: () => void) => {
+      if (time !== null) this.sim.at(Math.max(this.sim.now, time), run);
+    };
+    for (const event of this.model.events) {
+      switch (event.kind) {
+        case "down":
+          at(event.at, () => this.takeDown(event.node));
+          at(event.until, () => this.bringBack(event.node));
+          break;
+        case "slow":
+          at(event.at, () => this.#slow.set(event.node, event.factor));
+          at(event.until, () => this.#slow.delete(event.node));
+          break;
+        case "cut": {
+          const key = edgeKey(event.from, event.to);
+          at(event.at, () => this.#cut.add(key));
+          at(event.until, () => this.#cut.delete(key));
+          break;
+        }
+        case "flush":
+          at(event.at, () => this.#current.get(event.node)?.behaviour.flush?.());
+          break;
+        case "surge":
+          at(event.at, () => this.#setSurge(event.factor));
+          at(event.until, () => this.#setSurge(1));
+          break;
+      }
+    }
+  }
+
+  #setSurge(factor: number): void {
+    this.#surge = factor;
+    this.sampling.setOfferedRate(this.#offeredRate());
   }
 
   /**
@@ -302,6 +352,11 @@ export class Engine {
       system: this.system.snapshot(now),
       nodes,
       edges,
+      faults: {
+        slowed: Object.fromEntries(this.#slow),
+        cut: [...this.#cut],
+        surge: this.#surge,
+      },
     };
   }
 }

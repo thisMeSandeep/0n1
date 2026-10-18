@@ -16,6 +16,7 @@ const STROKE: Record<EdgeStatus, string> = {
   warn: "var(--warn)",
   fail: "var(--fail)",
   down: "var(--edge)",
+  cut: "var(--fail)",
 };
 
 /**
@@ -56,7 +57,7 @@ export const ComponentEdge = memo(function ComponentEdge({
 
   const status = view?.status ?? "idle";
   const width = view?.width ?? 1.5;
-  const tinted = status === "warn" || status === "fail";
+  const tinted = status === "warn" || status === "fail" || status === "cut";
 
   return (
     <g
@@ -72,7 +73,8 @@ export const ComponentEdge = memo(function ComponentEdge({
           stroke: selected ? "var(--accent)" : STROKE[status],
           strokeWidth: selected ? Math.max(2, width) : width,
           strokeOpacity: selected ? 1 : tinted ? 0.55 : status === "down" ? 0.6 : 1,
-          strokeDasharray: status === "down" ? "4 6" : undefined,
+          // Down: a dead end. Cut (chaos timeline): broken right through.
+          strokeDasharray: status === "down" ? "4 6" : status === "cut" ? "2 6" : undefined,
           strokeLinecap: "round",
           transition:
             "stroke var(--duration-fast) ease-out, stroke-width var(--duration-live) linear",
@@ -134,6 +136,7 @@ function EdgeLabel({ view, x, y }: { view: EdgeLive; x: number; y: number }) {
         )}
         style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)` }}
       >
+        {view.status === "cut" && <span className="font-medium text-fail">Cut</span>}
         <span>
           <span className="font-medium">{view.rate}</span>
           <span className="ml-0.5 text-xs text-fg-2">/s</span>
@@ -146,7 +149,7 @@ function EdgeLabel({ view, x, y }: { view: EdgeLive; x: number; y: number }) {
         )}
         <span
           className={
-            view.status === "fail"
+            view.status === "fail" || view.status === "cut"
               ? "text-fail"
               : view.status === "warn"
                 ? "text-warn"

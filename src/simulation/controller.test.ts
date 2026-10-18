@@ -168,4 +168,16 @@ describe("simulation controller", () => {
     controller.toggleDown([]);
     expect(sent).toEqual([]);
   });
+
+  it("reloads when the chaos timeline changes", () => {
+    const { design, controller, types, clear } = setup();
+    const api = design.getState().addNode("service", { x: 0, y: 0 });
+    controller.play();
+    clear();
+    const id = design.getState().addEvent({ kind: "down", at: 5000, target: api, duration: 1000 });
+    expect(types()).toEqual(["load"]);
+    clear();
+    design.getState().removeEvent(id);
+    expect(types()).toEqual(["load"]);
+  });
 });

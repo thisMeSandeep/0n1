@@ -1,6 +1,7 @@
 import {
   ArrowCounterClockwiseIcon,
   BlueprintIcon,
+  ClockCountdownIcon,
   CornersOutIcon,
   DownloadSimpleIcon,
   FolderOpenIcon,
@@ -58,6 +59,7 @@ export function CommandPalette() {
   };
   const nextTheme = resolved === "dark" ? "light" : "dark";
   const running = useSimulation((s) => s.running);
+  const timelineOpen = useUi((s) => s.timelineOpen);
 
   return (
     <RadixDialog.Root open={open} onOpenChange={setOpen}>
@@ -102,6 +104,15 @@ export function CommandPalette() {
                   icon={<ArrowCounterClockwiseIcon aria-hidden className="text-fg-2" />}
                 >
                   Reset the run
+                </CommandItem>
+                <CommandItem
+                  value={timelineOpen ? "Hide the chaos timeline" : "Show the chaos timeline"}
+                  keywords={["chaos", "failure", "schedule", "events", "scenario", "timeline"]}
+                  shortcut={shortcutKeys("timeline")}
+                  onSelect={run(() => uiStore.getState().setTimelineOpen(!timelineOpen))}
+                  icon={<ClockCountdownIcon aria-hidden className="text-fg-2" />}
+                >
+                  {timelineOpen ? "Hide the chaos timeline" : "Show the chaos timeline"}
                 </CommandItem>
               </CommandGroup>
               <CommandGroup heading="Add component">

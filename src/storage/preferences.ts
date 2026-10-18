@@ -33,16 +33,18 @@ export type Preferences = {
   collapsedGroups: z.infer<typeof groupsSchema>;
   panels: z.infer<typeof panelsSchema> | null;
   welcomeSeen: boolean;
+  timelineOpen: boolean;
 };
 
 /** Stored values are validated; anything unexpected falls back to the default. */
 export async function loadPreferences(settings: SettingsRepository): Promise<Preferences> {
-  const [theme, minimap, groups, panels, welcomeSeen] = await Promise.all([
+  const [theme, minimap, groups, panels, welcomeSeen, timelineOpen] = await Promise.all([
     settings.get("theme"),
     settings.get("minimap"),
     settings.get("collapsedGroups"),
     settings.get("panels"),
     settings.get("welcomeSeen"),
+    settings.get("timelineOpen"),
   ]);
   return {
     theme: themeSchema.catch("system").parse(theme),
@@ -53,6 +55,7 @@ export async function loadPreferences(settings: SettingsRepository): Promise<Pre
       .catch(null)
       .parse(panels ?? null),
     welcomeSeen: z.boolean().catch(false).parse(welcomeSeen),
+    timelineOpen: z.boolean().catch(false).parse(timelineOpen),
   };
 }
 
@@ -70,9 +73,13 @@ export function bindPreferences(
     panels: prefs.panels,
     // A first visit opens the welcome card.
     welcomeOpen: !prefs.welcomeSeen,
+    timelineOpen: prefs.timelineOpen,
   });
   return ui.subscribe((state, previous) => {
     if (state.minimap !== previous.minimap) void settings.set("minimap", state.minimap);
+    if (state.timelineOpen !== previous.timelineOpen) {
+      void settings.set("timelineOpen", state.timelineOpen);
+    }
     if (state.collapsedGroups !== previous.collapsedGroups) {
       void settings.set("collapsedGroups", [...state.collapsedGroups]);
     }

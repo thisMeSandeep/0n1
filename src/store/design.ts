@@ -5,6 +5,7 @@ import { defaultParams, type Params, paramsSchema } from "../model/component.ts"
 import { checkConnection } from "../model/connections.ts";
 import type { Position, SystemDocument, SystemNode } from "../model/document.ts";
 import type { Registry } from "../model/registry.ts";
+import { eventTarget, type NewScenarioEvent, scenarioEventSchema } from "../model/scenario.ts";
 
 /**
  * The design store: the one place the current system document is edited.
@@ -31,6 +32,11 @@ export type DesignActions = {
   disconnect(edgeIds: readonly string[]): void;
   /** Copies nodes (and the connections between them), offset slightly. Returns new ids. */
   duplicateNodes(ids: readonly string[]): string[];
+  /** The chaos timeline (S40). Returns the new event's id. */
+  addEvent(event: NewScenarioEvent): string;
+  /** Replace an event, keeping its id. Rejects one that isn't valid. */
+  updateEvent(id: string, event: NewScenarioEvent): boolean;
+  removeEvent(id: string): void;
   /** Group every change until endGesture (a node drag, a slider drag) into one undo step. */
   beginGesture(): void;
   endGesture(): void;
@@ -61,6 +67,18 @@ export function uniqueName(base: string, taken: ReadonlySet<string>): string {
 function cleanName(name: string): string | null {
   const trimmed = name.trim();
   return trimmed === "" || trimmed.length > NAME_MAX ? null : trimmed;
+}
+
+/** Drop timeline events aimed at components or connections that no longer exist. */
+function pruneEvents(doc: SystemDocument): void {
+  if (!doc.scenario) return;
+  const nodes = new Set(doc.nodes.map((n) => n.id));
+  const edges = new Set(doc.edges.map((e) => e.id));
+  doc.scenario.events = doc.scenario.events.filter((event) => {
+    const target = eventTarget(event);
+    if (!target) return true;
+    return "node" in target ? nodes.has(target.node) : edges.has(target.edge);
+  });
 }
 
 export function createDesignStore({
@@ -172,6 +190,41 @@ export function createDesignStore({
             edit((d) => {
               d.nodes = d.nodes.filter((n) => !remove.has(n.id));
               d.edges = d.edges.filter((e) => !remove.has(e.source) && !remove.has(e.target));
+              pruneEvents(d);
+            });
+          },
+
+          addEvent(event) {
+            const id = newId();
+            const parsed = scenarioEventSchema.safeParse({ ...event, id });
+            if (!parsed.success)
+              throw new Error(`Invalid event: ${parsed.error.issues[0]?.message}`);
+            edit((d) => {
+              d.scenario ??= { events: [] };
+              d.scenario.events.push(parsed.data);
+              d.scenario.events.sort((a, b) => a.at - b.at);
+            });
+            return id;
+          },
+
+          updateEvent(id, event) {
+            const parsed = scenarioEventSchema.safeParse({ ...event, id });
+            const events = get().doc.scenario?.events ?? [];
+            if (!parsed.success || !events.some((e) => e.id === id)) return false;
+            edit((d) => {
+              if (!d.scenario) return;
+              d.scenario.events = d.scenario.events
+                .map((e) => (e.id === id ? parsed.data : e))
+                .sort((a, b) => a.at - b.at);
+            });
+            return true;
+          },
+
+          removeEvent(id) {
+            if (!get().doc.scenario?.events.some((e) => e.id === id)) return;
+            edit((d) => {
+              if (!d.scenario) return;
+              d.scenario.events = d.scenario.events.filter((e) => e.id !== id);
             });
           },
 
@@ -188,6 +241,7 @@ export function createDesignStore({
             if (!get().doc.edges.some((e) => remove.has(e.id))) return;
             edit((d) => {
               d.edges = d.edges.filter((e) => !remove.has(e.id));
+              pruneEvents(d);
             });
           },
 

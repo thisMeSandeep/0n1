@@ -259,4 +259,47 @@ describe("design store", () => {
       expect(store.temporal.getState().pastStates.length).toBe(3);
     });
   });
+
+  describe("the chaos timeline", () => {
+    it("adds events in time order, edits and removes them, with undo", () => {
+      const { store } = setup();
+      const api = store.getState().addNode("service", { x: 0, y: 0 });
+      const later = store
+        .getState()
+        .addEvent({ kind: "down", at: 20_000, target: api, duration: 5000 });
+      store.getState().addEvent({ kind: "surge", at: 5000, factor: 3, duration: 10_000 });
+      expect(store.getState().doc.scenario?.events.map((e) => e.at)).toEqual([5000, 20_000]);
+
+      expect(
+        store
+          .getState()
+          .updateEvent(later, { kind: "down", at: 1000, target: api, duration: null }),
+      ).toBe(true);
+      expect(store.getState().doc.scenario?.events.map((e) => e.kind)).toEqual(["down", "surge"]);
+      expect(
+        store.getState().updateEvent(later, { kind: "surge", at: -5, factor: 3, duration: 1 }),
+      ).toBe(false);
+
+      store.getState().removeEvent(later);
+      expect(store.getState().doc.scenario?.events).toHaveLength(1);
+      store.temporal.getState().undo();
+      expect(store.getState().doc.scenario?.events).toHaveLength(2);
+    });
+
+    it("drops events aimed at components or connections that are removed", () => {
+      const { store } = setup();
+      const a = store.getState().addNode("client", { x: 0, y: 0 });
+      const b = store.getState().addNode("service", { x: 300, y: 0 });
+      const link = store.getState().connect(a, b);
+      if (!link.ok) throw new Error("couldn't connect");
+      store.getState().addEvent({ kind: "cut", at: 1000, target: link.edgeId, duration: 1000 });
+      store.getState().addEvent({ kind: "slow", at: 1000, target: b, factor: 2, duration: 1000 });
+      store.getState().addEvent({ kind: "surge", at: 1000, factor: 2, duration: 1000 });
+
+      store.getState().disconnect([link.edgeId]);
+      expect(store.getState().doc.scenario?.events.map((e) => e.kind)).toEqual(["slow", "surge"]);
+      store.getState().removeNodes([b]);
+      expect(store.getState().doc.scenario?.events.map((e) => e.kind)).toEqual(["surge"]);
+    });
+  });
 });

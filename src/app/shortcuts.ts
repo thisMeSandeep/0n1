@@ -36,6 +36,7 @@ export const SHORTCUT_IDS = [
   "step",
   "reset",
   "takeDown",
+  "timeline",
   "undo",
   "redo",
   "duplicate",
@@ -72,6 +73,12 @@ export const SHORTCUTS: readonly Shortcut[] = [
   },
   { id: "step", label: "Step 1 second", group: "Simulation", combos: [{ key: "." }] },
   { id: "reset", label: "Reset the run", group: "Simulation", combos: [{ key: "r", shift: true }] },
+  {
+    id: "timeline",
+    label: "Show or hide the chaos timeline",
+    group: "Simulation",
+    combos: [{ key: "t" }],
+  },
   {
     id: "takeDown",
     label: "Take down or bring back the selection",
@@ -157,10 +164,11 @@ export function findShortcut(event: KeyLike, mac = isMac): Shortcut | null {
 /** Inside a menu, dialog, popover list or command palette: leave keys to it. */
 function isOverlayTarget(target: EventTarget | null): boolean {
   if (!target || typeof (target as Element).closest !== "function") return false;
-  return (
-    (target as Element).closest('[role="dialog"], [role="menu"], [role="listbox"], [cmdk-root]') !==
-    null
+  const overlay = (target as Element).closest(
+    '[role="dialog"], [role="menu"], [role="listbox"], [cmdk-root]',
   );
+  // One that's closing (its exit animation still playing) no longer owns the keys.
+  return overlay !== null && overlay.getAttribute("data-state") !== "closed";
 }
 
 /** A focused control that Space presses or toggles. */

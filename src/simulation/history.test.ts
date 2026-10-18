@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { MetricsSnapshot } from "../engine/metrics/recorder.ts";
+import { type MetricsSnapshot, NO_FAULTS } from "../engine/metrics/recorder.ts";
 import { createSystemHistory, HISTORY_POINTS } from "./history.ts";
 import { createSimulationStore } from "./store.ts";
 
@@ -14,6 +14,7 @@ const snapshot = (time: number, throughput = 100): MetricsSnapshot => ({
   },
   nodes: {},
   edges: {},
+  faults: NO_FAULTS,
 });
 
 describe("system history", () => {

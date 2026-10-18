@@ -1,6 +1,7 @@
 import {
   ArrowCounterClockwiseIcon,
   CaretDownIcon,
+  ClockCountdownIcon,
   PauseIcon,
   PlayIcon,
   SkipForwardIcon,
@@ -14,8 +15,9 @@ import { TRAFFIC_LEVELS } from "../simulation/controller.ts";
 import { formatClock, formatSpeed, formatTraffic } from "../simulation/format.ts";
 import { simulation } from "../simulation/index.ts";
 import { useSimulation } from "../simulation/store.ts";
-import { selectionStore, useDesign } from "../store/index.ts";
+import { selectionStore, uiStore, useDesign, useUi } from "../store/index.ts";
 import { Button, IconButton } from "../ui/Button.tsx";
+import { cx } from "../ui/cx.ts";
 import {
   Menu,
   MenuContent,
@@ -125,7 +127,29 @@ export function RunControls() {
           </MenuRadioGroup>
         </MenuContent>
       </Menu>
+      <TimelineToggle />
     </fieldset>
+  );
+}
+
+/** Show or hide the chaos timeline (S40). */
+function TimelineToggle() {
+  const open = useUi((s) => s.timelineOpen);
+  const events = useDesign((s) => s.doc.scenario?.events.length ?? 0);
+  return (
+    <IconButton
+      label={open ? "Hide the chaos timeline" : "Show the chaos timeline"}
+      shortcut={shortcutKeys("timeline")}
+      aria-pressed={open}
+      onClick={() => uiStore.getState().setTimelineOpen(!open)}
+      className={cx("relative", open && "bg-fg/6 text-fg")}
+    >
+      <ClockCountdownIcon />
+      {/* A dot when events are planned but the strip is hidden. */}
+      {events > 0 && !open && (
+        <span aria-hidden className="absolute top-1 right-1 size-1.5 rounded-pill bg-accent" />
+      )}
+    </IconButton>
   );
 }
 

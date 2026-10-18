@@ -36,11 +36,21 @@ export type RuntimeNode = {
   routes: Routes;
 };
 
+/** A chaos timeline event (S40), resolved to the components it acts on. Times in ms. */
+export type RuntimeEvent =
+  | { kind: "down"; at: number; node: string; until: number | null }
+  | { kind: "slow"; at: number; node: string; factor: number; until: number }
+  | { kind: "cut"; at: number; from: string; to: string; until: number }
+  | { kind: "flush"; at: number; node: string }
+  | { kind: "surge"; at: number; factor: number; until: number };
+
 export type RuntimeModel = {
   nodes: ReadonlyMap<string, RuntimeNode>;
   /** Node ids in document order: the order the engine sets things up in. */
   order: readonly string[];
   clients: readonly string[];
+  /** The chaos timeline, in time order. */
+  events: readonly RuntimeEvent[];
 };
 
 export type CompileIssue = {
@@ -250,9 +260,80 @@ export function compile(doc: SystemDocument, registry: Registry): CompileResult 
     }
   }
 
+  const events = resolveEvents(doc, nodes, warn);
+
   return {
-    model: errors.length === 0 ? { nodes, order, clients } : null,
+    model: errors.length === 0 ? { nodes, order, clients, events } : null,
     errors,
     warnings,
   };
+}
+
+/** Resolve the timeline, leaving out (with a warning) events that no longer fit. */
+function resolveEvents(
+  doc: SystemDocument,
+  nodes: ReadonlyMap<string, RuntimeNode>,
+  warn: (message: string, ids: { nodeId?: string; edgeId?: string }) => void,
+): RuntimeEvent[] {
+  const events: RuntimeEvent[] = [];
+  for (const event of doc.scenario?.events ?? []) {
+    const end = (duration: number) => event.at + duration;
+    if (event.kind === "surge") {
+      events.push({
+        kind: "surge",
+        at: event.at,
+        factor: event.factor,
+        until: end(event.duration),
+      });
+      continue;
+    }
+    if (event.kind === "cut") {
+      const edge = doc.edges.find((e) => e.id === event.target);
+      if (!edge) {
+        warn("A timeline event cuts a connection that's gone; it's left out.", {});
+        continue;
+      }
+      events.push({
+        kind: "cut",
+        at: event.at,
+        from: edge.source,
+        to: edge.target,
+        until: end(event.duration),
+      });
+      continue;
+    }
+    const node = nodes.get(event.target);
+    if (!node) {
+      warn("A timeline event is about a component that's gone; it's left out.", {});
+      continue;
+    }
+    if (event.kind === "flush" && node.type !== "cache") {
+      warn(`Only caches can be flushed, so the flush of ${node.name} is left out.`, {
+        nodeId: node.id,
+      });
+      continue;
+    }
+    if (event.kind === "slow" && node.type === "client") {
+      warn(`${node.name} is a client: slow down a component instead.`, { nodeId: node.id });
+      continue;
+    }
+    if (event.kind === "flush") events.push({ kind: "flush", at: event.at, node: node.id });
+    else if (event.kind === "slow") {
+      events.push({
+        kind: "slow",
+        at: event.at,
+        node: node.id,
+        factor: event.factor,
+        until: end(event.duration),
+      });
+    } else {
+      events.push({
+        kind: "down",
+        at: event.at,
+        node: node.id,
+        until: event.duration === null ? null : end(event.duration),
+      });
+    }
+  }
+  return events;
 }

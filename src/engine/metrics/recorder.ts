@@ -295,4 +295,18 @@ export type MetricsSnapshot = {
   nodes: Record<string, NodeMetrics>;
   /** By edgeKey(source, target); only connections that have carried traffic. */
   edges: Record<string, EdgeMetrics>;
+  /** What the chaos timeline (S40) is doing right now. */
+  faults: Faults;
+};
+
+/** No chaos: nothing slowed, nothing cut, no surge. */
+export const NO_FAULTS: Faults = { slowed: {}, cut: [], surge: 1 };
+
+export type Faults = {
+  /** Components slowed down, by id: how many times longer their work takes. */
+  slowed: Record<string, number>;
+  /** Connections cut, by edgeKey. */
+  cut: string[];
+  /** Traffic surge multiplier (1 when there's none). */
+  surge: number;
 };

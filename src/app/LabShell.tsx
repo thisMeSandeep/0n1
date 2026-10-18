@@ -1,10 +1,11 @@
 import { ReactFlowProvider } from "@xyflow/react";
 import { useEffect, useState } from "react";
 import { Canvas } from "../canvas/Canvas.tsx";
+import { TimelineStrip } from "../chaos/TimelineStrip.tsx";
 import { ImageExportDialog } from "../export/ImageExportDialog.tsx";
 import { RestoreDialog } from "../library/RestoreDialog.tsx";
 import { PalettePanel } from "../palette/PalettePanel.tsx";
-import { selectionStore } from "../store/index.ts";
+import { selectionStore, useUi } from "../store/index.ts";
 import { CommandPalette } from "./CommandPalette.tsx";
 import { DesktopNotice } from "./DesktopNotice.tsx";
 import { LabShortcuts } from "./LabShortcuts.tsx";
@@ -15,6 +16,7 @@ import { useLabLayout } from "./useLabLayout.ts";
 /** The lab frame: top bar, palette, canvas, inspector (UIUX §3). */
 export function LabShell() {
   const layout = useLabLayout();
+  const timelineOpen = useUi((s) => s.timelineOpen);
   const [continuedOnSmallScreen, setContinuedOnSmallScreen] = useState(false);
 
   // Below 1440px the inspector floats closed; selecting something opens it (UIUX §3).
@@ -47,9 +49,12 @@ export function LabShell() {
         <TopBar />
         <div className="flex min-h-0 flex-1">
           <PalettePanel open={layout.paletteOpen} onToggle={layout.togglePalette} />
-          <main aria-label="Canvas" className="relative min-w-0 flex-1">
-            <Canvas />
-            {!layout.inspectorOpen && <OpenInspectorButton onClick={layout.toggleInspector} />}
+          <main aria-label="Canvas" className="relative flex min-w-0 flex-1 flex-col">
+            <div className="relative min-h-0 flex-1">
+              <Canvas />
+              {!layout.inspectorOpen && <OpenInspectorButton onClick={layout.toggleInspector} />}
+            </div>
+            {timelineOpen && <TimelineStrip />}
             {!layout.inspectorDocked && inspector}
           </main>
           {layout.inspectorDocked && inspector}

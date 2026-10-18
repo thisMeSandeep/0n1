@@ -58,6 +58,8 @@ export type NodeLive = {
   waiting: string;
   /** "01:52" when it's down. */
   downSince: string | null;
+  /** Slowed down by the chaos timeline (S40): how many times longer its work takes. */
+  slowed: number | null;
 };
 
 export type Trend = { label: string; unit: string; values: readonly number[] };
@@ -68,7 +70,8 @@ export const EDGE_FAIL_ERRORS = 0.05;
 /** Most flow dots on one connection. */
 export const MAX_DOTS = 6;
 
-export type EdgeStatus = "idle" | "healthy" | "warn" | "fail" | "down";
+/** `cut`: the chaos timeline (S40) has cut it; requests on it fail at once. */
+export type EdgeStatus = "idle" | "healthy" | "warn" | "fail" | "down" | "cut";
 
 export type EdgeLive = {
   status: EdgeStatus;
@@ -182,7 +185,11 @@ function detailOf(m: NodeMetrics, detail: LiveDetail): NodeLive["detail"] {
 }
 
 /** The view of one component's metrics. */
-export function nodeLive(m: NodeMetrics, detail: LiveDetail = "p99"): NodeLive {
+export function nodeLive(
+  m: NodeMetrics,
+  detail: LiveDetail = "p99",
+  slowed: number | null = null,
+): NodeLive {
   const errors = failingShare(m, detail);
   return {
     status: statusOf(m, detail, errors),
@@ -194,6 +201,7 @@ export function nodeLive(m: NodeMetrics, detail: LiveDetail = "p99"): NodeLive {
     hasErrors: !m.down && detail !== "sent" && errors >= FAILING_ERRORS,
     waiting: formatCompact(m.waiting),
     downSince: m.down && m.downSince != null ? formatClock(m.downSince) : null,
+    slowed: m.down ? null : slowed,
   };
 }
 
@@ -214,23 +222,28 @@ function trendPoint(
 }
 
 /** A connection's view. `down`: either end is down. */
-export function edgeLive(m: EdgeMetrics | undefined, down: boolean): EdgeLive {
+export function edgeLive(m: EdgeMetrics | undefined, down: boolean, cut = false): EdgeLive {
   const rate = m?.rate ?? 0;
   const errorRate = m?.errorRate ?? 0;
   const scale = Math.min(1, Math.log10(1 + rate) / 5);
-  const status: EdgeStatus = down
-    ? "down"
-    : rate <= 0
-      ? "idle"
-      : errorRate >= EDGE_FAIL_ERRORS
-        ? "fail"
-        : errorRate >= EDGE_WARN_ERRORS
-          ? "warn"
-          : "healthy";
+  const status: EdgeStatus = cut
+    ? "cut"
+    : down
+      ? "down"
+      : rate <= 0
+        ? "idle"
+        : errorRate >= EDGE_FAIL_ERRORS
+          ? "fail"
+          : errorRate >= EDGE_WARN_ERRORS
+            ? "warn"
+            : "healthy";
   return {
     status,
     width: Math.round((1.5 + 2.5 * scale) * 4) / 4,
-    dots: down || rate <= 0 ? 0 : Math.min(MAX_DOTS, 1 + Math.max(0, Math.floor(Math.log10(rate)))),
+    dots:
+      down || cut || rate <= 0
+        ? 0
+        : Math.min(MAX_DOTS, 1 + Math.max(0, Math.floor(Math.log10(rate)))),
     rate: formatCompact(rate),
     latency: m?.latency ? formatDuration(m.latency.p99) : null,
     errors: formatPercent(errorRate),
@@ -261,7 +274,8 @@ export function sameNodeLive(a: NodeLive, b: NodeLive): boolean {
     sameMeasure(a.errors, b.errors) &&
     a.hasErrors === b.hasErrors &&
     a.waiting === b.waiting &&
-    a.downSince === b.downSince
+    a.downSince === b.downSince &&
+    a.slowed === b.slowed
   );
 }
 
@@ -286,7 +300,7 @@ export function nextLiveState(
   const trends: Record<string, Trend> = {};
   for (const [id, metrics] of Object.entries(snapshot.nodes)) {
     const detail = detailOfNode(id);
-    const view = nodeLive(metrics, detail);
+    const view = nodeLive(metrics, detail, snapshot.faults.slowed[id] ?? null);
     const before = previous.nodes[id];
     if (before && sameNodeLive(before, view)) {
       nodes[id] = before;
@@ -310,7 +324,8 @@ export function nextLiveState(
   const edges: Record<string, EdgeLive> = {};
   for (const edge of docEdges) {
     const down = Boolean(snapshot.nodes[edge.source]?.down || snapshot.nodes[edge.target]?.down);
-    const view = edgeLive(snapshot.edges[edgeKey(edge.source, edge.target)], down);
+    const key = edgeKey(edge.source, edge.target);
+    const view = edgeLive(snapshot.edges[key], down, snapshot.faults.cut.includes(key));
     const before = previous.edges[edge.id];
     if (before && sameEdgeLive(before, view)) {
       edges[edge.id] = before;

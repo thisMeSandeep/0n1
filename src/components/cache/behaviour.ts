@@ -64,5 +64,8 @@ export const cache: BehaviourFactory = ({ sim, rng, recorder, node }) => {
       });
     },
   });
-  return { handle: (request, reply) => server.handle(request, reply) };
+  return {
+    handle: (request, reply) => server.handle(request, reply),
+    flush: () => entries.clear(),
+  };
 };

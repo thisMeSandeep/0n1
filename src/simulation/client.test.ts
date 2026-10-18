@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { NO_FAULTS } from "../engine/metrics/recorder.ts";
 import type { SimulationCommand, SimulationEvent } from "../engine/worker/protocol.ts";
 import { applyEvent, createSimulationClient, type WorkerLike } from "./client.ts";
 import { createSimulationStore, initialSimulationState } from "./store.ts";
@@ -57,6 +58,7 @@ describe("simulation client", () => {
       system: { goodput: 1, throughput: 1, errorRate: 0, latency: null },
       nodes: {},
       edges: {},
+      faults: NO_FAULTS,
     };
     fake.emit({ type: "snapshot", snapshot, running: true, speed: 2, traffic: 1.5 });
     expect(store.getState()).toMatchObject({ snapshot, running: true, speed: 2, traffic: 1.5 });

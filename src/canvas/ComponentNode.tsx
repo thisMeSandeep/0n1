@@ -14,6 +14,7 @@ import {
   LiveNumbers,
   NodeHoverCard,
   NodeTrend,
+  SlowedBadge,
   StatusMark,
   UtilizationBar,
 } from "./NodeLive.tsx";
@@ -140,6 +141,7 @@ export const ComponentNode = memo(function ComponentNode({
       </div>
       {/* After the card, so it's read after the name. */}
       {view?.hasErrors && zoom !== "far" && <ErrorBadge view={view} />}
+      {view?.slowed && zoom !== "far" && <SlowedBadge factor={view.slowed} />}
       {details.open && <NodeHoverCard nodeId={id} />}
       {/* Outside the card so it doesn't fade with it. */}
       {check && !check.ok && hovered && (

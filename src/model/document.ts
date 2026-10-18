@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { eventTarget, scenarioSchema } from "./scenario.ts";
 
 /**
  * The system document: one user's design, as plain data. It is what the
@@ -47,6 +48,8 @@ export const systemDocumentSchema = z
      * experiments. Optional, so adding it needed no schema version bump.
      */
     blueprint: z.object({ id }).optional(),
+    /** The chaos timeline (S40), also optional. */
+    scenario: scenarioSchema.optional(),
   })
   .superRefine((doc, ctx) => {
     const nodeIds = new Set<string>();
@@ -91,6 +94,22 @@ export const systemDocumentSchema = z
         ctx.addIssue({ code: "custom", path, message: `Duplicate connection ${link}` });
       }
       links.add(link);
+    });
+
+    doc.scenario?.events.forEach((event, index) => {
+      const target = eventTarget(event);
+      if (!target) return;
+      const [kind, targetId, known] =
+        "node" in target
+          ? ["node", target.node, nodeIds.has(target.node)]
+          : ["connection", target.edge, edgeIds.has(target.edge)];
+      if (!known) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["scenario", "events", index, "target"],
+          message: `Unknown ${kind} "${targetId}"`,
+        });
+      }
     });
   });
 

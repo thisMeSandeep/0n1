@@ -40,6 +40,9 @@ export type UiState = {
   setWelcomeOpen(open: boolean): void;
   imageExportOpen: boolean;
   setImageExportOpen(open: boolean): void;
+  /** The chaos timeline strip under the canvas (S40). */
+  timelineOpen: boolean;
+  setTimelineOpen(open: boolean): void;
   toggleMinimap(): void;
   setCommandPaletteOpen(open: boolean): void;
   setShortcutsOpen(open: boolean): void;
@@ -73,6 +76,8 @@ export function createUiStore() {
     setWelcomeOpen: (welcomeOpen) => set({ welcomeOpen }),
     imageExportOpen: false,
     setImageExportOpen: (imageExportOpen) => set({ imageExportOpen }),
+    timelineOpen: false,
+    setTimelineOpen: (timelineOpen) => set({ timelineOpen }),
     toggleMinimap: () => set((s) => ({ minimap: !s.minimap })),
     setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
     setShortcutsOpen: (open) => set({ shortcutsOpen: open }),

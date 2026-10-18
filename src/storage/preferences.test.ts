@@ -31,6 +31,7 @@ describe("loadPreferences", () => {
       collapsedGroups: [],
       panels: null,
       welcomeSeen: false,
+      timelineOpen: false,
     });
   });
 
@@ -47,6 +48,7 @@ describe("loadPreferences", () => {
       collapsedGroups: ["data", "messaging"],
       panels: { tier: "wide", paletteOpen: false, inspectorOpen: true },
       welcomeSeen: true,
+      timelineOpen: false,
     });
   });
 
@@ -64,6 +66,7 @@ describe("loadPreferences", () => {
       collapsedGroups: [],
       panels: null,
       welcomeSeen: false,
+      timelineOpen: false,
     });
   });
 });
@@ -77,6 +80,7 @@ describe("bindPreferences", () => {
       collapsedGroups: ["compute"],
       panels: null,
       welcomeSeen: false,
+      timelineOpen: false,
     });
     expect(ui.getState()).toMatchObject({
       minimap: true,
@@ -109,6 +113,7 @@ describe("bindPreferences", () => {
       collapsedGroups: [],
       panels: null,
       welcomeSeen: true,
+      timelineOpen: false,
     });
     expect(ui.getState().welcomeOpen).toBe(false);
     stop();

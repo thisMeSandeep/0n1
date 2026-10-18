@@ -92,6 +92,8 @@ export type Behaviour = {
   onPeerChange?(id: string): void;
   /** Clients: real requests per second sent right now, before the traffic multiplier (S39). */
   offeredRate?(): number;
+  /** Caches: forget everything (a flush on the chaos timeline, S40). */
+  flush?(): void;
 };
 
 export type BehaviourFactory = (ctx: BehaviourContext) => Behaviour;

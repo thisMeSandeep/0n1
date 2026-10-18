@@ -117,6 +117,15 @@ describe("shouldHandle", () => {
     expect(shouldHandle(undo, button, { keyboardFocus: true })).toBe(true);
   });
 
+  it("handles shortcuts again as soon as a menu or dialog starts closing", () => {
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("data-state", "closed");
+    const button = document.createElement("button");
+    dialog.append(button);
+    expect(shouldHandle(undo, button)).toBe(true);
+  });
+
   it("always handles global shortcuts", () => {
     expect(shouldHandle(palette, document.createElement("input"))).toBe(true);
   });

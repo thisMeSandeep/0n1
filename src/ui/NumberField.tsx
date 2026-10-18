@@ -16,6 +16,7 @@ type NumberFieldProps = NumericRange & {
 /**
  * A compact numeric input. Typing edits a draft that commits on Enter or
  * blur (clamped and rounded); Escape reverts; arrow keys step like the slider.
+ * Inside a form, Enter only commits; it doesn't submit.
  */
 export function NumberField({
   value,
@@ -40,6 +41,9 @@ export function NumberField({
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
+      // Enter commits this value; it doesn't also submit a surrounding form,
+      // which would act before the new value has landed.
+      event.preventDefault();
       commit();
     } else if (event.key === "Escape") {
       setDraft(null);

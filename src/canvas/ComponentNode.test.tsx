@@ -3,7 +3,7 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { type NodeProps, ReactFlow, ReactFlowProvider } from "@xyflow/react";
 import { Profiler } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { NodeMetrics } from "../engine/metrics/recorder.ts";
+import { NO_FAULTS, type NodeMetrics } from "../engine/metrics/recorder.ts";
 import { live } from "../simulation/index.ts";
 import { EMPTY_LIVE, nextLiveState } from "../simulation/live.ts";
 import { TooltipProvider } from "../ui/Tooltip.tsx";
@@ -46,6 +46,7 @@ function publish(time: number, nodes: Record<string, NodeMetrics>) {
           system: { goodput: 0, throughput: 0, errorRate: 0, latency: null },
           nodes,
           edges: {},
+          faults: NO_FAULTS,
         },
         () => "p99",
       ),

@@ -1,4 +1,4 @@
-import { CircleIcon, PowerIcon, TriangleIcon } from "@phosphor-icons/react";
+import { CircleIcon, HourglassMediumIcon, PowerIcon, TriangleIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 import { useLive } from "../simulation/index.ts";
 import type { NodeLive, NodeStatus } from "../simulation/live.ts";
@@ -103,6 +103,21 @@ export function ErrorBadge({ view }: { view: NodeLive }) {
       <CircleIcon aria-hidden weight="fill" className="size-1.75" />
       {view.errors.value}
       {view.errors.unit} errors
+    </span>
+  );
+}
+
+/** "Slowed ×4": the chaos timeline (S40) is slowing it down. Top left, opposite the error badge. */
+export function SlowedBadge({ factor }: { factor: number }) {
+  return (
+    <span
+      className={cx(
+        "absolute -top-2.25 left-3 z-10 inline-flex h-4.5 items-center gap-1 rounded-pill border bg-raised px-1.75",
+        "border-[color-mix(in_srgb,var(--warn)_50%,var(--line))] text-xs font-medium text-warn",
+      )}
+    >
+      <HourglassMediumIcon aria-hidden weight="fill" className="size-2.5" />
+      Slowed ×{factor}
     </span>
   );
 }
