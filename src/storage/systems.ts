@@ -1,8 +1,16 @@
 import type { SystemDocument } from "../model/document.ts";
+import { layoutOfStored, type SystemLayout } from "../model/layout.ts";
 import { migrate } from "../model/migrate.ts";
 import type { LabDatabase } from "./db.ts";
 
-export type SystemSummary = { id: string; name: string; createdAt: number; updatedAt: number };
+export type SystemSummary = {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  /** For its thumbnail in the library (M01). */
+  layout: SystemLayout;
+};
 
 export type SystemsRepository = ReturnType<typeof createSystemsRepository>;
 
@@ -29,11 +37,12 @@ export function createSystemsRepository(db: LabDatabase) {
     /** Most recently edited first. */
     async list(): Promise<SystemSummary[]> {
       const records = await db.systems.orderBy("updatedAt").reverse().toArray();
-      return records.map(({ id, name, createdAt, updatedAt }) => ({
+      return records.map(({ id, name, createdAt, updatedAt, doc }) => ({
         id,
         name,
         createdAt,
         updatedAt,
+        layout: layoutOfStored(doc),
       }));
     },
 

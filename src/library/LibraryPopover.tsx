@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import { type KeyboardEvent, useMemo, useState } from "react";
 import { BLUEPRINTS } from "../blueprints/catalog.ts";
+import { layoutOf } from "../model/layout.ts";
 import { isStorageAvailable } from "../storage/index.ts";
 import type { SystemSummary } from "../storage/systems.ts";
 import { uiStore, useDesign, useUi } from "../store/index.ts";
@@ -21,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/Popover.tsx";
 import { toast } from "../ui/Toast.tsx";
 import { backUpAll, backUpSystem } from "./backup.ts";
 import { library } from "./index.ts";
+import { SystemThumbnail } from "./SystemThumbnail.tsx";
 import { formatEdited } from "./time.ts";
 import { useSystemsList } from "./useSystemsList.ts";
 
@@ -66,17 +68,23 @@ function LibraryPanel() {
   const openId = useDesign((s) => s.doc.id);
   const openName = useDesign((s) => s.doc.name);
   const openUpdated = useDesign((s) => s.doc.meta.updatedAt);
+  const openNodes = useDesign((s) => s.doc.nodes);
+  const openEdges = useDesign((s) => s.doc.edges);
+  const openLayout = useMemo(
+    () => layoutOf({ nodes: openNodes, edges: openEdges }),
+    [openNodes, openEdges],
+  );
 
-  // The open system may have edits that aren't saved yet; show its live name and time.
+  // The open system may have edits that aren't saved yet; show it live.
   const rows = useMemo(() => {
     const list = (saved ?? []).map((s) =>
-      s.id === openId ? { ...s, name: openName, updatedAt: openUpdated } : s,
+      s.id === openId ? { ...s, name: openName, updatedAt: openUpdated, layout: openLayout } : s,
     );
     const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
     return list
       .filter((s) => terms.every((t) => s.name.toLowerCase().includes(t)))
       .sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [saved, openId, openName, openUpdated, query]);
+  }, [saved, openId, openName, openUpdated, openLayout, query]);
 
   if (!isStorageAvailable()) {
     return (
@@ -234,17 +242,20 @@ function SystemRow({
         type="button"
         onClick={onOpen}
         aria-current={isOpen ? "true" : undefined}
-        className="flex min-w-0 flex-1 flex-col items-start rounded-control px-2.5 py-2 text-left"
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-control px-2 py-1.5 text-left"
       >
-        <span
-          className={cx(
-            "w-full truncate text-base",
-            isOpen ? "font-medium text-accent" : "text-fg",
-          )}
-        >
-          {system.name}
+        <SystemThumbnail layout={system.layout} />
+        <span className="flex min-w-0 flex-1 flex-col items-start">
+          <span
+            className={cx(
+              "w-full truncate text-base",
+              isOpen ? "font-medium text-accent" : "text-fg",
+            )}
+          >
+            {system.name}
+          </span>
+          <span className="text-xs text-fg-2">{isOpen ? `Open · ${subtitle}` : subtitle}</span>
         </span>
-        <span className="text-xs text-fg-2">{isOpen ? `Open · ${subtitle}` : subtitle}</span>
       </button>
       <Menu>
         <MenuTrigger asChild>
@@ -309,7 +320,14 @@ function NewSystemMenu() {
             {BLUEPRINTS.map((blueprint) => (
               <MenuItem
                 key={blueprint.id}
-                className="h-auto! items-start py-2"
+                className="h-auto! items-start gap-3! py-2"
+                icon={
+                  // Menu items size their icons; a thumbnail keeps its own size.
+                  <SystemThumbnail
+                    layout={layoutOf(blueprint.system)}
+                    className="mt-0.5 h-9! w-14!"
+                  />
+                }
                 onSelect={() => create(() => library.createFromBlueprint(blueprint))}
               >
                 <span className="block text-base text-fg">{blueprint.title}</span>

@@ -46,6 +46,35 @@ describe("systems repository", () => {
     expect(await systems.get("b")).toBeNull();
   });
 
+  it("lists each system's layout, for its thumbnail, even from a record it can't read", async () => {
+    const systems = createSystemsRepository(db);
+    await systems.save({
+      ...doc("a", "Two", 100),
+      nodes: [
+        { id: "u", type: "client", name: "Users", position: { x: 0, y: 0 }, params: {} },
+        { id: "s", type: "service", name: "API", position: { x: 272, y: 16 }, params: {} },
+      ],
+      edges: [{ id: "e", source: "u", target: "s" }],
+    });
+    await db.systems.put({
+      id: "bad",
+      name: "Bad",
+      doc: { nonsense: true },
+      createdAt: 0,
+      updatedAt: 0,
+    });
+    expect((await systems.list()).map((s) => s.layout)).toEqual([
+      {
+        nodes: [
+          { id: "u", type: "client", x: 0, y: 0 },
+          { id: "s", type: "service", x: 272, y: 16 },
+        ],
+        edges: [{ source: "u", target: "s" }],
+      },
+      { nodes: [], edges: [] },
+    ]);
+  });
+
   it("validates on read and refuses unreadable records", async () => {
     await db.systems.put({
       id: "bad",

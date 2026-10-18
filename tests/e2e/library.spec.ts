@@ -117,3 +117,36 @@ test("the library survives a reload, and ⌘K can open systems", async ({ page }
   await page.keyboard.press("Enter");
   await expect(banner(page)).toContainText("Payments");
 });
+
+test("each system and blueprint shows a thumbnail of its layout, the open one kept live", async ({
+  page,
+}) => {
+  const boxes = (name: string) => row(page, name).locator("[data-thumbnail] [data-box]");
+  await openLibrary(page);
+  await page.getByRole("button", { name: "New system" }).click();
+  // Blueprints show theirs before you open one.
+  const blueprint = page.getByRole("menuitem", { name: /^URL shortener/ });
+  await expect(blueprint.locator("[data-thumbnail] [data-box]")).toHaveCount(5);
+  await blueprint.click();
+
+  await openLibrary(page);
+  await expect(boxes("URL shortener")).toHaveCount(5);
+  await page.keyboard.press("Escape");
+
+  // Edits to the open system show at once.
+  await page
+    .getByRole("complementary", { name: "Components" })
+    .getByRole("button", { name: "Cache", exact: true })
+    .click();
+  await expect(nodes(page)).toHaveCount(6);
+  await openLibrary(page);
+  await expect(boxes("URL shortener")).toHaveCount(6);
+
+  // Another system keeps its own: a blank one has an empty frame.
+  await page.getByRole("button", { name: "New system" }).click();
+  await page.getByRole("menuitem", { name: "Blank system" }).click();
+  await openLibrary(page);
+  await expect(boxes("URL shortener")).toHaveCount(6);
+  await expect(row(page, "Untitled system").locator("[data-thumbnail]")).toBeVisible();
+  await expect(boxes("Untitled system")).toHaveCount(0);
+});
