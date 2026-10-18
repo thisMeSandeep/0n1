@@ -45,6 +45,27 @@ export function shapeFactor(s: ShapeSettings, seconds: number): number {
   }
 }
 
+/**
+ * The factor on average over a long run (S44's cost estimate): a ramp
+ * spends nearly all its time at the top, and a day averages out halfway
+ * between night and peak.
+ */
+export function averageShapeFactor(s: ShapeSettings): number {
+  switch (s.shape) {
+    case "steady":
+    case "ramp":
+      return 1;
+    case "spike": {
+      const length = Math.min(s.spikeLength, s.spikeEvery);
+      return 1 + ((s.spikeSize - 1) * length) / s.spikeEvery;
+    }
+    case "daily": {
+      const night = s.nightShare / 100;
+      return (1 + night) / 2;
+    }
+  }
+}
+
 /** The largest factor the shape ever reaches: the ceiling for drawing arrivals. */
 export function maxShapeFactor(s: ShapeSettings): number {
   return s.shape === "spike" ? Math.max(1, s.spikeSize) : 1;

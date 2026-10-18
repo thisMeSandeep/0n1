@@ -1,5 +1,6 @@
 import { findBlueprint } from "../blueprints/catalog.ts";
 import type { Blueprint } from "../blueprints/format.ts";
+import { SystemCostSection } from "../cost/CostViews.tsx";
 import { InsightList } from "../insights/InsightViews.tsx";
 import { useLive } from "../simulation/index.ts";
 import { designStore, useDesign } from "../store/index.ts";
@@ -9,7 +10,10 @@ import { InspectorHeader, InspectorSection } from "./InspectorHeader.tsx";
 import { ClientTraffic, HealthSummary, SystemCharts } from "./SystemLive.tsx";
 import { count } from "./sections.ts";
 
-/** Nothing selected: the system as a whole, and while running its health, traffic and charts. */
+/**
+ * Nothing selected: the system as a whole, and while running its health,
+ * traffic and charts. Its estimated cost either way.
+ */
 export function SystemView({ onClose }: { onClose: () => void }) {
   const id = useDesign((s) => s.doc.id);
   const name = useDesign((s) => s.doc.name);
@@ -41,6 +45,7 @@ export function SystemView({ onClose }: { onClose: () => void }) {
             <HealthSummary />
             <ClientTraffic />
             <SystemCharts />
+            <SystemCostSection />
             <TracesSection />
             {blueprint && <Experiments blueprint={blueprint} />}
           </>
@@ -60,6 +65,7 @@ export function SystemView({ onClose }: { onClose: () => void }) {
                   : "Select a component to see its settings, or press Space to run the system."}
               </p>
             )}
+            <SystemCostSection />
           </>
         )}
       </div>

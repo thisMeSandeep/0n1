@@ -74,7 +74,8 @@ export type CompileResult = {
   warnings: CompileIssue[];
 };
 
-const ROUTE_FOR_TYPE: Record<string, keyof Routes> = {
+/** Which route a connection to each type of component goes in. */
+export const ROUTE_FOR_TYPE: Readonly<Record<string, keyof Routes>> = {
   service: "forward",
   "load-balancer": "forward",
   "api-gateway": "forward",

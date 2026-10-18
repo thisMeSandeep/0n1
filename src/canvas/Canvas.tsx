@@ -198,7 +198,11 @@ export function Canvas() {
         <Panel position="bottom-left" className="m-0! mb-6! ml-5!">
           <ZoomControls />
         </Panel>
-        <Panel position="bottom-center" className="m-0! mb-6! flex flex-col items-center gap-2">
+        {/* Centred in the strip right of the zoom controls, so a full pill never covers them. */}
+        <Panel
+          position="bottom-center"
+          className="m-0! mb-6! ml-20! flex flex-col items-center gap-2"
+        >
           <InsightNote />
           <VitalsPill />
         </Panel>

@@ -1,3 +1,5 @@
+import { formatMoney } from "../cost/format.ts";
+import { useSystemCost } from "../cost/useCost.ts";
 import { useLive } from "../simulation/index.ts";
 import type { Level } from "../simulation/live.ts";
 import { cx } from "../ui/cx.ts";
@@ -6,10 +8,12 @@ import { LEVEL_TEXT, LevelMark } from "../ui/LevelMark.tsx";
 /**
  * The system's health at a glance, floating at the bottom of the canvas
  * (UIUX §3): throughput, p99 and errors as users see them. A number turns
- * amber or red only past its threshold. Cost joins in v2.
+ * amber or red only past its threshold. Then the estimated monthly cost
+ * (S44), shown even before a run, from the clients' rates.
  */
 export function VitalsPill() {
   const system = useLive((s) => s.system);
+  const cost = useSystemCost();
   return (
     <section
       aria-label="System vitals"
@@ -28,6 +32,16 @@ export function VitalsPill() {
         unit={system?.errors.unit ?? "%"}
         level={system?.errorsLevel}
       />
+      <Vital
+        label="est. cost"
+        value={formatMoney(cost.total)}
+        unit="/mo"
+        title={
+          cost.live
+            ? "Estimated monthly cost at typical cloud list prices, from the traffic in this run"
+            : "Estimated monthly cost at typical cloud list prices, from the clients' rates"
+        }
+      />
     </section>
   );
 }
@@ -37,14 +51,19 @@ function Vital({
   value,
   unit,
   level = "ok",
+  title,
 }: {
   label: string;
   value: string | undefined;
   unit: string | undefined;
   level?: Level | undefined;
+  title?: string;
 }) {
   return (
-    <div className="flex items-baseline gap-2 border-line px-5 whitespace-nowrap not-first:border-l">
+    <div
+      title={title}
+      className="flex items-baseline gap-2 border-line px-4 whitespace-nowrap not-first:border-l"
+    >
       <span className="flex items-baseline gap-1.5">
         <LevelMark level={level} className="self-center" />
         <span

@@ -3,6 +3,7 @@ import { Fragment } from "react";
 import { shortcutKeys } from "../app/shortcuts.ts";
 import type { ShapeSettings } from "../components/client/shape.ts";
 import { registry } from "../components/index.ts";
+import { ComponentCostSection } from "../cost/CostViews.tsx";
 import { InsightList } from "../insights/InsightViews.tsx";
 import type { Params } from "../model/component.ts";
 import { simulation, useLive } from "../simulation/index.ts";
@@ -89,6 +90,7 @@ export function ComponentView({ nodeId, onClose }: { nodeId: string; onClose: ()
           </InspectorSection>
         ))}
 
+        <ComponentCostSection nodeId={nodeId} />
         <ComponentDetails nodeId={nodeId} />
       </div>
     </>
