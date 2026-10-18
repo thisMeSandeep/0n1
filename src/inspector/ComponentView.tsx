@@ -3,6 +3,7 @@ import { Fragment } from "react";
 import { shortcutKeys } from "../app/shortcuts.ts";
 import type { ShapeSettings } from "../components/client/shape.ts";
 import { registry } from "../components/index.ts";
+import { InsightList } from "../insights/InsightViews.tsx";
 import type { Params } from "../model/component.ts";
 import { simulation, useLive } from "../simulation/index.ts";
 import { designStore, selectionStore, useDesign } from "../store/index.ts";
@@ -56,6 +57,7 @@ export function ComponentView({ nodeId, onClose }: { nodeId: string; onClose: ()
       <LiveSummary nodeId={nodeId} detail={definition.liveDetail ?? "p99"} />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-10">
+        <InsightList nodeId={nodeId} />
         <InspectorSection title="About">
           <div className="flex flex-col gap-2">
             <p className="text-base text-fg">{definition.description}</p>

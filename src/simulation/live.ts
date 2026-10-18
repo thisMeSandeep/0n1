@@ -7,6 +7,8 @@ import {
   type NodeMetrics,
   type SystemMetrics,
 } from "../engine/metrics/recorder.ts";
+import type { Insight } from "../insights/rules.ts";
+import { InsightTracker } from "../insights/tracker.ts";
 import type { LiveDetail } from "../model/component.ts";
 import type { SystemEdge } from "../model/document.ts";
 import type { Registry } from "../model/registry.ts";
@@ -136,6 +138,8 @@ export type LiveState = {
   edges: Readonly<Record<string, EdgeLive>>;
   /** Recent values of each component's detail number (or its rate), for sparklines. */
   trends: Readonly<Record<string, Trend>>;
+  /** What's wrong, in plain English (S41), worst first. */
+  insights: readonly Insight[];
 };
 
 export const EMPTY_LIVE: LiveState = {
@@ -145,8 +149,16 @@ export const EMPTY_LIVE: LiveState = {
   nodes: {},
   edges: {},
   trends: {},
+  insights: [],
 };
 const EMPTY = EMPTY_LIVE;
+
+const sameInsights = (a: readonly Insight[], b: readonly Insight[]) =>
+  a.length === b.length &&
+  a.every((x, i) => {
+    const y = b[i];
+    return y !== undefined && x.id === y.id && x.title === y.title && x.detail === y.detail;
+  });
 
 /**
  * Share of requests that failed here: turned away, or its own errors. Not
@@ -343,6 +355,8 @@ export function nextLiveState(
     nodes: changed ? nodes : previous.nodes,
     edges: edgesChanged ? edges : previous.edges,
     trends: advanced || restarted ? trends : previous.trends,
+    // Worked out by createLiveView, which keeps their history (InsightTracker).
+    insights: previous.insights,
   };
 }
 
@@ -386,18 +400,22 @@ export function createLiveView({
     return definition?.liveDetail ?? "p99";
   };
 
+  const tracker = new InsightTracker();
+
   const publish = () => {
     cancelPending = null;
     lastPublish = timers.now();
     const { snapshot } = simulation.getState();
+    const { doc } = design.getState();
+    const previous = store.getState();
+    const next = nextLiveState(previous, lastTime, snapshot, detailOfNode, doc.edges);
+    if (!snapshot) tracker.reset();
+    const insights = snapshot ? tracker.update(snapshot, doc) : [];
     store.setState(
-      nextLiveState(
-        store.getState(),
-        lastTime,
-        snapshot,
-        detailOfNode,
-        design.getState().doc.edges,
-      ),
+      {
+        ...next,
+        insights: sameInsights(previous.insights, insights) ? previous.insights : insights,
+      },
       true,
     );
     lastTime = snapshot?.time ?? null;

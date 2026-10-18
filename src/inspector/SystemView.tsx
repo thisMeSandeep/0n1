@@ -1,5 +1,6 @@
 import { findBlueprint } from "../blueprints/catalog.ts";
 import type { Blueprint } from "../blueprints/format.ts";
+import { InsightList } from "../insights/InsightViews.tsx";
 import { useLive } from "../simulation/index.ts";
 import { designStore, useDesign } from "../store/index.ts";
 import { EditableTitle } from "./EditableTitle.tsx";
@@ -35,6 +36,7 @@ export function SystemView({ onClose }: { onClose: () => void }) {
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-10">
         {started ? (
           <>
+            <InsightList title="What's happening" />
             <HealthSummary />
             <ClientTraffic />
             <SystemCharts />

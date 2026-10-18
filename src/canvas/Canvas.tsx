@@ -27,6 +27,7 @@ import {
 } from "react";
 import { EmptyCanvasHint, Welcome } from "../app/Welcome.tsx";
 import { registry } from "../components/index.ts";
+import { InsightNote } from "../insights/InsightViews.tsx";
 import { checkConnection } from "../model/connections.ts";
 import { useSimulation } from "../simulation/store.ts";
 import { designStore, selectionStore, useDesign, useSelection, useUi } from "../store/index.ts";
@@ -197,7 +198,8 @@ export function Canvas() {
         <Panel position="bottom-left" className="m-0! mb-6! ml-5!">
           <ZoomControls />
         </Panel>
-        <Panel position="bottom-center" className="m-0! mb-6!">
+        <Panel position="bottom-center" className="m-0! mb-6! flex flex-col items-center gap-2">
+          <InsightNote />
           <VitalsPill />
         </Panel>
         <EmptyCanvasHint />
