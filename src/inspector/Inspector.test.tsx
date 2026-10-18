@@ -3,11 +3,13 @@ import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { componentDefinitions } from "../components/index.ts";
+import { defaultParams } from "../model/component.ts";
 import { createSystemDocument } from "../model/document.ts";
 import { designStore, selectionStore } from "../store/index.ts";
 import { formatNumber } from "../ui/scale.ts";
 import { TooltipProvider } from "../ui/Tooltip.tsx";
 import { Inspector } from "./Inspector.tsx";
+import { isParamShown } from "./sections.ts";
 
 beforeAll(() => {
   globalThis.ResizeObserver ??= class {
@@ -58,7 +60,13 @@ describe("Inspector", () => {
         renderInspector();
 
         expect(screen.getByText(definition.description)).toBeTruthy();
+        const defaults = defaultParams(definition);
         for (const spec of Object.values(definition.params)) {
+          // Settings for another traffic shape, say, are hidden until they apply.
+          if (!isParamShown(spec, defaults)) {
+            expect(screen.queryByLabelText(spec.label)).toBeNull();
+            continue;
+          }
           if (spec.kind === "number") {
             const field = screen.getByLabelText<HTMLInputElement>(spec.label, {
               selector: "input",
@@ -77,6 +85,21 @@ describe("Inspector", () => {
       });
     },
   );
+
+  it("shows a traffic shape's settings, and a preview, only once it's chosen", async () => {
+    const user = userEvent.setup();
+    const id = addAndSelect("client");
+    renderInspector();
+    expect(screen.queryByLabelText("Spike every", { selector: "input" })).toBeNull();
+    expect(screen.queryByRole("img", { name: /Traffic over the first/ })).toBeNull();
+
+    await user.click(screen.getByRole("radio", { name: "Spikes" }));
+    expect(params(id)?.shape).toBe("spike");
+    expect(screen.getByLabelText("Spike every", { selector: "input" })).toBeTruthy();
+    expect(screen.getByLabelText("Spike size", { selector: "input" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: /Traffic over the first 01:45/ })).toBeTruthy();
+    expect(screen.queryByLabelText("Ramp over", { selector: "input" })).toBeNull();
+  });
 
   it("edits a number setting, and undo restores it", async () => {
     const user = userEvent.setup();

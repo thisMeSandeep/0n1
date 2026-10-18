@@ -103,6 +103,8 @@ export class Engine {
     for (const life of this.#current.values()) life.behaviour.start?.();
 
     const reconsider = () => {
+      // A traffic shape moves the rate, so the sampling weight follows it.
+      this.sampling.setOfferedRate(this.#offeredRate());
       this.sampling.observe(this.sim.eventsProcessed);
       this.sim.schedule(SAMPLING_INTERVAL_MS, reconsider);
     };
@@ -194,12 +196,13 @@ export class Engine {
     });
   }
 
-  /** Real requests per second all clients offer, with the traffic multiplier. */
+  /** Real requests per second all clients offer right now, with the traffic multiplier. */
   #offeredRate(): number {
-    const base = this.model.clients.reduce(
-      (sum, id) => sum + Number(this.model.nodes.get(id)?.params.rate ?? 0),
-      0,
-    );
+    const base = this.model.clients.reduce((sum, id) => {
+      const life = this.#current.get(id);
+      const rate = life?.behaviour.offeredRate?.() ?? this.model.nodes.get(id)?.params.rate;
+      return sum + Number(rate ?? 0);
+    }, 0);
     return base * this.#traffic;
   }
 

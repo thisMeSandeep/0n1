@@ -74,6 +74,30 @@ describe("validateDefinition", () => {
     );
   });
 
+  it("checks that shownWhen points at a choice and its options", () => {
+    const choice = {
+      kind: "choice",
+      label: "Shape",
+      section: "behaviour",
+      default: "a",
+      options: [
+        { value: "a", label: "A" },
+        { value: "b", label: "B" },
+      ],
+    };
+    const shown = (values: string[], param = "shape") => ({
+      ...testDatabase,
+      params: { shape: choice, p: { ...number, shownWhen: { param, values } } },
+    });
+    expect(() => validateDefinition(shown(["b"]) as ComponentDefinition)).not.toThrow();
+    expect(() => validateDefinition(shown(["c"]) as ComponentDefinition)).toThrow(
+      'shownWhen value "c" isn\'t an option',
+    );
+    expect(() => validateDefinition(shown(["b"], "missing") as ComponentDefinition)).toThrow(
+      'shownWhen "missing" is not a choice',
+    );
+  });
+
   it("checks that a choice default is one of its options", () => {
     const choice = {
       kind: "choice",

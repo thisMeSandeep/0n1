@@ -28,6 +28,18 @@ export function validateDefinition(definition: ComponentDefinition): void {
     if (spec.enabledBy !== undefined && definition.params[spec.enabledBy]?.kind !== "toggle") {
       throw new Error(`${where}, param "${key}": enabledBy "${spec.enabledBy}" is not a toggle`);
     }
+    if (spec.shownWhen !== undefined) {
+      const choice = definition.params[spec.shownWhen.param];
+      if (choice?.kind !== "choice") {
+        throw new Error(
+          `${where}, param "${key}": shownWhen "${spec.shownWhen.param}" is not a choice`,
+        );
+      }
+      const unknown = spec.shownWhen.values.find((v) => !choice.options.some((o) => o.value === v));
+      if (unknown !== undefined) {
+        throw new Error(`${where}, param "${key}": shownWhen value "${unknown}" isn't an option`);
+      }
+    }
   }
 }
 

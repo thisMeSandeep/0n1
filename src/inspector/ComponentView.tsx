@@ -1,6 +1,9 @@
 import { CopyIcon, DotsThreeIcon, PowerIcon, TrashIcon } from "@phosphor-icons/react";
+import { Fragment } from "react";
 import { shortcutKeys } from "../app/shortcuts.ts";
+import type { ShapeSettings } from "../components/client/shape.ts";
 import { registry } from "../components/index.ts";
+import type { Params } from "../model/component.ts";
 import { simulation, useLive } from "../simulation/index.ts";
 import { designStore, selectionStore, useDesign } from "../store/index.ts";
 import { IconButton } from "../ui/Button.tsx";
@@ -12,7 +15,8 @@ import { EditableTitle } from "./EditableTitle.tsx";
 import { InspectorHeader, InspectorSection } from "./InspectorHeader.tsx";
 import { ComponentDetails, LiveSummary } from "./LiveSummary.tsx";
 import { ParamField } from "./ParamField.tsx";
-import { paramSections } from "./sections.ts";
+import { isParamShown, paramSections } from "./sections.ts";
+import { TrafficShapePreview } from "./TrafficShapePreview.tsx";
 
 /** The inspector for one selected component (UIUX §7). */
 export function ComponentView({ nodeId, onClose }: { nodeId: string; onClose: () => void }) {
@@ -65,15 +69,21 @@ export function ComponentView({ nodeId, onClose }: { nodeId: string; onClose: ()
 
         {paramSections(definition).map((group) => (
           <InspectorSection key={group.section} title={group.title}>
-            {group.params.map(([key, spec]) => (
-              <ParamField
-                key={key}
-                spec={spec}
-                value={node.params[key]}
-                params={node.params as Record<string, number | string | boolean>}
-                onChange={(value) => actions.updateParams(nodeId, { [key]: value })}
-              />
-            ))}
+            {group.params
+              .filter(([, spec]) => isParamShown(spec, node.params as Params))
+              .map(([key, spec]) => (
+                <Fragment key={key}>
+                  <ParamField
+                    spec={spec}
+                    value={node.params[key]}
+                    params={node.params as Record<string, number | string | boolean>}
+                    onChange={(value) => actions.updateParams(nodeId, { [key]: value })}
+                  />
+                  {node.type === "client" && key === "shape" && node.params.shape !== "steady" && (
+                    <TrafficShapePreview settings={node.params as unknown as ShapeSettings} />
+                  )}
+                </Fragment>
+              ))}
           </InspectorSection>
         ))}
 

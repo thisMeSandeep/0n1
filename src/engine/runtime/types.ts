@@ -90,6 +90,8 @@ export type Behaviour = {
   onPeerStatus?(id: string, up: boolean): void;
   /** Another component's settings changed while running. */
   onPeerChange?(id: string): void;
+  /** Clients: real requests per second sent right now, before the traffic multiplier (S39). */
+  offeredRate?(): number;
 };
 
 export type BehaviourFactory = (ctx: BehaviourContext) => Behaviour;

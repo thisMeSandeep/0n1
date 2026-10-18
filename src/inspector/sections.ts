@@ -28,6 +28,14 @@ export function paramSections(definition: ComponentDefinition): ParamSectionGrou
   });
 }
 
+/** A param with `shownWhen` only shows while its choice has one of the given values. */
+export function isParamShown(spec: ParamSpec, params: Params): boolean {
+  return (
+    spec.shownWhen === undefined ||
+    spec.shownWhen.values.includes(String(params[spec.shownWhen.param]))
+  );
+}
+
 /** A param with `enabledBy` only applies while its toggle is on. */
 export function isParamEnabled(spec: ParamSpec, params: Params): boolean {
   return spec.enabledBy === undefined || params[spec.enabledBy] === true;

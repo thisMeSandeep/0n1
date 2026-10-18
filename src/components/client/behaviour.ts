@@ -1,6 +1,7 @@
 import { createZipf, exponential, uniformInt } from "../../engine/core/distributions.ts";
 import type { ScheduledEvent } from "../../engine/core/eventQueue.ts";
 import type { BehaviourFactory, Outcome, Request } from "../../engine/runtime/types.ts";
+import { maxShapeFactor, type ShapeSettings, shapeFactor } from "./shape.ts";
 
 /**
  * Open-loop Poisson traffic: requests arrive at random at the configured
@@ -11,6 +12,10 @@ import type { BehaviourFactory, Outcome, Request } from "../../engine/runtime/ty
  *
  * When sampling (S26), it sends one request per `weight` real ones, each
  * standing for `weight`, so the real rate is unchanged.
+ *
+ * A traffic shape (S39) makes the rate change over time. Arrivals are drawn
+ * at the shape's highest rate and each is kept with probability
+ * (rate now ÷ highest rate): thinning, which follows the shape exactly.
  */
 export const client: BehaviourFactory = ({
   sim,
@@ -25,7 +30,7 @@ export const client: BehaviourFactory = ({
 }) => {
   // Read live, so changes while running take effect (S28).
   const params = () =>
-    node.params as {
+    node.params as ShapeSettings & {
       rate: number;
       readShare: number;
       keys: number;
@@ -33,8 +38,9 @@ export const client: BehaviourFactory = ({
       timeout: number;
       retries: number;
     };
-  /** Average gap between new requests, for the current rate, traffic and sampling. */
-  const meanGapMs = () => (1000 * sampling.weight()) / (params().rate * traffic());
+  /** Average gap between candidate arrivals: at the shape's peak, with traffic and sampling. */
+  const meanGapMs = () =>
+    (1000 * sampling.weight()) / (params().rate * traffic() * maxShapeFactor(params()));
   let zipf: { keys: number; sampler: ReturnType<typeof createZipf> } | null = null;
   const pickKey = () => {
     const { keys, keyPopularity } = params();
@@ -88,14 +94,24 @@ export const client: BehaviourFactory = ({
     };
     recorder.arrive(sim.now, request.weight);
     attempt(request);
-    sim.schedule(exponential(rng, meanGapMs()), sendOne);
+  };
+
+  const arrival = () => {
+    const shape = params();
+    const ceiling = maxShapeFactor(shape);
+    const factor = shapeFactor(shape, sim.now / 1000);
+    // Steady traffic keeps every arrival without a draw, so its runs are unchanged.
+    if (factor >= ceiling || rng.next() < factor / ceiling) sendOne();
+    sim.schedule(exponential(rng, meanGapMs()), arrival);
   };
 
   return {
     // Clients don't take requests (the compiler enforces it).
     handle: (_request, reply) => reply({ ok: false, reason: "unavailable" }),
     start: () => {
-      if (node.targets.length > 0) sim.schedule(exponential(rng, meanGapMs()), sendOne);
+      if (node.targets.length > 0) sim.schedule(exponential(rng, meanGapMs()), arrival);
     },
+    /** Real requests per second it's sending right now, before Traffic %. */
+    offeredRate: () => params().rate * shapeFactor(params(), sim.now / 1000),
   };
 };

@@ -21,6 +21,11 @@ type ParamBase = {
   help?: string;
   /** Key of a toggle param; this one only applies while that toggle is on. */
   enabledBy?: string;
+  /**
+   * Only shown while a choice param has one of these values, e.g. a spike's
+   * size only when the traffic shape is "spike". Hidden params keep their values.
+   */
+  shownWhen?: { param: string; values: readonly string[] };
 };
 
 export type NumberParam = ParamBase & {
