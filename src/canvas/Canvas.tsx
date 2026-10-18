@@ -25,6 +25,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { EmptyCanvasHint, Welcome } from "../app/Welcome.tsx";
 import { registry } from "../components/index.ts";
 import { checkConnection } from "../model/connections.ts";
 import { useSimulation } from "../simulation/store.ts";
@@ -199,6 +200,8 @@ export function Canvas() {
         <Panel position="bottom-center" className="m-0! mb-6!">
           <VitalsPill />
         </Panel>
+        <EmptyCanvasHint />
+        <Welcome />
         {minimap && (
           <MiniMap
             position="bottom-right"

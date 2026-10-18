@@ -16,7 +16,8 @@ export type SaveStatus = "saved" | "saving" | "error" | "unavailable" | null;
 
 /**
  * Lab UI state that several parts of the app reach for: panels, palette
- * groups, the minimap, overlays opened by shortcuts and the save status.
+ * groups, the minimap, overlays opened by shortcuts, the welcome card and
+ * the save status.
  * Not undoable. Preferences are saved by storage/preferences.ts.
  */
 export type UiState = {
@@ -34,6 +35,9 @@ export type UiState = {
   restore: RestorePreview | null;
   /** Bumped to ask the palette to focus its search. */
   paletteSearchRequest: number;
+  /** The first-visit welcome card (UIUX §10). Closing it is remembered by preferences.ts. */
+  welcomeOpen: boolean;
+  setWelcomeOpen(open: boolean): void;
   toggleMinimap(): void;
   setCommandPaletteOpen(open: boolean): void;
   setShortcutsOpen(open: boolean): void;
@@ -63,6 +67,8 @@ export function createUiStore() {
     libraryOpen: false,
     restore: null,
     paletteSearchRequest: 0,
+    welcomeOpen: false,
+    setWelcomeOpen: (welcomeOpen) => set({ welcomeOpen }),
     toggleMinimap: () => set((s) => ({ minimap: !s.minimap })),
     setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
     setShortcutsOpen: (open) => set({ shortcutsOpen: open }),

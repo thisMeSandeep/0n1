@@ -8,7 +8,7 @@ import { createSystemDocument } from "../model/document.ts";
 import { LabDatabase } from "../storage/db.ts";
 import { createSystemsRepository } from "../storage/systems.ts";
 import { createDesignStore } from "../store/design.ts";
-import { createLibraryActions } from "./actions.ts";
+import { createLibraryActions, isUntouchedBlank } from "./actions.ts";
 
 let db: LabDatabase;
 let n = 0;
@@ -46,7 +46,43 @@ async function setup() {
   return { systems, store, library, names, open, flushes };
 }
 
+describe("isUntouchedBlank", () => {
+  it("is true only for an empty system that still has its default name", () => {
+    const blank = (name: string) => createSystemDocument({ id: "b", name, now: 0 });
+    expect(isUntouchedBlank(blank("Untitled system"))).toBe(true);
+    expect(isUntouchedBlank(blank("Untitled system 2"))).toBe(true);
+    expect(isUntouchedBlank(blank("Untitled system draft"))).toBe(false);
+    expect(isUntouchedBlank(blank("Checkout"))).toBe(false);
+    const used = blank("Untitled system");
+    used.nodes.push({
+      id: "n",
+      type: "cache",
+      name: "Cache",
+      position: { x: 0, y: 0 },
+      params: {},
+    });
+    expect(isUntouchedBlank(used)).toBe(false);
+  });
+});
+
 describe("library actions", () => {
+  it("drops the untouched blank system a blueprint replaces, but keeps one that was used", async () => {
+    const { library, systems, store, names } = await setup();
+    const blueprint = parseBlueprint(BLUEPRINT_FILES["url-shortener.json"], registry);
+
+    await library.createAndOpen(); // "Untitled system", untouched
+    await library.createFromBlueprint(blueprint);
+    expect(await names()).toEqual(["URL shortener", "First"]);
+
+    await library.createAndOpen();
+    store.getState().addNode("cache", { x: 0, y: 0 });
+    store.getState().removeNodes(store.getState().doc.nodes.map((n) => n.id));
+    store.getState().renameSystem("Scratch");
+    await library.createFromBlueprint(blueprint);
+    expect(await names()).toContain("Scratch"); // renamed: someone cared about it
+    expect((await systems.list()).length).toBe(4);
+  });
+
   it("opens a blueprint as a copy that can be edited and saved without touching the original", async () => {
     const { library, open, store, systems, flushes } = await setup();
     const shipped = structuredClone(BLUEPRINT_FILES["url-shortener.json"]);

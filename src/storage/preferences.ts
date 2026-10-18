@@ -5,7 +5,8 @@ import type { ThemePreference } from "../ui/theme/theme.ts";
 import type { SettingsRepository } from "./settings.ts";
 
 /*
- * User preferences: theme, panels, palette groups and the minimap, stored in
+ * User preferences: theme, panels, palette groups, the minimap and whether
+ * the welcome card has been seen, stored in
  * IndexedDB (the settings table).
  *
  * The theme is also mirrored into localStorage, so the inline script in
@@ -31,15 +32,17 @@ export type Preferences = {
   minimap: boolean;
   collapsedGroups: z.infer<typeof groupsSchema>;
   panels: z.infer<typeof panelsSchema> | null;
+  welcomeSeen: boolean;
 };
 
 /** Stored values are validated; anything unexpected falls back to the default. */
 export async function loadPreferences(settings: SettingsRepository): Promise<Preferences> {
-  const [theme, minimap, groups, panels] = await Promise.all([
+  const [theme, minimap, groups, panels, welcomeSeen] = await Promise.all([
     settings.get("theme"),
     settings.get("minimap"),
     settings.get("collapsedGroups"),
     settings.get("panels"),
+    settings.get("welcomeSeen"),
   ]);
   return {
     theme: themeSchema.catch("system").parse(theme),
@@ -49,6 +52,7 @@ export async function loadPreferences(settings: SettingsRepository): Promise<Pre
       .nullable()
       .catch(null)
       .parse(panels ?? null),
+    welcomeSeen: z.boolean().catch(false).parse(welcomeSeen),
   };
 }
 
@@ -64,6 +68,8 @@ export function bindPreferences(
     minimap: prefs.minimap,
     collapsedGroups: prefs.collapsedGroups,
     panels: prefs.panels,
+    // A first visit opens the welcome card.
+    welcomeOpen: !prefs.welcomeSeen,
   });
   return ui.subscribe((state, previous) => {
     if (state.minimap !== previous.minimap) void settings.set("minimap", state.minimap);
@@ -73,6 +79,8 @@ export function bindPreferences(
     if (state.panels !== previous.panels && state.panels) {
       void settings.set("panels", state.panels);
     }
+    // Closed once means seen for good; reopening it from the menu doesn't undo that.
+    if (previous.welcomeOpen && !state.welcomeOpen) void settings.set("welcomeSeen", true);
   });
 }
 

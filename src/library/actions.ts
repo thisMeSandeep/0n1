@@ -20,6 +20,12 @@ type LibraryDeps = {
 
 export type DeletedSystem = { restore: () => Promise<void> };
 
+/** A system nobody has done anything with yet: empty, and still called "Untitled system" (or "… 2"). */
+export function isUntouchedBlank(doc: SystemDocument): boolean {
+  const defaultName = new RegExp(`^${DEFAULT_SYSTEM_NAME}( \\d+)?$`);
+  return doc.nodes.length === 0 && doc.edges.length === 0 && defaultName.test(doc.name);
+}
+
 /**
  * Library operations over the saved systems and the open one. A system is
  * always open: deleting the last one opens a fresh blank system.
@@ -102,9 +108,11 @@ export function createLibraryActions({
     /**
      * A new system made from a blueprint, opened. It's always a copy, named
      * after the blueprint ("URL shortener 2" if that name is taken), so the
-     * blueprint itself never changes.
+     * blueprint itself never changes. An untouched blank system that was open
+     * is dropped rather than left in the library (a first visit starts with one).
      */
     async createFromBlueprint(blueprint: Blueprint): Promise<SystemDocument> {
+      const previous = current();
       const doc = blueprintDocument(blueprint, registry, {
         id: newId(),
         name: uniqueName(blueprint.title, await takenNames()),
@@ -113,6 +121,7 @@ export function createLibraryActions({
       await systems.save(doc);
       await flush();
       store.getState().load(doc);
+      if (isUntouchedBlank(previous)) await systems.remove(previous.id);
       return doc;
     },
 

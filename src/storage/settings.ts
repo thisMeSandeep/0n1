@@ -12,6 +12,8 @@ export type Settings = {
   minimap: boolean;
   collapsedGroups: string[];
   panels: { tier: string; paletteOpen: boolean; inspectorOpen: boolean };
+  /** The welcome card was dismissed; it doesn't open on its own again. */
+  welcomeSeen: boolean;
 };
 
 export type SettingsRepository = ReturnType<typeof createSettingsRepository>;

@@ -1,6 +1,7 @@
 import {
   DotsThreeIcon,
   DownloadSimpleIcon,
+  HandWavingIcon,
   ImageIcon,
   InfoIcon,
   KeyboardIcon,
@@ -118,6 +119,12 @@ function LabMenu() {
             onSelect={() => uiStore.getState().setShortcutsOpen(true)}
           >
             Keyboard shortcuts
+          </MenuItem>
+          <MenuItem
+            icon={<HandWavingIcon />}
+            onSelect={() => uiStore.getState().setWelcomeOpen(true)}
+          >
+            Welcome
           </MenuItem>
           <MenuItem icon={<InfoIcon />} onSelect={() => setAboutOpen(true)}>
             About 0n1

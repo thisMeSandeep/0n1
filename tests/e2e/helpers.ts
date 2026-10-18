@@ -3,13 +3,17 @@ import { expect, type Page } from "@playwright/test";
 /**
  * Open the lab and wait until it's ready for input. The app reads IndexedDB
  * before its first render, so keys pressed straight after `goto` can land
- * before the lab exists.
+ * before the lab exists. A first visit's welcome card is closed unless
+ * `keepWelcome` is set.
  */
-export async function openLab(page: Page, path = "/") {
+export async function openLab(page: Page, path = "/", { keepWelcome = false } = {}) {
   await page.goto(path);
   await expect(page.locator(".react-flow")).toBeVisible();
   if (!path.includes("sample")) {
     await expect(page.getByRole("banner").getByRole("status")).toHaveText("Saved");
+    // A fresh browser is a first visit: close the welcome card unless the test is about it.
+    const close = page.getByRole("button", { name: "Close welcome" });
+    if (!keepWelcome && (await close.isVisible())) await close.click();
   }
 }
 

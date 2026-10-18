@@ -4,6 +4,7 @@ import {
   CornersOutIcon,
   DownloadSimpleIcon,
   FolderOpenIcon,
+  HandWavingIcon,
   KeyboardIcon,
   MagnifyingGlassPlusIcon,
   MoonIcon,
@@ -157,6 +158,14 @@ export function CommandPalette() {
                   icon={<KeyboardIcon aria-hidden className="text-fg-2" />}
                 >
                   Keyboard shortcuts
+                </CommandItem>
+                <CommandItem
+                  value="Welcome"
+                  keywords={["start", "blueprints", "intro", "tips"]}
+                  onSelect={run(() => uiStore.getState().setWelcomeOpen(true))}
+                  icon={<HandWavingIcon aria-hidden className="text-fg-2" />}
+                >
+                  Welcome
                 </CommandItem>
               </CommandGroup>
               <CommandGroup heading="Appearance">

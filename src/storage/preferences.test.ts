@@ -30,6 +30,7 @@ describe("loadPreferences", () => {
       minimap: false,
       collapsedGroups: [],
       panels: null,
+      welcomeSeen: false,
     });
   });
 
@@ -39,11 +40,13 @@ describe("loadPreferences", () => {
     await settings.set("minimap", true);
     await settings.set("collapsedGroups", ["data", "messaging"]);
     await settings.set("panels", { tier: "wide", paletteOpen: false, inspectorOpen: true });
+    await settings.set("welcomeSeen", true);
     expect(await loadPreferences(settings)).toEqual({
       theme: "dark",
       minimap: true,
       collapsedGroups: ["data", "messaging"],
       panels: { tier: "wide", paletteOpen: false, inspectorOpen: true },
+      welcomeSeen: true,
     });
   });
 
@@ -53,12 +56,14 @@ describe("loadPreferences", () => {
       { key: "minimap", value: "yes" },
       { key: "collapsedGroups", value: ["data", "teleporters"] },
       { key: "panels", value: { tier: "huge" } },
+      { key: "welcomeSeen", value: "sure" },
     ]);
     expect(await loadPreferences(createSettingsRepository(db))).toEqual({
       theme: "system",
       minimap: false,
       collapsedGroups: [],
       panels: null,
+      welcomeSeen: false,
     });
   });
 });
@@ -71,13 +76,19 @@ describe("bindPreferences", () => {
       minimap: true,
       collapsedGroups: ["compute"],
       panels: null,
+      welcomeSeen: false,
     });
-    expect(ui.getState()).toMatchObject({ minimap: true, collapsedGroups: ["compute"] });
+    expect(ui.getState()).toMatchObject({
+      minimap: true,
+      collapsedGroups: ["compute"],
+      welcomeOpen: true, // a first visit
+    });
 
     ui.getState().toggleMinimap();
     ui.getState().setGroupOpen("compute", true);
     ui.getState().setGroupOpen("data", false);
     ui.getState().setPanels({ tier: "medium", paletteOpen: true, inspectorOpen: false });
+    ui.getState().setWelcomeOpen(false);
 
     await vi.waitFor(async () => {
       const prefs = await loadPreferences(settings);
@@ -85,8 +96,21 @@ describe("bindPreferences", () => {
         minimap: false,
         collapsedGroups: ["data"],
         panels: { tier: "medium", paletteOpen: true, inspectorOpen: false },
+        welcomeSeen: true,
       });
     });
+    stop();
+  });
+
+  it("keeps the welcome card closed once it has been seen", () => {
+    const ui = createUiStore();
+    const stop = bindPreferences(ui, createSettingsRepository(db), {
+      minimap: false,
+      collapsedGroups: [],
+      panels: null,
+      welcomeSeen: true,
+    });
+    expect(ui.getState().welcomeOpen).toBe(false);
     stop();
   });
 });

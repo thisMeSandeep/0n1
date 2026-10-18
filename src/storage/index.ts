@@ -43,6 +43,8 @@ export async function startStorage(): Promise<ThemePreference> {
   } catch (error) {
     console.error("0n1: storage unavailable", error);
     setStatus("unavailable");
+    // Nothing is kept between visits, so every visit is a first visit.
+    uiStore.getState().setWelcomeOpen(true);
     return readThemeMirror() ?? "system";
   }
 }
