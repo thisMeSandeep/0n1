@@ -19,6 +19,6 @@ export const worker: ComponentDefinition = {
   },
   connections: {
     incoming: true,
-    outgoing: ["service", "cache", "database", "queue"],
+    outgoing: ["service", "circuit-breaker", "cache", "database", "queue"],
   },
 };

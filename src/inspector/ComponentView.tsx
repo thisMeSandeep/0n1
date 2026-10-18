@@ -77,7 +77,7 @@ export function ComponentView({ nodeId, onClose }: { nodeId: string; onClose: ()
                 <Fragment key={key}>
                   <ParamField
                     spec={spec}
-                    value={node.params[key]}
+                    value={node.params[key] ?? spec.default}
                     params={node.params as Record<string, number | string | boolean>}
                     onChange={(value) => actions.updateParams(nodeId, { [key]: value })}
                   />

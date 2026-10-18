@@ -177,6 +177,6 @@ export const client: ComponentDefinition = {
   connections: {
     incoming: false,
     outgoingRequired: true,
-    outgoing: ["cdn", "load-balancer", "api-gateway", "service"],
+    outgoing: ["cdn", "load-balancer", "api-gateway", "rate-limiter", "service"],
   },
 };

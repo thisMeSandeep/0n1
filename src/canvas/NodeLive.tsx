@@ -15,7 +15,7 @@ import { Sparkline } from "../ui/Sparkline.tsx";
 const STATUS_WORD: Record<NodeStatus, string> = {
   healthy: "",
   busy: "Busy",
-  failing: "Overloaded",
+  failing: "Failing",
   down: "Down",
 };
 

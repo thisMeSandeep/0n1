@@ -174,6 +174,47 @@ export function findInsights(
     const capacity = CAPACITY[node.type];
     const share = failedHere(m);
 
+    // A breaker failing calls fast is protecting what's behind it (S43a).
+    if (node.type === "circuit-breaker") {
+      const behind = listNames(downstream(doc, node.id).map(nameOf)) || "its dependency";
+      if (m.breakerState === "open") {
+        insights.push({
+          id: `breaker:${node.id}`,
+          severity: "warn",
+          nodeId: node.id,
+          title: `${node.name} is open.`,
+          detail: `It fails calls at once so ${behind} gets a break, and tries again after ${duration(Number(node.params.coolDown ?? 0) * 1000)}.`,
+        });
+      } else if (m.breakerState === "half-open") {
+        insights.push({
+          id: `breaker:${node.id}`,
+          severity: "warn",
+          nodeId: node.id,
+          title: `${node.name} is testing ${behind}.`,
+          detail: "It lets a few calls through to see whether it has recovered.",
+        });
+      }
+      continue;
+    }
+    // A limiter turning traffic away is doing its job: say what's over the limit.
+    if (node.type === "rate-limiter") {
+      if (share >= FAILING) {
+        const limit = `${count(Number(node.params.limit ?? 0))}/s`;
+        insights.push({
+          id: `limited:${node.id}`,
+          severity: "warn",
+          nodeId: node.id,
+          title: `${node.name} is turning away ${percent(share)} of requests.`,
+          detail:
+            node.params.scope === "key"
+              ? `Some keys send more than ${limit} each.`
+              : `They're over its limit of ${limit}.`,
+          fix: "If that traffic is real, raise the limit. If it isn't, it's doing its job.",
+        });
+      }
+      continue;
+    }
+
     if (overloaded(m)) {
       // If what it calls is overloaded too, it's waiting on that: a symptom, not the cause.
       if (downstream(doc, node.id).some((id) => overloaded(metricsOf(id)))) continue;
@@ -232,7 +273,21 @@ export function findInsights(
   for (const client of doc.nodes.filter((n) => n.type === "client")) {
     const m = metricsOf(client.id);
     const timeout = Number(client.params.timeout ?? 0);
-    if (!m?.latency || m.errorRate < FAILING || m.latency.p99 < timeout * 0.95) continue;
+    if (!m?.latency || m.errorRate < FAILING) continue;
+    if (m.latency.p99 < timeout * 0.95) {
+      // Failing, not timing out: say where most of the failures start (S30's "failed here").
+      const source = mostFailures(snapshot, servers);
+      insights.push({
+        id: `errors:${client.id}`,
+        severity: "fail",
+        nodeId: source?.id ?? client.id,
+        title: `${percent(m.errorRate)} of requests from ${client.name} fail.`,
+        detail: source
+          ? `Most of them fail at ${source.name}.`
+          : "They fail on the way, not at a component.",
+      });
+      continue;
+    }
     const culprit = bottlenecks[0] ?? slowest(snapshot, servers);
     insights.push({
       id: `timeouts:${client.id}`,
@@ -379,6 +434,23 @@ function mostlyWrites(doc: SystemDocument): boolean {
     writes += (r * (100 - Number(client.params.readShare ?? 100))) / 100;
   }
   return rate > 0 && writes / rate > 0.5;
+}
+
+/** The component where the most failures start, if any do. */
+function mostFailures(
+  snapshot: MetricsSnapshot,
+  servers: readonly SystemNode[],
+): SystemNode | undefined {
+  let worst: SystemNode | undefined;
+  let most = 0;
+  for (const node of servers) {
+    const failures = snapshot.nodes[node.id]?.failures ?? 0;
+    if (failures > most) {
+      worst = node;
+      most = failures;
+    }
+  }
+  return worst;
 }
 
 /** The non-client component with the highest p99, if any finished requests. */

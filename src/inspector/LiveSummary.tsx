@@ -84,6 +84,16 @@ export function summaryStats(m: NodeMetrics, view: NodeLive, detail: LiveDetail)
         { label: "Waiting", measure: { value: formatCompact(m.waiting), unit: "" } },
         busyStat("Full"),
       ];
+    case "state":
+      return [
+        { label: "Throughput", measure: rate(m.throughput) },
+        { label: "State", measure: { value: m.breakerState ?? "closed", unit: "" } },
+        {
+          label: "Failed fast",
+          measure: formatPercent(m.arrivals > 0 ? Math.min(1, m.drops / m.arrivals) : 0),
+          level: m.breakerState === "open" ? "warn" : "ok",
+        },
+      ];
     case "p99":
       return [
         { label: "Throughput", measure: rate(m.throughput) },

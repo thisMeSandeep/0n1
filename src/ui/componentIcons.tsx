@@ -3,11 +3,13 @@ import {
   CubeIcon,
   DatabaseIcon,
   DesktopIcon,
+  GaugeIcon,
   GearSixIcon,
   GitForkIcon,
   GlobeHemisphereWestIcon,
   type Icon,
   LightningIcon,
+  PlugsConnectedIcon,
   QuestionIcon,
   ShieldCheckIcon,
   StackIcon,
@@ -26,6 +28,8 @@ export const COMPONENT_ICONS: Readonly<Record<string, Icon>> = {
   lightning: LightningIcon,
   copy: CopyIcon,
   stack: StackIcon,
+  gauge: GaugeIcon,
+  "plugs-connected": PlugsConnectedIcon,
 };
 
 export function componentIcon(key: string): Icon {

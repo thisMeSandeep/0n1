@@ -9,8 +9,8 @@ import {
 } from "../engine/metrics/recorder.ts";
 import type { Insight } from "../insights/rules.ts";
 import { InsightTracker } from "../insights/tracker.ts";
-import type { LiveDetail } from "../model/component.ts";
-import type { SystemEdge } from "../model/document.ts";
+import { defaultParams, type LiveDetail } from "../model/component.ts";
+import type { SystemDocument, SystemEdge } from "../model/document.ts";
 import type { Registry } from "../model/registry.ts";
 import type { DesignStore } from "../store/design.ts";
 import {
@@ -189,6 +189,9 @@ function detailOf(m: NodeMetrics, detail: LiveDetail): NodeLive["detail"] {
         : { label: "hit", ...formatPercent(m.hitRatio) };
     case "waiting":
       return { label: "waiting", value: formatCompact(m.waiting), unit: "" };
+    case "state":
+      // A circuit breaker: closed, open or half-open.
+      return { label: m.breakerState ?? "closed" };
     case "p99":
       return m.latency
         ? { label: "p99", ...formatDuration(m.latency.p99) }
@@ -205,7 +208,8 @@ export function nodeLive(
   const errors = failingShare(m, detail);
   return {
     status: statusOf(m, detail, errors),
-    rate: formatCompact(detail === "sent" ? m.arrivals : m.throughput),
+    // Clients: what they send. Breakers: calls arriving, failed fast or not.
+    rate: formatCompact(detail === "sent" || detail === "state" ? m.arrivals : m.throughput),
     detail: detailOf(m, detail),
     utilization: Math.round(Math.min(1, m.utilization) * 100) / 100,
     errors: formatPercent(errors),
@@ -228,6 +232,8 @@ function trendPoint(
       return { label: "Hit ratio", unit: "%", value: (m.hitRatio ?? 0) * 100 };
     case "waiting":
       return { label: "Waiting", unit: "", value: m.waiting };
+    case "state":
+      return { label: "Throughput", unit: "/s", value: m.throughput };
     case "p99":
       return { label: "p99", unit: "ms", value: m.latency?.p99 ?? 0 };
   }
@@ -401,6 +407,27 @@ export function createLiveView({
   };
 
   const tracker = new InsightTracker();
+  /**
+   * The design with every setting filled in, as the engine runs it: a
+   * restored or older system may only store the settings it changed.
+   */
+  let resolvedFor: SystemDocument | null = null;
+  let resolved: SystemDocument | null = null;
+  const withDefaults = (doc: SystemDocument): SystemDocument => {
+    if (doc !== resolvedFor) {
+      resolvedFor = doc;
+      resolved = {
+        ...doc,
+        nodes: doc.nodes.map((node) => {
+          const definition = registry.get(node.type);
+          return definition
+            ? { ...node, params: { ...defaultParams(definition), ...node.params } }
+            : node;
+        }),
+      };
+    }
+    return resolved as SystemDocument;
+  };
 
   const publish = () => {
     cancelPending = null;
@@ -411,7 +438,7 @@ export function createLiveView({
     const next = nextLiveState(previous, lastTime, snapshot, detailOfNode, doc.edges);
     if (!snapshot) tracker.reset();
     const slowTrace = simulation.getState().traces.find((t) => t.reason === "slow") ?? null;
-    const insights = snapshot ? tracker.update(snapshot, doc, slowTrace) : [];
+    const insights = snapshot ? tracker.update(snapshot, withDefaults(doc), slowTrace) : [];
     store.setState(
       {
         ...next,

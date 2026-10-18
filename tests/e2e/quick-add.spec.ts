@@ -71,6 +71,7 @@ test("dragging a connection into empty space offers only valid targets and conne
     "Load balancer",
     "API gateway",
     "CDN",
+    "Rate limiter",
     "Service",
   ]);
 

@@ -28,11 +28,12 @@ const messages = (doc: SystemDocument) => {
   };
 };
 
-/** The mockup's URL shortener, plus a replica and an async job pipeline. */
+/** The mockup's URL shortener, plus a replica, an async job pipeline, a rate limiter and a circuit breaker. */
 const full = system({
   nodes: [
     ["users", "client", "Users"],
     ["cdn", "cdn", "CDN"],
+    ["limiter", "rate-limiter", "Rate limiter"],
     ["gw", "api-gateway", "Gateway"],
     ["lb", "load-balancer", "Load balancer"],
     ["api1", "service", "API 1"],
@@ -42,10 +43,12 @@ const full = system({
     ["replica", "read-replica", "Replica"],
     ["jobs", "queue", "Jobs"],
     ["worker", "worker", "Worker"],
+    ["breaker", "circuit-breaker", "Breaker"],
   ],
   edges: [
     ["users", "cdn"],
-    ["cdn", "gw"],
+    ["cdn", "limiter"],
+    ["limiter", "gw"],
     ["gw", "lb"],
     ["lb", "api1"],
     ["lb", "api2"],
@@ -58,11 +61,13 @@ const full = system({
     ["db", "replica"],
     ["jobs", "worker"],
     ["worker", "db"],
+    ["worker", "breaker"],
+    ["breaker", "api1"],
   ],
 });
 
 describe("compile", () => {
-  it("compiles a system using every v1 component, cleanly", () => {
+  it("compiles a system using every component, cleanly", () => {
     const types = new Set(full.nodes.map((n) => n.type));
     expect([...types].sort()).toEqual(componentDefinitions.map((d) => d.type).sort());
 

@@ -38,6 +38,6 @@ export const cdn: ComponentDefinition = {
   connections: {
     incoming: true,
     outgoingRequired: true,
-    outgoing: ["load-balancer", "api-gateway", "service"],
+    outgoing: ["load-balancer", "api-gateway", "rate-limiter", "service"],
   },
 };

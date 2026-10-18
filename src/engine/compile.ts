@@ -73,6 +73,8 @@ const ROUTE_FOR_TYPE: Record<string, keyof Routes> = {
   "load-balancer": "forward",
   "api-gateway": "forward",
   cdn: "forward",
+  "rate-limiter": "forward",
+  "circuit-breaker": "forward",
   cache: "caches",
   database: "databases",
   "read-replica": "replicas",

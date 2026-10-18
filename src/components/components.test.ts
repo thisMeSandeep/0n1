@@ -5,12 +5,14 @@ import { componentDefinitions, registry } from "./index.ts";
 const def = (type: string) => registry.require(type);
 
 describe("v1 components", () => {
-  it("are the ten planned components, in palette order", () => {
+  it("are the planned components, in palette order", () => {
     expect(componentDefinitions.map((d) => d.type)).toEqual([
       "client",
       "load-balancer",
       "api-gateway",
       "cdn",
+      "rate-limiter",
+      "circuit-breaker",
       "service",
       "worker",
       "database",
@@ -20,7 +22,7 @@ describe("v1 components", () => {
     ]);
     expect([...registry.byCategory()].map(([category, defs]) => [category, defs.length])).toEqual([
       ["traffic", 1],
-      ["network", 3],
+      ["network", 5],
       ["compute", 2],
       ["data", 3],
       ["messaging", 1],

@@ -133,6 +133,62 @@ describe("insight rules", () => {
   });
 });
 
+describe("resilience components", () => {
+  const guarded = systemDocument(
+    {
+      users: { type: "client", name: "Users" },
+      limiter: { type: "rate-limiter", name: "Limiter", params: { limit: 300 } },
+      api: { type: "service", name: "API" },
+      breaker: { type: "circuit-breaker", name: "Breaker", params: { coolDown: 5 } },
+      payments: { type: "service", name: "Payments" },
+    },
+    [
+      ["users", "limiter"],
+      ["limiter", "api"],
+      ["api", "breaker"],
+      ["breaker", "payments"],
+    ],
+  );
+
+  it("an open breaker is protecting its dependency, not failing", () => {
+    const open = snapshot(20_000, {
+      breaker: metrics({ breakerState: "open", failures: 90, drops: 90 }),
+      api: metrics(),
+    });
+    expect(findInsights(open, guarded)).toEqual([
+      expect.objectContaining({
+        id: "breaker:breaker",
+        severity: "warn",
+        title: "Breaker is open.",
+        detail: "It fails calls at once so Payments gets a break, and tries again after 5 s.",
+      }),
+    ]);
+  });
+
+  it("users getting errors (not timeouts) are told where they start", () => {
+    const failing = snapshot(20_000, {
+      users: metrics({ errorRate: 0.4, latency: { mean: 5, p50: 4, p95: 9, p99: 12 } }),
+      breaker: metrics({ breakerState: "open", failures: 80, drops: 80 }),
+    });
+    expect(findInsights(failing, guarded)[0]).toMatchObject({
+      id: "errors:users",
+      title: "40% of requests from Users fail.",
+      detail: "Most of them fail at Breaker.",
+      nodeId: "breaker",
+    });
+  });
+
+  it("a limiter turning traffic away is doing its job", () => {
+    const limited = snapshot(20_000, { limiter: metrics({ failures: 40, drops: 40 }) });
+    expect(findInsights(limited, guarded)[0]).toMatchObject({
+      id: "limited:limiter",
+      severity: "warn",
+      title: "Limiter is turning away 40% of requests.",
+      detail: "They're over its limit of 300/s.",
+    });
+  });
+});
+
 describe("the insight tracker", () => {
   const busy = (time: number) =>
     snapshot(time, { users: metrics(), api: metrics(), db: metrics({ utilization: 0.88 }) });

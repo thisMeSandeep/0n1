@@ -32,6 +32,8 @@ export type NodeMetrics = {
   staleReads?: number | null;
   /** Queues: how long the oldest waiting job has waited (ms). Null when empty. */
   oldestJobAge?: number | null;
+  /** Circuit breakers (S43a): closed, open or half-open. */
+  breakerState?: BreakerState;
   /** Taken down (S27). */
   down?: boolean;
   /** When it was taken down (simulated ms), if it's down. */
@@ -41,6 +43,8 @@ export type NodeMetrics = {
   waiting: number;
   totals: { arrived: number; completed: number; failed: number; dropped: number };
 };
+
+export type BreakerState = "closed" | "open" | "half-open";
 
 /** The whole system as clients experience it. */
 export type SystemMetrics = {
@@ -83,6 +87,7 @@ export class NodeRecorder {
   #oldestSince: number | null | undefined = undefined;
   #inFlight = 0;
   #waiting = 0;
+  #breakerState: BreakerState | undefined = undefined;
 
   constructor(options: WindowOptions = DEFAULT_WINDOW) {
     this.#window = options;
@@ -133,6 +138,11 @@ export class NodeRecorder {
     if (this.#oldestSince !== undefined) this.#oldestSince = null;
   }
 
+  /** Circuit breakers: the state they're in now. */
+  setBreakerState(state: BreakerState): void {
+    this.#breakerState = state;
+  }
+
   /** Queues: when the oldest waiting job was added, or null when empty. */
   setOldest(enqueuedAt: number | null): void {
     this.#oldestSince = enqueuedAt;
@@ -179,6 +189,7 @@ export class NodeRecorder {
     return {
       ...(hitRatio === undefined ? {} : { hitRatio }),
       ...(staleReads === undefined ? {} : { staleReads }),
+      ...(this.#breakerState === undefined ? {} : { breakerState: this.#breakerState }),
       ...(this.#oldestSince === undefined
         ? {}
         : { oldestJobAge: this.#oldestSince === null ? null : now - this.#oldestSince }),

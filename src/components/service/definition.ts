@@ -21,6 +21,14 @@ export const service: ComponentDefinition = {
   },
   connections: {
     incoming: true,
-    outgoing: ["load-balancer", "service", "cache", "database", "read-replica", "queue"],
+    outgoing: [
+      "load-balancer",
+      "service",
+      "circuit-breaker",
+      "cache",
+      "database",
+      "read-replica",
+      "queue",
+    ],
   },
 };

@@ -10,7 +10,13 @@ describe("quickAddCandidates", () => {
   });
 
   it("offers only what the source may connect to", () => {
-    expect(types("client")).toEqual(["load-balancer", "api-gateway", "cdn", "service"]);
+    expect(types("client")).toEqual([
+      "load-balancer",
+      "api-gateway",
+      "cdn",
+      "rate-limiter",
+      "service",
+    ]);
     expect(types("queue")).toEqual(["worker"]);
     expect(types("database")).toEqual(["read-replica"]);
   });

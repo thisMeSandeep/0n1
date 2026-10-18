@@ -12,8 +12,12 @@ const ATTENTION: readonly NodeStatus[] = ["failing", "down", "busy"];
 
 function attentionText(view: NodeLive): string {
   switch (view.status) {
-    case "failing":
-      return view.hasErrors ? `Overloaded · ${view.errors.value}% errors` : "Overloaded";
+    case "failing": {
+      // Overloaded means full; a breaker or limiter failing calls on purpose isn't.
+      const what =
+        view.detail.label === "open" ? "Open" : view.utilization > 0.9 ? "Overloaded" : "Failing";
+      return view.hasErrors ? `${what} · ${view.errors.value}% errors` : what;
+    }
     case "down":
       return view.downSince ? `Down since ${view.downSince}` : "Down";
     case "busy":
