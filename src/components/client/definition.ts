@@ -9,7 +9,8 @@ export const client: ComponentDefinition = {
     "Requests arrive at random moments at the average rate you set (a Poisson process). " +
     "With a traffic shape, that rate changes over time, and arrivals follow it moment by moment. " +
     "Each one is a read or a write for a key; with hot keys, a few keys get most of the traffic (Zipf). " +
-    "The client doesn't slow down when the system struggles, which is how real traffic behaves.",
+    "The client doesn't slow down when the system struggles, which is how real traffic behaves. " +
+    "Connected to a DNS, its users look up the system's address before sending, and keep the answer for its TTL.",
   icon: "desktop",
   keywords: ["user", "browser", "traffic", "load"],
   liveDetail: "sent",
@@ -188,6 +189,6 @@ export const client: ComponentDefinition = {
   connections: {
     incoming: false,
     outgoingRequired: true,
-    outgoing: ["cdn", "load-balancer", "api-gateway", "rate-limiter", "service"],
+    outgoing: ["cdn", "load-balancer", "api-gateway", "rate-limiter", "service", "dns"],
   },
 };

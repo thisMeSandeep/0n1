@@ -6,8 +6,10 @@ import { cdn } from "./cdn/definition.ts";
 import { circuitBreaker } from "./circuit-breaker/definition.ts";
 import { client } from "./client/definition.ts";
 import { database } from "./database/definition.ts";
+import { dns } from "./dns/definition.ts";
 import { loadBalancer } from "./load-balancer/definition.ts";
 import { objectStorage } from "./object-storage/definition.ts";
+import { pubsub } from "./pubsub/definition.ts";
 import { queue } from "./queue/definition.ts";
 import { rateLimiter } from "./rate-limiter/definition.ts";
 import { readReplica } from "./read-replica/definition.ts";
@@ -22,6 +24,7 @@ export const componentDefinitions: readonly ComponentDefinition[] = [
   loadBalancer,
   apiGateway,
   cdn,
+  dns,
   rateLimiter,
   circuitBreaker,
   service,
@@ -33,6 +36,7 @@ export const componentDefinitions: readonly ComponentDefinition[] = [
   searchIndex,
   objectStorage,
   queue,
+  pubsub,
 ];
 
 /** The app's component registry. Building it validates every definition. */

@@ -1,4 +1,4 @@
-import type { FailureReason, RequestKind } from "./types.ts";
+import type { FailureReason, Request, RequestKind } from "./types.ts";
 
 /*
  * Request tracing (S42): one request followed hop by hop. Only traced
@@ -30,7 +30,7 @@ export type Span = {
   /** The client's try this belongs to (1 = first, 2 = first retry…). */
   attempt: number;
   /** What was asked of it: the request's read or write, or a cache's get, set… */
-  op: RequestKind | "get" | "set" | "delete" | "replicate" | "index";
+  op: RequestKind | NonNullable<Request["op"]>;
 };
 
 /** Why it was traced: someone asked, or the engine kept it as the slowest or a failed one. */

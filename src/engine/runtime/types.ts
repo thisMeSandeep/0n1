@@ -23,9 +23,10 @@ export type Request = {
   path: string[];
   /**
    * What's being asked of a data component, when it isn't the request's own
-   * read or write: cache lookups, fills and invalidations, and replication.
+   * read or write: cache lookups, fills and invalidations, replication,
+   * indexing, and a client looking up an address (S43c).
    */
-  op?: "get" | "set" | "delete" | "replicate" | "index";
+  op?: "get" | "set" | "delete" | "replicate" | "index" | "resolve";
   /** Set when this request is being traced (S42): every hop records a span. */
   trace?: Trace;
   /** The span of the visit this copy belongs to, so calls it makes become its children. */

@@ -419,3 +419,110 @@ describe("each blueprint's break gets the insight you'd hope for", () => {
     expect(ids(insights)).not.toContain("overloaded:worker-1");
   });
 });
+
+/** Run a document for `ms`, feeding every 250 ms snapshot to a tracker; `at` acts along the way. */
+function watch(
+  doc: SystemDocument,
+  ms: number,
+  at: (engine: Engine, time: number) => void = () => {},
+): Insight[] {
+  const { model } = compile(doc, registry);
+  if (!model) throw new Error("didn't compile");
+  const engine = new Engine(model);
+  const tracker = new InsightTracker();
+  let shown: Insight[] = [];
+  for (let t = 250; t <= ms; t += 250) {
+    at(engine, t);
+    engine.runUntil(t);
+    shown = tracker.update(engine.snapshot(), doc);
+  }
+  return shown;
+}
+
+describe("messaging and network components", () => {
+  /** Every request a write, published to Events; Mailer can only keep up with a tenth of them. */
+  const fanOut = (events: Record<string, unknown> = {}) =>
+    systemDocument(
+      {
+        users: { type: "client", name: "Users", params: { rate: 50, readShare: 0 } },
+        api: { type: "service", name: "API" },
+        events: { type: "pubsub", name: "Events", params: events },
+        search: { type: "worker", name: "Indexer", params: { concurrency: 8, workTime: 10 } },
+        mail: { type: "worker", name: "Mailer", params: { concurrency: 1, workTime: 200 } },
+      },
+      [
+        ["users", "api"],
+        ["api", "events"],
+        ["events", "search"],
+        ["events", "mail"],
+      ],
+    );
+
+  it("a slow subscriber is named as falling behind, and the others aren't held up", () => {
+    const insights = watch(fanOut(), 20_000);
+    expect(ids(insights)).toEqual(["backlog:events:mail"]);
+    expect(insights[0]).toMatchObject({
+      severity: "fail",
+      nodeId: "mail",
+      title: "Mailer is falling behind on Events.",
+      fix: "Raise its Jobs at once, or subscribe a queue instead and put more workers behind it.",
+    });
+    expect(insights[0]?.detail).toMatch(
+      /^\d+ messages are waiting for it, about \d+ more each second\. The other subscribers aren't held up\. The oldest has waited/,
+    );
+  });
+
+  it("a subscriber whose backlog is full is told it's missing messages", () => {
+    const insights = watch(fanOut({ capacity: 200 }), 20_000);
+    expect(insights[0]).toMatchObject({
+      id: "backlog:events:mail",
+      title: "Mailer is missing messages from Events.",
+    });
+    expect(insights[0]?.detail).toContain("Its backlog of 200 is full");
+  });
+
+  const resolving = (backup = false) =>
+    systemDocument(
+      {
+        users: { type: "client", name: "Users" },
+        api: { type: "service", name: "API" },
+        dns: { type: "dns", name: "DNS", params: { ttl: 20 } },
+        ...(backup ? { backup: { type: "dns", name: "Backup DNS", params: { ttl: 20 } } } : {}),
+      },
+      [["users", "dns"], ...(backup ? ([["users", "backup"]] as const) : []), ["users", "api"]],
+    );
+  const outageAt = (time: number) => (engine: Engine, t: number) => {
+    if (t === time) engine.takeDown("dns");
+  };
+
+  it("DNS down: users carry on while their answers last, then can't reach the system", () => {
+    const early = watch(resolving(), 9000, outageAt(5000));
+    expect(ids(early)).toEqual(["down:dns"]);
+    expect(early[0]?.detail).toMatch(
+      /^Users with a cached answer carry on, and the rest can't reach the system\. [5-9]\d% still have one; they all expire within 20 s\.$/,
+    );
+    expect(early[0]?.fix).toContain("A second DNS, or a longer Answer TTL");
+
+    const later = watch(resolving(), 30_000, outageAt(5000));
+    expect(ids(later)).toEqual(["down:dns", "errors:users"]);
+    expect(later[0]?.detail).toBe(
+      "Every cached answer has expired, so no one can reach the system.",
+    );
+    expect(later[1]).toMatchObject({
+      nodeId: "dns",
+      title: "100% of requests from Users fail.",
+      detail: "Its users can't look up where to send them: DNS is down.",
+    });
+  });
+
+  it("DNS down with a second one: a warning, since clients look there instead", () => {
+    const insights = watch(resolving(true), 30_000, outageAt(5000));
+    expect(insights).toEqual([
+      expect.objectContaining({
+        id: "down:dns",
+        severity: "warn",
+        detail: "Its clients look up addresses at Backup DNS instead.",
+      }),
+    ]);
+  });
+});

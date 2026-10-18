@@ -1,3 +1,4 @@
+import { callInSequence } from "./forward.ts";
 import type { BehaviourContext, Outcome, Request } from "./types.ts";
 
 /**
@@ -8,12 +9,14 @@ import type { BehaviourContext, Outcome, Request } from "./types.ts";
  *   otherwise write the database, then invalidate the key in the cache.
  * - Search (S43b): a search index if there is one; otherwise the database
  *   scans for it, which is slow. Searches aren't cached.
+ * - Publish (S43c): once a write is done (or queued), it's published to
+ *   each pub/sub it's connected to, in turn.
  * With several caches or databases, the key picks one (sharding);
  * replicas take turns.
  */
 export function createDataAccess(ctx: Pick<BehaviourContext, "send" | "node">) {
   const { send, node } = ctx;
-  const { caches, databases, replicas, queues, search } = node.routes;
+  const { caches, databases, replicas, queues, search, topics } = node.routes;
   let nextReplica = 0;
 
   const byKey = (targets: readonly string[], key: number) =>
@@ -60,20 +63,27 @@ export function createDataAccess(ctx: Pick<BehaviourContext, "send" | "node">) {
     }
 
     // A write: handed to a queue when there is one.
+    const written =
+      topics.length === 0
+        ? done
+        : (outcome: Outcome) =>
+            outcome.ok
+              ? callInSequence(ctx, topics, { ...request, op: undefined }, done)
+              : done(outcome);
     const queue = byKey(queues, request.key);
     if (queue !== null) {
-      send(queue, { ...request, op: undefined }, done);
+      send(queue, { ...request, op: undefined }, written);
       return;
     }
     const database = byKey(databases, request.key);
     if (database === null) {
       // Replicas are read-only; with only replicas there's nowhere to write.
-      done(replicas.length > 0 ? { ok: false, reason: "unavailable" } : { ok: true });
+      written(replicas.length > 0 ? { ok: false, reason: "unavailable" } : { ok: true });
       return;
     }
     send(database, { ...request, op: undefined }, (write) => {
-      if (!write.ok || cache === null) done(write);
-      else send(cache, { ...request, op: "delete" }, () => done({ ok: true }));
+      if (!write.ok || cache === null) written(write);
+      else send(cache, { ...request, op: "delete" }, () => written({ ok: true }));
     });
   };
 }

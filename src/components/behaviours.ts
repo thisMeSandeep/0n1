@@ -5,8 +5,10 @@ import { cdn } from "./cdn/behaviour.ts";
 import { circuitBreaker } from "./circuit-breaker/behaviour.ts";
 import { client } from "./client/behaviour.ts";
 import { database } from "./database/behaviour.ts";
+import { dns } from "./dns/behaviour.ts";
 import { loadBalancer } from "./load-balancer/behaviour.ts";
 import { objectStorage } from "./object-storage/behaviour.ts";
+import { pubsub } from "./pubsub/behaviour.ts";
 import { queue } from "./queue/behaviour.ts";
 import { rateLimiter } from "./rate-limiter/behaviour.ts";
 import { readReplica } from "./read-replica/behaviour.ts";
@@ -21,6 +23,7 @@ export const BEHAVIOURS: Readonly<Partial<Record<string, BehaviourFactory>>> = {
   "load-balancer": loadBalancer,
   "api-gateway": apiGateway,
   cdn,
+  dns,
   "rate-limiter": rateLimiter,
   "circuit-breaker": circuitBreaker,
   service,
@@ -31,5 +34,6 @@ export const BEHAVIOURS: Readonly<Partial<Record<string, BehaviourFactory>>> = {
   "search-index": searchIndex,
   "object-storage": objectStorage,
   queue,
+  pubsub,
   worker,
 };

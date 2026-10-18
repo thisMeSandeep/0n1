@@ -21,6 +21,10 @@ export type Routes = {
   workers: string[];
   /** Search indexes (S43b): where searches go, and where a database sends its writes to be indexed. */
   search: string[];
+  /** Pub/sub topics (S43c): where a write is published once it's done. */
+  topics: string[];
+  /** DNS (S43c): where clients look up the system's address. */
+  dns: string[];
 };
 
 export type RuntimeNode = {
@@ -80,6 +84,8 @@ const ROUTE_FOR_TYPE: Record<string, keyof Routes> = {
   "object-storage": "forward",
   "sharded-database": "databases",
   "search-index": "search",
+  pubsub: "topics",
+  dns: "dns",
   cache: "caches",
   database: "databases",
   "read-replica": "replicas",
@@ -95,6 +101,8 @@ const emptyRoutes = (): Routes => ({
   queues: [],
   workers: [],
   search: [],
+  topics: [],
+  dns: [],
 });
 
 /** Params with defaults filled in; any invalid value is replaced by its default. */
@@ -204,9 +212,16 @@ export function compile(doc: SystemDocument, registry: Registry): CompileResult 
 
   // Pass-through components that can't pass anything on.
   for (const node of nodes.values()) {
-    if (!node.definition.connections.outgoingRequired || node.targets.length > 0) continue;
+    if (!node.definition.connections.outgoingRequired) continue;
+    // A client's DNS only tells it where to send: it still needs somewhere to send to.
+    const passesOn = node.type === "client" ? node.routes.forward : node.targets;
+    if (passesOn.length > 0) continue;
     if (node.type === "queue") {
       warn(`No worker takes jobs from ${node.name}, so jobs will pile up.`, { nodeId: node.id });
+    } else if (node.type === "pubsub") {
+      warn(`Nothing subscribes to ${node.name}, so its messages go nowhere.`, {
+        nodeId: node.id,
+      });
     } else if (node.type === "client") {
       error(`${node.name} isn't connected to anything, so its requests have nowhere to go.`, {
         nodeId: node.id,

@@ -6,6 +6,7 @@ import type {
   Request,
   RequestKind,
 } from "../../engine/runtime/types.ts";
+import { createResolver } from "./resolver.ts";
 import { maxShapeFactor, type ShapeSettings, shapeFactor } from "./shape.ts";
 
 /**
@@ -21,19 +22,13 @@ import { maxShapeFactor, type ShapeSettings, shapeFactor } from "./shape.ts";
  * A traffic shape (S39) makes the rate change over time. Arrivals are drawn
  * at the shape's highest rate and each is kept with probability
  * (rate now ÷ highest rate): thinning, which follows the shape exactly.
+ *
+ * Connected to DNS (S43c), each attempt first finds the system's address
+ * (see resolver.ts); the lookup counts towards its time and its timeout.
+ * Requests go to what it's connected to other than DNS, taking turns.
  */
-export const client: BehaviourFactory = ({
-  sim,
-  rng,
-  node,
-  recorder,
-  system,
-  send,
-  nextRequestId,
-  sampling,
-  traffic,
-  tracing,
-}) => {
+export const client: BehaviourFactory = (ctx) => {
+  const { sim, rng, node, recorder, system, send, nextRequestId, sampling, traffic, tracing } = ctx;
   // Read live, so changes while running take effect (S28).
   const params = () =>
     node.params as ShapeSettings & {
@@ -55,10 +50,12 @@ export const client: BehaviourFactory = ({
     if (zipf?.keys !== keys) zipf = { keys, sampler: createZipf(keys, 1) };
     return zipf.sampler.sample(rng);
   };
+  const targets = node.routes.forward;
+  const resolver = createResolver(ctx);
   let nextTarget = 0;
 
   const pickTarget = () => {
-    const target = node.targets[nextTarget % node.targets.length] as string;
+    const target = targets[nextTarget % targets.length] as string;
     nextTarget++;
     return target;
   };
@@ -85,7 +82,16 @@ export const client: BehaviourFactory = ({
     };
 
     timer = sim.schedule(params().timeout, () => settle({ ok: false, reason: "timeout" }));
-    send(pickTarget(), request, settle);
+    if (!resolver) {
+      send(pickTarget(), request, settle);
+      return;
+    }
+    resolver.resolve(request, (lookup) => {
+      if (settled) return; // it timed out while looking up
+      if (lookup.ok) send(pickTarget(), request, settle);
+      // Without an address it can't send at all.
+      else settle({ ok: false, reason: "unavailable", ...(lookup.at ? { at: lookup.at } : {}) });
+    });
   };
 
   const sendOne = () => {
@@ -132,7 +138,7 @@ export const client: BehaviourFactory = ({
     // Clients don't take requests (the compiler enforces it).
     handle: (_request, reply) => reply({ ok: false, reason: "unavailable" }),
     start: () => {
-      if (node.targets.length > 0) sim.schedule(exponential(rng, meanGapMs()), arrival);
+      if (targets.length > 0) sim.schedule(exponential(rng, meanGapMs()), arrival);
     },
     /** Real requests per second it's sending right now, before Traffic %. */
     offeredRate: () => params().rate * shapeFactor(params(), sim.now / 1000),

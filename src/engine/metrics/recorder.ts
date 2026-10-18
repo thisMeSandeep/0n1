@@ -36,6 +36,10 @@ export type NodeMetrics = {
   shards?: number[];
   /** Circuit breakers (S43a): closed, open or half-open. */
   breakerState?: BreakerState;
+  /** Pub/sub (S43c): each subscription's backlog, by subscriber, in connection order. */
+  subscriptions?: Subscription[];
+  /** Clients using DNS (S43c): share of their users with the address cached, 0–1. */
+  dnsCached?: number;
   /** Taken down (S27). */
   down?: boolean;
   /** When it was taken down (simulated ms), if it's down. */
@@ -47,6 +51,15 @@ export type NodeMetrics = {
 };
 
 export type BreakerState = "closed" | "open" | "half-open";
+
+export type Subscription = {
+  /** The subscriber's component id. */
+  node: string;
+  /** Real messages waiting for it. */
+  waiting: number;
+  /** How long its oldest waiting message has waited (ms). Null when empty. */
+  oldestAge: number | null;
+};
 
 /** The whole system as clients experience it. */
 export type SystemMetrics = {
@@ -91,6 +104,8 @@ export class NodeRecorder {
   #waiting = 0;
   #breakerState: BreakerState | undefined = undefined;
   #shards: ((now: number) => number[]) | null = null;
+  #subscriptions: ((now: number) => Subscription[]) | null = null;
+  #dnsCached: ((now: number) => number) | null = null;
 
   constructor(options: WindowOptions = DEFAULT_WINDOW) {
     this.#window = options;
@@ -139,11 +154,26 @@ export class NodeRecorder {
     this.#inFlight = 0;
     this.#waiting = 0;
     if (this.#oldestSince !== undefined) this.#oldestSince = null;
+    // A pub/sub that's down holds nothing; it reports again when it comes back.
+    if (this.#subscriptions) {
+      const empty = this.#subscriptions(time).map((s) => ({ ...s, waiting: 0, oldestAge: null }));
+      this.#subscriptions = () => empty;
+    }
   }
 
   /** Sharded databases: how to read each shard's utilization. */
   reportShards(read: (now: number) => number[]): void {
     this.#shards = read;
+  }
+
+  /** Pub/sub: how to read each subscription's backlog. */
+  reportSubscriptions(read: (now: number) => Subscription[]): void {
+    this.#subscriptions = read;
+  }
+
+  /** Clients using DNS: how to read the share of users with the address cached. */
+  reportDnsCache(read: (now: number) => number): void {
+    this.#dnsCached = read;
   }
 
   /** Circuit breakers: the state they're in now. */
@@ -199,6 +229,8 @@ export class NodeRecorder {
       ...(staleReads === undefined ? {} : { staleReads }),
       ...(this.#breakerState === undefined ? {} : { breakerState: this.#breakerState }),
       ...(this.#shards ? { shards: this.#shards(now) } : {}),
+      ...(this.#subscriptions ? { subscriptions: this.#subscriptions(now) } : {}),
+      ...(this.#dnsCached ? { dnsCached: this.#dnsCached(now) } : {}),
       ...(this.#oldestSince === undefined
         ? {}
         : { oldestJobAge: this.#oldestSince === null ? null : now - this.#oldestSince }),

@@ -30,8 +30,8 @@ const messages = (doc: SystemDocument) => {
 
 /**
  * The mockup's URL shortener, plus a replica, an async job pipeline, a rate
- * limiter, a circuit breaker, a sharded database, a search index and
- * object storage: every component.
+ * limiter, a circuit breaker, a sharded database, a search index, object
+ * storage, DNS and a pub/sub: every component.
  */
 const full = system({
   nodes: [
@@ -51,6 +51,8 @@ const full = system({
     ["shards", "sharded-database", "Shards"],
     ["index", "search-index", "Search"],
     ["files", "object-storage", "Files"],
+    ["dns", "dns", "DNS"],
+    ["events", "pubsub", "Events"],
   ],
   edges: [
     ["users", "cdn"],
@@ -74,6 +76,10 @@ const full = system({
     ["api2", "index"],
     ["db", "index"],
     ["worker", "files"],
+    ["users", "dns"],
+    ["api2", "events"],
+    ["events", "worker"],
+    ["events", "jobs"],
   ],
 });
 
@@ -104,8 +110,12 @@ describe("compile", () => {
       queues: [],
       workers: [],
       search: [],
+      topics: [],
+      dns: [],
     });
     expect(model.nodes.get("lb")!.routes.forward).toEqual(["api1", "api2"]);
+    expect(model.nodes.get("api2")!.routes.topics).toEqual(["events"]);
+    expect(model.nodes.get("users")!.routes).toMatchObject({ forward: ["cdn"], dns: ["dns"] });
     expect(model.nodes.get("jobs")!.routes.workers).toEqual(["worker"]);
     expect(model.nodes.get("db")!.sources).toEqual(["api1", "api2", "worker"]);
   });
@@ -122,6 +132,19 @@ describe("compile", () => {
 
     it("needs a client to be connected", () => {
       expect(messages(system({ nodes: [["u", "client", "Users"]], edges: [] })).errors).toEqual([
+        "Users isn't connected to anything, so its requests have nowhere to go.",
+      ]);
+    });
+
+    it("needs a client to send somewhere other than DNS", () => {
+      const doc = system({
+        nodes: [
+          ["u", "client", "Users"],
+          ["d", "dns", "DNS"],
+        ],
+        edges: [["u", "d"]],
+      });
+      expect(messages(doc).errors).toEqual([
         "Users isn't connected to anything, so its requests have nowhere to go.",
       ]);
     });
@@ -188,6 +211,25 @@ describe("compile", () => {
       expect(result.errors).toEqual([]);
       expect(result.warnings.map((w) => [w.message, w.nodeId])).toEqual([
         ["Nothing sends requests to Lonely cache, so it will sit idle.", "c"],
+      ]);
+    });
+
+    it("flags a pub/sub nothing subscribes to", () => {
+      const doc = system({
+        nodes: [
+          ["u", "client", "Users"],
+          ["s", "service", "API"],
+          ["t", "pubsub", "Events"],
+        ],
+        edges: [
+          ["u", "s"],
+          ["s", "t"],
+        ],
+      });
+      const result = compile(doc, registry);
+      expect(result.errors).toEqual([]);
+      expect(result.warnings.map((w) => w.message)).toEqual([
+        "Nothing subscribes to Events, so its messages go nowhere.",
       ]);
     });
 

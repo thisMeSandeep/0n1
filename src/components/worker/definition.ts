@@ -5,9 +5,9 @@ export const worker: ComponentDefinition = {
   type: "worker",
   category: "compute",
   displayName: "Worker",
-  description: "Takes jobs from a queue and processes them in the background.",
+  description: "Takes jobs from a queue or pub/sub and processes them in the background.",
   modelNote:
-    "It pulls a new job from its queue whenever it has a free slot, so it never takes more than it can handle; " +
+    "It pulls a new job from its queue (or message from its pub/sub) whenever it has a free slot, so it never takes more than it can handle; " +
     "the backlog stays in the queue instead. " +
     "Each job takes a random amount of work around the average you set, and may call what it's connected to.",
   icon: "gear-six",
@@ -28,6 +28,7 @@ export const worker: ComponentDefinition = {
       "search-index",
       "object-storage",
       "queue",
+      "pubsub",
     ],
   },
 };

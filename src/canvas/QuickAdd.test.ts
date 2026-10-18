@@ -14,10 +14,12 @@ describe("quickAddCandidates", () => {
       "load-balancer",
       "api-gateway",
       "cdn",
+      "dns",
       "rate-limiter",
       "service",
     ]);
     expect(types("queue")).toEqual(["worker"]);
+    expect(types("pubsub")).toEqual(["worker", "queue"]);
     expect(types("database")).toEqual(["read-replica", "search-index"]);
   });
 

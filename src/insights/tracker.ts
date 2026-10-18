@@ -1,13 +1,14 @@
 import type { MetricsSnapshot } from "../engine/metrics/recorder.ts";
 import type { TraceRecord } from "../engine/runtime/trace.ts";
 import type { SystemDocument } from "../model/document.ts";
-import { findInsights, type Insight } from "./rules.ts";
+import { backlogKey, findInsights, type Insight } from "./rules.ts";
 
 /*
  * Keeps insights calm (S41): one appears only after its situation has held
  * for APPEAR_MS of simulated time, and stays LINGER_MS after it clears, so
  * notes don't flicker while the numbers wobble. Also measures how fast each
- * queue's backlog is growing, which one snapshot can't tell.
+ * queue's backlog is growing (and each pub/sub subscriber's, S43c), which
+ * one snapshot can't tell.
  */
 
 export const APPEAR_MS = 2000;
@@ -76,20 +77,27 @@ export class InsightTracker {
     this.#lastTime = -1;
   }
 
-  /** Jobs per second each queue's backlog grew by over the last few seconds. */
+  /**
+   * Jobs per second each backlog grew by over the last few seconds: a
+   * queue's by its id, a pub/sub subscriber's by backlogKey.
+   */
   #growth(snapshot: MetricsSnapshot, doc: SystemDocument): Map<string, number> {
     const growth = new Map<string, number>();
-    for (const queue of doc.nodes.filter((n) => n.type === "queue")) {
-      const waiting = snapshot.nodes[queue.id]?.waiting ?? 0;
-      const history = (this.#backlogs.get(queue.id) ?? []).filter(
+    const measure = (key: string, waiting: number) => {
+      const history = (this.#backlogs.get(key) ?? []).filter(
         (point) => snapshot.time - point.time <= GROWTH_WINDOW_MS,
       );
       history.push({ time: snapshot.time, waiting });
-      this.#backlogs.set(queue.id, history);
+      this.#backlogs.set(key, history);
       const first = history[0];
       if (first && snapshot.time - first.time >= 1000) {
-        growth.set(queue.id, ((waiting - first.waiting) / (snapshot.time - first.time)) * 1000);
+        growth.set(key, ((waiting - first.waiting) / (snapshot.time - first.time)) * 1000);
       }
+    };
+    for (const node of doc.nodes) {
+      const m = snapshot.nodes[node.id];
+      if (node.type === "queue") measure(node.id, m?.waiting ?? 0);
+      for (const s of m?.subscriptions ?? []) measure(backlogKey(node.id, s.node), s.waiting);
     }
     return growth;
   }

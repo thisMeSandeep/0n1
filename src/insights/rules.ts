@@ -135,8 +135,14 @@ export const TRACE_FRESH_MS = 15_000;
 /** One component took at least this share of a slow request's time. */
 export const TIME_SHARE = 0.5;
 
+/** A pub/sub subscriber's backlog, as InsightContext.backlogGrowth knows it (S43c). */
+export const backlogKey = (pubsub: string, subscriber: string) => `${pubsub}:${subscriber}`;
+
 export type InsightContext = {
-  /** How fast each queue's backlog grew lately (jobs per second), from InsightTracker. */
+  /**
+   * How fast each backlog grew lately (jobs per second), from InsightTracker:
+   * queues by id, pub/sub subscribers by backlogKey.
+   */
   backlogGrowth?: ReadonlyMap<string, number>;
   /** The run's slowest recent request (S42): where its time went. */
   slowTrace?: TraceRecord | null;
@@ -174,6 +180,10 @@ export function findInsights(
   // Components down, and connections cut: the plainest causes.
   for (const node of doc.nodes) {
     if (!metricsOf(node.id)?.down) continue;
+    if (node.type === "dns") {
+      insights.push(dnsDown(node, doc, snapshot));
+      continue;
+    }
     insights.push({
       id: `down:${node.id}`,
       severity: "fail",
@@ -194,7 +204,10 @@ export function findInsights(
     });
   }
 
-  const servers = doc.nodes.filter((n) => n.type !== "client" && n.type !== "queue");
+  // Backlogs (queues, pub/sub) have notes of their own below.
+  const servers = doc.nodes.filter(
+    (n) => n.type !== "client" && n.type !== "queue" && n.type !== "pubsub",
+  );
   /** Overloaded components whose own downstream isn't: the real bottlenecks. */
   const bottlenecks: SystemNode[] = [];
 
@@ -204,8 +217,17 @@ export function findInsights(
       .filter((n) => n.type === "queue" && (metricsOf(n.id)?.waiting ?? 0) >= BACKLOG)
       .map((n) => n.id),
   );
+  // Pub/sub subscribers with a backlog of their own (S43c), likewise.
+  for (const topic of doc.nodes.filter((n) => n.type === "pubsub")) {
+    for (const s of metricsOf(topic.id)?.subscriptions ?? []) {
+      if (s.waiting >= BACKLOG) backlogged.add(backlogKey(topic.id, s.node));
+    }
+  }
   const feedsFromBacklog = (id: string) =>
-    doc.edges.some((e) => e.target === id && backlogged.has(e.source));
+    doc.edges.some(
+      (e) =>
+        e.target === id && (backlogged.has(e.source) || backlogged.has(backlogKey(e.source, id))),
+    );
 
   for (const node of servers) {
     const m = metricsOf(node.id);
@@ -325,6 +347,18 @@ export function findInsights(
     const timeout = Number(client.params.timeout ?? 0);
     if (!m?.latency || m.errorRate < FAILING) continue;
     if (m.latency.p99 < timeout * 0.95) {
+      // Without an address, nothing can be sent (S43c).
+      const lookups = downstream(doc, client.id).filter((id) => nodes.get(id)?.type === "dns");
+      if (lookups.length > 0 && lookups.every((id) => metricsOf(id)?.down)) {
+        insights.push({
+          id: `errors:${client.id}`,
+          severity: "fail",
+          nodeId: lookups[0] as string,
+          title: `${percent(m.errorRate)} of requests from ${client.name} fail.`,
+          detail: `Its users can't look up where to send them: ${listNames(lookups.map(nameOf))} ${lookups.length === 1 ? "is" : "are"} down.`,
+        });
+        continue;
+      }
       // Failing, not timing out: say where most of the failures start (S30's "failed here").
       const source = mostFailures(snapshot, servers);
       insights.push({
@@ -408,6 +442,51 @@ export function findInsights(
             detail: `It isn't growing.${oldest}`,
           },
     );
+  }
+
+  // Pub/sub subscribers falling behind (S43c): each has its own backlog.
+  for (const topic of doc.nodes.filter((n) => n.type === "pubsub")) {
+    const m = metricsOf(topic.id);
+    if (!m || m.down) continue;
+    const capacity = Number(topic.params.capacity ?? Number.POSITIVE_INFINITY);
+    for (const s of m.subscriptions ?? []) {
+      if (s.waiting < BACKLOG) continue;
+      const name = nameOf(s.node);
+      const growth = backlogGrowth.get(backlogKey(topic.id, s.node)) ?? 0;
+      const oldest = s.oldestAge ? ` The oldest has waited ${duration(s.oldestAge)}.` : "";
+      // A second worker subscribing would get its own copy of everything, not share the work.
+      const fix =
+        nodes.get(s.node)?.type === "worker"
+          ? {
+              fix: "Raise its Jobs at once, or subscribe a queue instead and put more workers behind it.",
+            }
+          : {};
+      const base = { id: `backlog:${topic.id}:${s.node}`, nodeId: s.node };
+      if (s.waiting >= capacity * 0.99) {
+        insights.push({
+          ...base,
+          severity: "fail",
+          title: `${name} is missing messages from ${topic.name}.`,
+          detail: `Its backlog of ${count(s.waiting)} is full, so new messages for it are lost.${oldest}`,
+          ...fix,
+        });
+      } else if (growth > 0.5) {
+        insights.push({
+          ...base,
+          severity: "fail",
+          title: `${name} is falling behind on ${topic.name}.`,
+          detail: `${count(s.waiting)} messages are waiting for it${growth >= 1.5 ? `, about ${Math.round(growth)} more each second` : ", and it keeps growing"}. The other subscribers aren't held up.${oldest}`,
+          ...fix,
+        });
+      } else {
+        insights.push({
+          ...base,
+          severity: "warn",
+          title: `${count(s.waiting)} messages from ${topic.name} are waiting for ${name}.`,
+          detail: `It isn't growing.${oldest}`,
+        });
+      }
+    }
   }
 
   // Replicas and search indexes serving old data.
@@ -528,4 +607,42 @@ function slowest(
     }
   }
   return worst;
+}
+
+/**
+ * DNS down (S43c): what happens depends on what users have cached. Nothing
+ * breaks at first; requests fail more and more as answers expire.
+ */
+function dnsDown(dns: SystemNode, doc: SystemDocument, snapshot: MetricsSnapshot): Insight {
+  const name = (id: string) => doc.nodes.find((n) => n.id === id)?.name ?? id;
+  const up = (id: string) =>
+    doc.nodes.some((n) => n.id === id && n.type === "dns") && !snapshot.nodes[id]?.down;
+  const clients = doc.edges.filter((e) => e.target === dns.id).map((e) => e.source);
+  // Clients with another DNS that's up look there instead.
+  const others = (client: string) =>
+    downstream(doc, client).filter((id) => id !== dns.id && up(id));
+  const stranded = clients.filter((client) => others(client).length === 0);
+  const base = { id: `down:${dns.id}`, nodeId: dns.id, title: `${dns.name} is down.` };
+  if (clients.length > 0 && stranded.length === 0) {
+    const fallback = [...new Set(clients.flatMap(others))].map(name);
+    return {
+      ...base,
+      severity: "warn",
+      detail: `Its clients look up addresses at ${listNames(fallback)} instead.`,
+      fix: "Bring it back (select it and press K).",
+    };
+  }
+  const cached =
+    stranded.reduce((sum, id) => sum + (snapshot.nodes[id]?.dnsCached ?? 0), 0) /
+    Math.max(1, stranded.length);
+  const ttl = Number(dns.params.ttl ?? 0) * 1000;
+  return {
+    ...base,
+    severity: "fail",
+    detail:
+      cached > 0
+        ? `Users with a cached answer carry on, and the rest can't reach the system. ${percent(cached)} still have one; they all expire within ${duration(ttl)}.`
+        : "Every cached answer has expired, so no one can reach the system.",
+    fix: "Bring it back (select it and press K). A second DNS, or a longer Answer TTL, rides out an outage like this.",
+  };
 }

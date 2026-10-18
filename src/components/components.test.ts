@@ -11,6 +11,7 @@ describe("v1 components", () => {
       "load-balancer",
       "api-gateway",
       "cdn",
+      "dns",
       "rate-limiter",
       "circuit-breaker",
       "service",
@@ -22,13 +23,14 @@ describe("v1 components", () => {
       "search-index",
       "object-storage",
       "queue",
+      "pubsub",
     ]);
     expect([...registry.byCategory()].map(([category, defs]) => [category, defs.length])).toEqual([
       ["traffic", 1],
-      ["network", 5],
+      ["network", 6],
       ["compute", 2],
       ["data", 6],
-      ["messaging", 1],
+      ["messaging", 2],
     ]);
   });
 

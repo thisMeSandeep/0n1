@@ -1,5 +1,6 @@
 import {
   ArchiveIcon,
+  BroadcastIcon,
   CopyIcon,
   CubeIcon,
   DatabaseIcon,
@@ -15,6 +16,7 @@ import {
   QuestionIcon,
   RowsIcon,
   ShieldCheckIcon,
+  SignpostIcon,
   StackIcon,
 } from "@phosphor-icons/react";
 import type { Category } from "../model/component.ts";
@@ -36,6 +38,8 @@ export const COMPONENT_ICONS: Readonly<Record<string, Icon>> = {
   rows: RowsIcon,
   "list-magnifying-glass": ListMagnifyingGlassIcon,
   archive: ArchiveIcon,
+  broadcast: BroadcastIcon,
+  signpost: SignpostIcon,
 };
 
 export function componentIcon(key: string): Icon {

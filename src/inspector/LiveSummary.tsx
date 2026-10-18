@@ -17,6 +17,7 @@ import {
   SYSTEM_P99_WARN_MS,
   TREND_POINTS,
 } from "../simulation/live.ts";
+import { useDesign } from "../store/index.ts";
 import { CollapsibleSection } from "../ui/Collapsible.tsx";
 import { cx } from "../ui/cx.ts";
 import { LEVEL_TEXT, LevelMark } from "../ui/LevelMark.tsx";
@@ -144,8 +145,14 @@ export function LiveSummary({ nodeId, detail }: { nodeId: string; detail: LiveDe
   );
 }
 
-/** Every number for a component, as of the last update (UIUX §7, Details). */
-export function detailRows(m: NodeMetrics): [string, string][] {
+/**
+ * Every number for a component, as of the last update (UIUX §7, Details).
+ * `nameOf` names other components (a pub/sub's subscribers).
+ */
+export function detailRows(
+  m: NodeMetrics,
+  nameOf: (id: string) => string = (id) => id,
+): [string, string][] {
   const show = (measure: Measure | null) =>
     measure ? `${measure.value}${measure.unit === "" ? "" : ` ${measure.unit}`}` : "—";
   const perSecond = (n: number) => `${formatCompact(n)}/s`;
@@ -177,6 +184,13 @@ export function detailRows(m: NodeMetrics): [string, string][] {
   if (m.staleReads !== undefined) {
     rows.push(["Stale reads", show(m.staleReads === null ? null : formatPercent(m.staleReads))]);
   }
+  for (const s of m.subscriptions ?? []) {
+    // Pub/sub (S43c): each subscriber's own backlog.
+    rows.push([`Waiting for ${nameOf(s.node)}`, formatCompact(s.waiting)]);
+  }
+  if (m.dnsCached !== undefined) {
+    rows.push(["Users with the address cached", show(formatPercent(m.dnsCached))]);
+  }
   if (m.oldestJobAge !== undefined) {
     rows.push([
       "Oldest job",
@@ -195,12 +209,14 @@ export function detailRows(m: NodeMetrics): [string, string][] {
 /** The full metric list, collapsed by default. */
 export function ComponentDetails({ nodeId }: { nodeId: string }) {
   const metrics = useLive((s) => s.snapshot?.nodes[nodeId]);
+  const nodes = useDesign((s) => s.doc.nodes);
   if (!metrics) return null;
+  const nameOf = (id: string) => nodes.find((n) => n.id === id)?.name ?? id;
   return (
     <section className="pt-6">
       <CollapsibleSection title="Details" defaultOpen={false}>
         <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-sm">
-          {detailRows(metrics).map(([label, value]) => (
+          {detailRows(metrics, nameOf).map(([label, value]) => (
             <div key={label} className="contents">
               <dt className="text-fg-2">{label}</dt>
               <dd className="text-right text-fg">{value}</dd>
