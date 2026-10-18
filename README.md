@@ -6,6 +6,8 @@
 
 No backend, no account, no tracking. Everything you build stays in your browser.
 
+After your first visit it works offline, and your browser can install it as an app.
+
 > Early development. See [`docs/`](./docs) for the idea, stack, UI/UX and implementation plan.
 
 ## Run locally
@@ -33,6 +35,10 @@ The first time you run end-to-end tests, install the browser:
 ```sh
 bunx playwright install chromium
 ```
+
+Tests in `*.build.spec.ts` (offline use, installing, updates) run against a production build, since only that has a service worker. Playwright builds it for them.
+
+The app icons in `public/` are rendered from `public/favicon.svg`. After changing it, run `bun scripts/make-icons.mjs`.
 
 ## License
 

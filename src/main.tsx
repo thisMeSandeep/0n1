@@ -8,6 +8,7 @@ import "./ui/styles/global.css";
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
+import { startUpdates } from "./app/registerUpdates.ts";
 import { saveThemePreference, startStorage } from "./storage/index.ts";
 import { readThemeMirror } from "./storage/preferences.ts";
 import { ThemeProvider } from "./ui/theme/ThemeProvider.tsx";
@@ -35,6 +36,9 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("sample")) {
   // Reopen the last system and preferences from this browser before the first paint.
   initialTheme = await startStorage();
 }
+
+// Works offline and can be installed (S47). Dev servers have no service worker.
+if (import.meta.env.PROD) startUpdates();
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Root element #root not found");
