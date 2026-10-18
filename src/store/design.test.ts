@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { registry } from "../components/index.ts";
 import { createSystemDocument, systemDocumentSchema } from "../model/document.ts";
-import { createDesignStore, uniqueName } from "./design.ts";
+import { copyName, createDesignStore, uniqueName } from "./design.ts";
 
 function setup() {
   let next = 0;
@@ -174,6 +174,57 @@ describe("design store", () => {
 
     const [again] = actions.duplicateNodes([svcCopy!]);
     expect(node(again!)?.name).toBe("Service 3");
+    expect(systemDocumentSchema.safeParse(doc()).success).toBe(true);
+  });
+
+  it("names copies after their originals, numbering on", () => {
+    const taken = new Set([
+      "Service",
+      "Service 2",
+      "Shortener API · 1",
+      "Shortener API · 2",
+      "Links DB",
+    ]);
+    expect(copyName("Cache", taken)).toBe("Cache"); // free: kept
+    expect(copyName("Service", taken)).toBe("Service 3");
+    expect(copyName("Service 2", taken)).toBe("Service 3");
+    expect(copyName("Shortener API · 1", taken)).toBe("Shortener API · 3");
+    expect(copyName("Links DB", taken)).toBe("Links DB 2");
+  });
+
+  it("pastes nodes from anywhere: new ids, free names, allowed connections, one undo step", () => {
+    const { actions, doc, node, history } = setup();
+    actions.addNode("service", { x: 0, y: 0 }); // "Service" is taken here
+    const before = history().pastStates.length;
+    const ids = actions.pasteNodes(
+      [
+        { id: "a", type: "client", name: "Users", position: { x: 0, y: 0 }, params: { rate: 50 } },
+        { id: "b", type: "service", name: "Service", position: { x: 300, y: 0 }, params: {} },
+        { id: "c", type: "database", name: "DB", position: { x: 600, y: 0 }, params: {} },
+        { id: "x", type: "teleporter", name: "Portal", position: { x: 0, y: 0 }, params: {} },
+      ],
+      [
+        { source: "a", target: "b" },
+        { source: "a", target: "b" }, // twice
+        { source: "b", target: "c" },
+        { source: "a", target: "c" }, // a client can't send to a database
+        { source: "b", target: "x" }, // to a kind this version doesn't know
+      ],
+      { x: 10, y: 20 },
+    );
+    expect(ids).toHaveLength(3);
+    expect(ids).not.toContain("a");
+    expect(node(ids[0]!)).toMatchObject({
+      name: "Users",
+      position: { x: 10, y: 20 },
+      params: { rate: 50 },
+    });
+    expect(node(ids[1]!)?.name).toBe("Service 2");
+    expect(doc().edges.map((e) => [e.source, e.target])).toEqual([
+      [ids[0], ids[1]],
+      [ids[1], ids[2]],
+    ]);
+    expect(history().pastStates.length).toBe(before + 1);
     expect(systemDocumentSchema.safeParse(doc()).success).toBe(true);
   });
 

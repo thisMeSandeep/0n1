@@ -1,6 +1,8 @@
 import {
   ArrowCounterClockwiseIcon,
   BlueprintIcon,
+  ClipboardIcon,
+  ClipboardTextIcon,
   ClockCountdownIcon,
   CornersOutIcon,
   DownloadSimpleIcon,
@@ -20,6 +22,7 @@ import {
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { BLUEPRINTS } from "../blueprints/catalog.ts";
 import { useAddComponent } from "../canvas/useAddComponent.ts";
+import { copySelectionFromMenu, usePaste } from "../canvas/useClipboard.ts";
 import { useViewActions } from "../canvas/useViewActions.ts";
 import { registry } from "../components/index.ts";
 import { backUpAll, startRestore } from "../library/backup.ts";
@@ -29,7 +32,7 @@ import { midSentence } from "../model/text.ts";
 import { simulation } from "../simulation/index.ts";
 import { useSimulation } from "../simulation/store.ts";
 import { isStorageAvailable } from "../storage/index.ts";
-import { uiStore, useDesign, useUi } from "../store/index.ts";
+import { uiStore, useDesign, useSelection, useUi } from "../store/index.ts";
 import {
   Command,
   CommandEmpty,
@@ -53,6 +56,8 @@ export function CommandPalette() {
   const { addAtCentre } = useAddComponent();
   const view = useViewActions();
   const { resolved, setPreference } = useTheme();
+  const { pasteFromMenu } = usePaste();
+  const selected = useSelection((s) => s.nodeIds.length);
 
   const run = (action: () => void) => () => {
     setOpen(false);
@@ -152,6 +157,28 @@ export function CommandPalette() {
                   onBrowse={() => uiStore.getState().setLibraryOpen(true)}
                 />
               )}
+              <CommandGroup heading="Edit">
+                {selected > 0 && (
+                  <CommandItem
+                    value="Copy selected components"
+                    keywords={["clipboard"]}
+                    shortcut={shortcutKeys("copy")}
+                    onSelect={run(() => void copySelectionFromMenu())}
+                    icon={<ClipboardTextIcon aria-hidden className="text-fg-2" />}
+                  >
+                    Copy selected components
+                  </CommandItem>
+                )}
+                <CommandItem
+                  value="Paste components"
+                  keywords={["clipboard"]}
+                  shortcut={shortcutKeys("paste")}
+                  onSelect={run(() => void pasteFromMenu())}
+                  icon={<ClipboardIcon aria-hidden className="text-fg-2" />}
+                >
+                  Paste components
+                </CommandItem>
+              </CommandGroup>
               <CommandGroup heading="View">
                 <CommandItem
                   value="Fit to view"

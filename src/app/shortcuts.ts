@@ -26,6 +26,12 @@ export type Shortcut = {
   global?: boolean;
   /** Override how the keys are shown in the sheet. */
   display?: string;
+  /**
+   * Handled through the browser's own event rather than the key (copy, cut,
+   * paste: canvas/useClipboard.ts), so the system clipboard works. The key
+   * handler leaves it alone; the sheet still lists it.
+   */
+  native?: boolean;
 };
 
 export const SHORTCUT_IDS = [
@@ -40,6 +46,9 @@ export const SHORTCUT_IDS = [
   "undo",
   "redo",
   "duplicate",
+  "copy",
+  "cut",
+  "paste",
   "delete",
   "selectAll",
   "deselect",
@@ -51,6 +60,10 @@ export const SHORTCUT_IDS = [
   "toggleInspector",
 ] as const;
 export type ShortcutId = (typeof SHORTCUT_IDS)[number];
+/** Shortcuts the browser's copy, cut and paste events handle (see `native`). */
+export type NativeShortcutId = "copy" | "cut" | "paste";
+/** Shortcuts the key handler runs. */
+export type KeyShortcutId = Exclude<ShortcutId, NativeShortcutId>;
 
 const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].map((key) => ({ key }));
 
@@ -100,6 +113,27 @@ export const SHORTCUTS: readonly Shortcut[] = [
     label: "Duplicate selection",
     group: "Editing",
     combos: [{ key: "d", mod: true }],
+  },
+  {
+    id: "copy",
+    label: "Copy selected components",
+    group: "Editing",
+    combos: [{ key: "c", mod: true }],
+    native: true,
+  },
+  {
+    id: "cut",
+    label: "Cut selected components",
+    group: "Editing",
+    combos: [{ key: "x", mod: true }],
+    native: true,
+  },
+  {
+    id: "paste",
+    label: "Paste components, here or in another system",
+    group: "Editing",
+    combos: [{ key: "v", mod: true }],
+    native: true,
   },
   {
     id: "delete",
@@ -237,8 +271,12 @@ export function formatCombo(combo: KeyCombo, mac = isMac): string {
 }
 
 /** The primary keys for a shortcut, for tooltips and menus. */
+export function findShortcutById(id: ShortcutId): Shortcut | undefined {
+  return SHORTCUTS.find((s) => s.id === id);
+}
+
 export function shortcutKeys(id: ShortcutId, mac = isMac): string {
-  const shortcut = SHORTCUTS.find((s) => s.id === id);
+  const shortcut = findShortcutById(id);
   const combo = shortcut?.combos[0];
   return combo ? formatCombo(combo, mac) : "";
 }

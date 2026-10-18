@@ -1,6 +1,14 @@
-import { CopyIcon, DotsThreeIcon, PathIcon, PowerIcon, TrashIcon } from "@phosphor-icons/react";
+import {
+  ClipboardTextIcon,
+  CopyIcon,
+  DotsThreeIcon,
+  PathIcon,
+  PowerIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 import { Fragment } from "react";
 import { shortcutKeys } from "../app/shortcuts.ts";
+import { copySelectionFromMenu } from "../canvas/useClipboard.ts";
 import type { ShapeSettings } from "../components/client/shape.ts";
 import { registry } from "../components/index.ts";
 import { ComponentCostSection } from "../cost/CostViews.tsx";
@@ -103,6 +111,11 @@ function ComponentMenu({ nodeId }: { nodeId: string }) {
     if (copy) selectionStore.getState().select({ nodeIds: [copy], edgeIds: [] });
   };
   const down = useLive((s) => s.nodes[nodeId]?.status === "down");
+  const copy = () => {
+    // The menu is about this component, whatever else is selected.
+    selectionStore.getState().select({ nodeIds: [nodeId], edgeIds: [] });
+    void copySelectionFromMenu();
+  };
   const isClient = useDesign((s) => s.doc.nodes.find((n) => n.id === nodeId)?.type === "client");
   return (
     <Menu>
@@ -114,6 +127,9 @@ function ComponentMenu({ nodeId }: { nodeId: string }) {
       <MenuContent>
         <MenuItem icon={<CopyIcon />} shortcut={shortcutKeys("duplicate")} onSelect={duplicate}>
           Duplicate
+        </MenuItem>
+        <MenuItem icon={<ClipboardTextIcon />} shortcut={shortcutKeys("copy")} onSelect={copy}>
+          Copy
         </MenuItem>
         {isClient && (
           <MenuItem icon={<PathIcon />} onSelect={() => simulation.trace(nodeId)}>

@@ -49,6 +49,7 @@ import { setPlaying } from "./flowDots.ts";
 import { COMPONENT_DRAG_TYPE } from "./placement.ts";
 import { QuickAdd, type QuickAddRequest } from "./QuickAdd.tsx";
 import { useAddComponent } from "./useAddComponent.ts";
+import { useClipboardEvents } from "./useClipboard.ts";
 import { FIT_VIEW_OPTIONS } from "./useViewActions.ts";
 import { VitalsPill } from "./VitalsPill.tsx";
 import { ZoomControls } from "./ZoomControls.tsx";
@@ -88,6 +89,7 @@ export function Canvas() {
 
   useFitViewOnOpen(docNodes.length);
   useFlowDots();
+  useClipboardEvents();
 
   const edges = useMemo(
     () => toFlowEdges(docEdges, new Set(selectedEdgeIds)),

@@ -10,9 +10,9 @@ import {
   formatCombo,
   isNavigationKey,
   isSpaceControl,
+  type KeyShortcutId,
   SHORTCUTS,
   type ShortcutGroup,
-  type ShortcutId,
   shouldHandle,
 } from "./shortcuts.ts";
 
@@ -39,7 +39,7 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
   const view = useViewActions();
 
   // Handlers read live values through a ref, so the listener is attached once.
-  const handlers = useRef<Record<ShortcutId, (event: KeyboardEvent) => void> | null>(null);
+  const handlers = useRef<Record<KeyShortcutId, (event: KeyboardEvent) => void> | null>(null);
   handlers.current = {
     commandPalette: () => {
       const ui = uiStore.getState();
@@ -122,7 +122,9 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
     const decided = new WeakMap<KeyboardEvent, ReturnType<typeof findShortcut>>();
     const decide = (event: KeyboardEvent) => {
       const shortcut = findShortcut(event);
-      return shortcut && shouldHandle(shortcut, event.target, { keyboardFocus }) ? shortcut : null;
+      // Copy, cut and paste are left to the browser, whose events carry the clipboard.
+      if (!shortcut || shortcut.native) return null;
+      return shouldHandle(shortcut, event.target, { keyboardFocus }) ? shortcut : null;
     };
     const run = (event: KeyboardEvent) => {
       const shortcut = decided.get(event);
@@ -130,7 +132,7 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
       event.preventDefault();
       // A clicked button still has focus; move it off so the key's release can't press it too.
       if (event.key === " " && isSpaceControl(event.target)) (event.target as HTMLElement).blur();
-      handlers.current?.[shortcut.id](event);
+      handlers.current?.[shortcut.id as KeyShortcutId](event);
     };
     // Space is taken before it reaches the focused element: a menu trigger
     // opens on Space keydown, and the prevented default tells it not to.

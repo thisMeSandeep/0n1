@@ -1,7 +1,7 @@
 import { temporal } from "zundo";
 import { immer } from "zustand/middleware/immer";
 import { createStore } from "zustand/vanilla";
-import { defaultParams, type Params, paramsSchema } from "../model/component.ts";
+import { canConnect, defaultParams, type Params, paramsSchema } from "../model/component.ts";
 import { checkConnection } from "../model/connections.ts";
 import type { Position, SystemDocument, SystemNode } from "../model/document.ts";
 import type { Registry } from "../model/registry.ts";
@@ -32,6 +32,16 @@ export type DesignActions = {
   disconnect(edgeIds: readonly string[]): void;
   /** Copies nodes (and the connections between them), offset slightly. Returns new ids. */
   duplicateNodes(ids: readonly string[]): string[];
+  /**
+   * Adds copies of nodes from anywhere, e.g. the clipboard (M03), moved by
+   * `shift`, with new ids, names that don't clash, and the connections among
+   * them. One undo step. Returns the new ids, in order.
+   */
+  pasteNodes(
+    nodes: readonly SystemNode[],
+    edges: readonly { source: string; target: string }[],
+    shift: Position,
+  ): string[];
   /** The chaos timeline (S40). Returns the new event's id. */
   addEvent(event: NewScenarioEvent): string;
   /** Replace an event, keeping its id. Rejects one that isn't valid. */
@@ -61,6 +71,21 @@ export function uniqueName(base: string, taken: ReadonlySet<string>): string {
   for (let n = 2; ; n++) {
     const candidate = `${base} ${n}`;
     if (!taken.has(candidate)) return candidate;
+  }
+}
+
+/**
+ * A copy's name: its own if that's free; otherwise the next number, so
+ * "Service 2" → "Service 3" and "API · 1" → "API · 2", and "Links DB" →
+ * "Links DB 2".
+ */
+export function copyName(name: string, taken: ReadonlySet<string>): string {
+  if (!taken.has(name)) return name;
+  const numbered = /^(.*\D)\d+$/.exec(name);
+  if (!numbered) return uniqueName(name, taken);
+  const prefix = numbered[1] as string;
+  for (let n = 2; ; n++) {
+    if (!taken.has(`${prefix}${n}`)) return `${prefix}${n}`;
   }
 }
 
@@ -248,31 +273,38 @@ export function createDesignStore({
           duplicateNodes(ids) {
             const { nodes, edges } = get().doc;
             const originals = nodes.filter((n) => ids.includes(n.id));
-            if (originals.length === 0) return [];
+            return get().pasteNodes(originals, edges, { x: DUPLICATE_OFFSET, y: DUPLICATE_OFFSET });
+          },
 
-            const idMap = new Map(originals.map((n) => [n.id, newId()]));
-            const taken = new Set(nodes.map((n) => n.name));
-            const copies: SystemNode[] = originals.map((n) => {
-              // "Service 2" → "Service 3", not "Service 2 2".
-              const name = uniqueName(n.name.replace(/ \d+$/, ""), taken);
+          pasteNodes(originals, edges, shift) {
+            const known = originals.filter((n) => registry.get(n.type));
+            if (known.length === 0) return [];
+            const idMap = new Map(known.map((n) => [n.id, newId()]));
+            const taken = new Set(get().doc.nodes.map((n) => n.name));
+            const copies: SystemNode[] = known.map((n) => {
+              const name = copyName(n.name, taken);
               taken.add(name);
               return {
                 ...structuredClone(n),
                 id: idMap.get(n.id) as string,
                 name,
-                position: {
-                  x: n.position.x + DUPLICATE_OFFSET,
-                  y: n.position.y + DUPLICATE_OFFSET,
-                },
+                position: { x: n.position.x + shift.x, y: n.position.y + shift.y },
               };
             });
-            const copiedEdges = edges
-              .filter((e) => idMap.has(e.source) && idMap.has(e.target))
-              .map((e) => ({
-                id: newId(),
-                source: idMap.get(e.source) as string,
-                target: idMap.get(e.target) as string,
-              }));
+            // Only connections inside the copied set that are allowed, each once.
+            const types = new Map(known.map((n) => [n.id, registry.get(n.type)]));
+            const seen = new Set<string>();
+            const copiedEdges = edges.flatMap((e) => {
+              const source = idMap.get(e.source);
+              const target = idMap.get(e.target);
+              const key = `${source}->${target}`;
+              if (!source || !target || source === target || seen.has(key)) return [];
+              const from = types.get(e.source);
+              const to = types.get(e.target);
+              if (!from || !to || !canConnect(from, to).ok) return [];
+              seen.add(key);
+              return [{ id: newId(), source, target }];
+            });
 
             edit((d) => {
               d.nodes.push(...copies);
