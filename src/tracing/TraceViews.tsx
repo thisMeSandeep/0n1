@@ -51,7 +51,7 @@ export function TracesSection() {
     <InspectorSection title="Traces" explain="traces">
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
-          <Button size="sm" onClick={() => simulation.trace()}>
+          <Button size="sm" data-trace-button onClick={() => simulation.trace()}>
             <PathIcon />
             Trace a request
           </Button>

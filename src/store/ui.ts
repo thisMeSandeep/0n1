@@ -5,7 +5,13 @@ import type { RestorePreview } from "../library/backup.ts";
 import type { Category } from "../model/component.ts";
 
 /** Panel open state, remembered for the layout tier it was set at. */
-export type TutorialProgress = { lesson: string; step: string; systemId: string };
+export type TutorialProgress = {
+  lesson: string;
+  step: string;
+  /** The system it builds in, and its name, to offer going back to it. */
+  systemId: string;
+  systemName: string;
+};
 
 export type PanelPrefs = { tier: LayoutTier; paletteOpen: boolean; inspectorOpen: boolean };
 
@@ -43,6 +49,12 @@ export type UiState = {
   /** A tutorial in progress (the guide, part 2): its lesson, step, and the system it builds in. */
   tutorial: TutorialProgress | null;
   setTutorial(tutorial: TutorialProgress | null): void;
+  /** Lessons finished, by id. */
+  tutorialsDone: readonly string[];
+  markTutorialDone(lesson: string): void;
+  /** The list of tutorials. */
+  tutorialsOpen: boolean;
+  setTutorialsOpen(open: boolean): void;
   /** The "Reading the numbers" guide, and the entry to show in it, if one was asked for. */
   guide: { open: boolean; entry: string | null };
   setGuideOpen(open: boolean, entry?: string | null): void;
@@ -93,6 +105,13 @@ export function createUiStore() {
     inspectorRequest: 0,
     tutorial: null,
     setTutorial: (tutorial) => set({ tutorial }),
+    tutorialsDone: [],
+    markTutorialDone: (lesson) =>
+      set((s) =>
+        s.tutorialsDone.includes(lesson) ? s : { tutorialsDone: [...s.tutorialsDone, lesson] },
+      ),
+    tutorialsOpen: false,
+    setTutorialsOpen: (tutorialsOpen) => set({ tutorialsOpen }),
     guide: { open: false, entry: null },
     setGuideOpen: (open, entry = null) => set({ guide: { open, entry: open ? entry : null } }),
     editingNote: null,

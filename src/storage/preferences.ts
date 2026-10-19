@@ -26,7 +26,12 @@ const panelsSchema = z.object({
 });
 
 const groupsSchema = z.array(z.enum(CATEGORIES));
-const tutorialSchema = z.object({ lesson: z.string(), step: z.string(), systemId: z.string() });
+const tutorialSchema = z.object({
+  lesson: z.string(),
+  step: z.string(),
+  systemId: z.string(),
+  systemName: z.string(),
+});
 
 export type Preferences = {
   theme: ThemePreference;
@@ -37,19 +42,23 @@ export type Preferences = {
   timelineOpen: boolean;
   /** A tutorial in progress, to pick up where it was left. */
   tutorial: z.infer<typeof tutorialSchema> | null;
+  /** Lessons finished, by id. */
+  tutorialsDone: string[];
 };
 
 /** Stored values are validated; anything unexpected falls back to the default. */
 export async function loadPreferences(settings: SettingsRepository): Promise<Preferences> {
-  const [theme, minimap, groups, panels, welcomeSeen, timelineOpen, tutorial] = await Promise.all([
-    settings.get("theme"),
-    settings.get("minimap"),
-    settings.get("collapsedGroups"),
-    settings.get("panels"),
-    settings.get("welcomeSeen"),
-    settings.get("timelineOpen"),
-    settings.get("tutorial"),
-  ]);
+  const [theme, minimap, groups, panels, welcomeSeen, timelineOpen, tutorial, tutorialsDone] =
+    await Promise.all([
+      settings.get("theme"),
+      settings.get("minimap"),
+      settings.get("collapsedGroups"),
+      settings.get("panels"),
+      settings.get("welcomeSeen"),
+      settings.get("timelineOpen"),
+      settings.get("tutorial"),
+      settings.get("tutorialsDone"),
+    ]);
   return {
     theme: themeSchema.catch("system").parse(theme),
     minimap: z.boolean().catch(false).parse(minimap),
@@ -64,6 +73,10 @@ export async function loadPreferences(settings: SettingsRepository): Promise<Pre
       .nullable()
       .catch(null)
       .parse(tutorial ?? null),
+    tutorialsDone: z
+      .array(z.string())
+      .catch([])
+      .parse(tutorialsDone ?? []),
   };
 }
 
@@ -83,6 +96,7 @@ export function bindPreferences(
     welcomeOpen: !prefs.welcomeSeen,
     timelineOpen: prefs.timelineOpen,
     tutorial: prefs.tutorial,
+    tutorialsDone: prefs.tutorialsDone,
   });
   return ui.subscribe((state, previous) => {
     if (state.minimap !== previous.minimap) void settings.set("minimap", state.minimap);
@@ -93,6 +107,9 @@ export function bindPreferences(
       void settings.set("collapsedGroups", [...state.collapsedGroups]);
     }
     if (state.tutorial !== previous.tutorial) void settings.set("tutorial", state.tutorial);
+    if (state.tutorialsDone !== previous.tutorialsDone) {
+      void settings.set("tutorialsDone", [...state.tutorialsDone]);
+    }
     if (state.panels !== previous.panels && state.panels) {
       void settings.set("panels", state.panels);
     }

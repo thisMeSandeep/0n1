@@ -1,4 +1,11 @@
-import { cardOf, type Lesson, nodeOfType, type TutorialContext } from "../lesson.ts";
+import {
+  cardOf,
+  errorsOf,
+  healthy,
+  type Lesson,
+  nodeOfType,
+  type TutorialContext,
+} from "../lesson.ts";
 
 /*
  * "Your first system": build a client and a service, run it, read the
@@ -9,14 +16,14 @@ import { cardOf, type Lesson, nodeOfType, type TutorialContext } from "../lesson
 
 const client = (c: TutorialContext) => nodeOfType(c.doc, "client");
 const service = (c: TutorialContext) => nodeOfType(c.doc, "service");
-const errors = (c: TutorialContext) => c.snapshot?.system.errorRate ?? 0;
 
 export const firstSystem: Lesson = {
   id: "first-system",
   title: "Your first system",
   summary:
     "Build a tiny system, send it traffic, break it and fix it, reading the numbers as you go.",
-  systemName: "My first system",
+  minutes: 5,
+  start: { blank: "My first system" },
   steps: [
     {
       id: "welcome",
@@ -125,7 +132,7 @@ export const firstSystem: Lesson = {
         "The service is full, so requests wait in line. p99 climbs to a whole second, then errors appear: after its 1 second timeout, the client gives up.",
       ],
       target: '[aria-label="System vitals"]',
-      done: (c) => errors(c) >= 0.5,
+      done: (c) => errorsOf(c) >= 0.5,
       explain: "waiting",
     },
     {
@@ -155,7 +162,7 @@ export const firstSystem: Lesson = {
         "Busy settles around 30%: plenty of room to spare.",
       ],
       target: '[aria-label="System vitals"]',
-      done: (c) => c.running && errors(c) < 0.005 && (c.snapshot?.system.latency?.p99 ?? 0) < 300,
+      done: healthy,
     },
     {
       id: "cost",
@@ -177,9 +184,3 @@ export const firstSystem: Lesson = {
     },
   ],
 };
-
-export const LESSONS: readonly Lesson[] = [firstSystem];
-
-export function findLesson(id: string): Lesson | undefined {
-  return LESSONS.find((l) => l.id === id);
-}

@@ -8,8 +8,9 @@ import { uiStore, useDesign, useSelection, useUi } from "../store/index.ts";
 import { Button, IconButton } from "../ui/Button.tsx";
 import { toast } from "../ui/Toast.tsx";
 import type { TutorialContext } from "./lesson.ts";
-import { findLesson } from "./lessons/firstSystem.ts";
+import { findLesson, nextLesson } from "./lessons/index.ts";
 import { Spotlight } from "./Spotlight.tsx";
+import { startTutorial } from "./start.ts";
 
 /** A step that's just been done shows that for a moment before moving on. */
 const ADVANCE_DELAY_MS = 700;
@@ -30,10 +31,12 @@ export function TutorialCard() {
   const doc = useDesign((s) => s.doc);
   const snapshot = useSimulation((s) => s.snapshot);
   const running = useSimulation((s) => s.running);
+  const traffic = useSimulation((s) => s.traffic);
   const selected = useSelection((s) => s.nodeIds);
+  const openTrace = useUi((s) => s.openTrace);
   const context: TutorialContext = useMemo(
-    () => ({ doc, snapshot, running, selected }),
-    [doc, snapshot, running, selected],
+    () => ({ doc, snapshot, running, traffic, selected, openTrace }),
+    [doc, snapshot, running, traffic, selected, openTrace],
   );
   const inItsSystem = progress !== null && doc.id === progress.systemId;
   const done = step?.done && inItsSystem ? step.done(context) : false;
@@ -67,8 +70,14 @@ export function TutorialCard() {
 
   const backToSystem = () =>
     void library.open(progress.systemId).catch(() => {
-      toast({ title: `Couldn't open “${lesson.systemName}”. It may have been deleted.` });
+      toast({ title: `Couldn't open “${progress.systemName}”. It may have been deleted.` });
     });
+  const next = nextLesson(lesson.id);
+  const finish = (andThen?: string) => {
+    uiStore.getState().markTutorialDone(lesson.id);
+    leave();
+    if (andThen) void startTutorial(andThen);
+  };
 
   return (
     <section
@@ -102,7 +111,7 @@ export function TutorialCard() {
         </>
       ) : (
         <p className="mt-2 text-sm text-fg-2">
-          This tutorial builds in “{lesson.systemName}”, which isn't the system open now.
+          This tutorial builds in “{progress.systemName}”, which isn't the system open now.
         </p>
       )}
       <div className="mt-4 flex items-center justify-between gap-2">
@@ -114,9 +123,16 @@ export function TutorialCard() {
             Back to it
           </Button>
         ) : last ? (
-          <Button size="sm" variant="primary" onClick={leave}>
-            Finish
-          </Button>
+          <span className="flex items-center gap-2">
+            <Button size="sm" variant={next ? "ghost" : "primary"} onClick={() => finish()}>
+              Finish
+            </Button>
+            {next && (
+              <Button size="sm" variant="primary" onClick={() => finish(next.id)}>
+                Next lesson
+              </Button>
+            )}
+          </span>
         ) : step.done && !done ? (
           <span className="flex items-center gap-3">
             <span className="text-xs text-fg-2">Waiting for you…</span>

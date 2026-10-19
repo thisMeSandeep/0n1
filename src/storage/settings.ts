@@ -16,7 +16,9 @@ export type Settings = {
   welcomeSeen: boolean;
   timelineOpen: boolean;
   /** A tutorial in progress (null when there's none). */
-  tutorial: { lesson: string; step: string; systemId: string } | null;
+  tutorial: { lesson: string; step: string; systemId: string; systemName: string } | null;
+  /** Lessons finished, by id. */
+  tutorialsDone: string[];
 };
 
 export type SettingsRepository = ReturnType<typeof createSettingsRepository>;

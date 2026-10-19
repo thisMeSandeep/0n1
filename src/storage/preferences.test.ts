@@ -33,6 +33,7 @@ describe("loadPreferences", () => {
       welcomeSeen: false,
       timelineOpen: false,
       tutorial: null,
+      tutorialsDone: [],
     });
   });
 
@@ -51,6 +52,7 @@ describe("loadPreferences", () => {
       welcomeSeen: true,
       timelineOpen: false,
       tutorial: null,
+      tutorialsDone: [],
     });
   });
 
@@ -70,6 +72,7 @@ describe("loadPreferences", () => {
       welcomeSeen: false,
       timelineOpen: false,
       tutorial: null,
+      tutorialsDone: [],
     });
   });
 });
@@ -85,6 +88,7 @@ describe("bindPreferences", () => {
       welcomeSeen: false,
       timelineOpen: false,
       tutorial: null,
+      tutorialsDone: [],
     });
     expect(ui.getState()).toMatchObject({
       minimap: true,
@@ -119,6 +123,7 @@ describe("bindPreferences", () => {
       welcomeSeen: true,
       timelineOpen: false,
       tutorial: null,
+      tutorialsDone: [],
     });
     expect(ui.getState().welcomeOpen).toBe(false);
     stop();

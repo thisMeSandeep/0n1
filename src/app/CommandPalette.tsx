@@ -39,6 +39,7 @@ import { simulation } from "../simulation/index.ts";
 import { useSimulation } from "../simulation/store.ts";
 import { isStorageAvailable } from "../storage/index.ts";
 import { uiStore, useDesign, useSelection, useUi } from "../store/index.ts";
+import { LESSONS } from "../tutorial/lessons/index.ts";
 import { startTutorial } from "../tutorial/start.ts";
 import {
   Command,
@@ -226,13 +227,24 @@ export function CommandPalette() {
               </CommandGroup>
               <CommandGroup heading="Help">
                 <CommandItem
-                  value="Tutorial: your first system"
-                  keywords={["learn", "beginner", "start", "lesson", "how", "guide"]}
-                  onSelect={run(() => void startTutorial("first-system"))}
+                  value="Tutorials"
+                  keywords={["learn", "beginner", "lesson", "how", "guide"]}
+                  onSelect={run(() => uiStore.getState().setTutorialsOpen(true))}
                   icon={<GraduationCapIcon aria-hidden className="text-fg-2" />}
                 >
-                  Tutorial: your first system
+                  Tutorials
                 </CommandItem>
+                {LESSONS.map((lesson) => (
+                  <CommandItem
+                    key={lesson.id}
+                    value={`Tutorial: ${lesson.title}`}
+                    keywords={["learn", "lesson", "tutorial"]}
+                    onSelect={run(() => void startTutorial(lesson.id))}
+                    icon={<GraduationCapIcon aria-hidden className="text-fg-2" />}
+                  >
+                    Tutorial: {lesson.title}
+                  </CommandItem>
+                ))}
                 <CommandItem
                   value="Reading the numbers"
                   keywords={[

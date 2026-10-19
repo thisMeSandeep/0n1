@@ -8,6 +8,7 @@ import { RestoreDialog } from "../library/RestoreDialog.tsx";
 import { PalettePanel } from "../palette/PalettePanel.tsx";
 import { simulationStore } from "../simulation/store.ts";
 import { selectionStore, uiStore, useUi } from "../store/index.ts";
+import { TutorialsDialog } from "../tutorial/TutorialsDialog.tsx";
 import { CommandPalette } from "./CommandPalette.tsx";
 import { DesktopNotice } from "./DesktopNotice.tsx";
 import { LabShortcuts } from "./LabShortcuts.tsx";
@@ -97,6 +98,7 @@ export function LabShell() {
         <CommandPalette />
         <RestoreDialog />
         <GuideSheet />
+        <TutorialsDialog />
         <ImageExportDialog />
         <LabShortcuts
           paletteOpen={layout.paletteOpen}
