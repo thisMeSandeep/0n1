@@ -179,4 +179,23 @@ describe("SimulationHost", () => {
     };
     expect(run()).toEqual(run());
   });
+
+  it("runs with the system's own seed (M08): the same seed replays, another differs", () => {
+    const run = (seed: number | undefined, commandSeed?: number) => {
+      const { host, last } = setup();
+      host.handle({
+        type: "load",
+        doc: { ...doc, ...(seed === undefined ? {} : { seed }) },
+        ...(commandSeed === undefined ? {} : { seed: commandSeed }),
+      });
+      host.handle({ type: "step", ms: 5000 });
+      return last().snapshot;
+    };
+    expect(run(42)).toEqual(run(42));
+    expect(run(42)).not.toEqual(run(43));
+    // Without one, seed 1, as every run was before.
+    expect(run(undefined)).toEqual(run(1));
+    // A seed sent with the command wins.
+    expect(run(42, 7)).toEqual(run(7));
+  });
 });

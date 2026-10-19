@@ -7,6 +7,7 @@ import { designStore, useDesign } from "../store/index.ts";
 import { TracesSection } from "../tracing/TraceViews.tsx";
 import { EditableTitle } from "./EditableTitle.tsx";
 import { InspectorHeader, InspectorSection } from "./InspectorHeader.tsx";
+import { RunSeed } from "./RunSeed.tsx";
 import { ClientTraffic, HealthSummary, SystemCharts } from "./SystemLive.tsx";
 import { count } from "./sections.ts";
 
@@ -48,6 +49,7 @@ export function SystemView({ onClose }: { onClose: () => void }) {
             <SystemCostSection />
             <TracesSection />
             {blueprint && <Experiments blueprint={blueprint} />}
+            <RunSeed />
           </>
         ) : (
           <>
@@ -66,6 +68,7 @@ export function SystemView({ onClose }: { onClose: () => void }) {
               </p>
             )}
             <SystemCostSection />
+            {nodes > 0 && <RunSeed />}
           </>
         )}
       </div>

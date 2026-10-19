@@ -4,6 +4,8 @@ import { createStore } from "zustand/vanilla";
 import { canConnect, defaultParams, type Params, paramsSchema } from "../model/component.ts";
 import { checkConnection } from "../model/connections.ts";
 import {
+  DEFAULT_SEED,
+  MAX_SEED,
   NOTE_MAX_LENGTH,
   type Position,
   type SystemDocument,
@@ -36,6 +38,8 @@ export type DesignActions = {
   resetParams(ids: readonly string[]): void;
   /** Removes nodes (and every connection touching them) and notes. */
   removeNodes(ids: readonly string[]): void;
+  /** The run's random seed (M08). Rejects anything but a whole number from 1 to MAX_SEED. */
+  setSeed(seed: number): boolean;
   /** A sticky note (M04) at `position`. Returns its id. */
   addNote(position: Position, text?: string): string;
   /** Rejects text over the limit, or a note that isn't there. */
@@ -260,6 +264,16 @@ export function createDesignStore({
               if (d.notes) d.notes = d.notes.filter((n) => !remove.has(n.id));
               pruneEvents(d);
             });
+          },
+
+          setSeed(seed) {
+            if (!Number.isInteger(seed) || seed < 1 || seed > MAX_SEED) return false;
+            if ((get().doc.seed ?? DEFAULT_SEED) !== seed) {
+              edit((d) => {
+                d.seed = seed;
+              });
+            }
+            return true;
           },
 
           addNote(position, text = "") {

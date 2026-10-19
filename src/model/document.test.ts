@@ -56,6 +56,14 @@ describe("systemDocumentSchema", () => {
     expect(systemDocumentSchema.safeParse(doc).success).toBe(false);
   });
 
+  it("keeps an optional run seed, a whole number from 1 to 999,999", () => {
+    const doc = sampleDocument();
+    expect(systemDocumentSchema.safeParse({ ...doc, seed: 42 }).success).toBe(true);
+    for (const seed of [0, 2.5, 1_000_000]) {
+      expect(systemDocumentSchema.safeParse({ ...doc, seed }).success).toBe(false);
+    }
+  });
+
   it("rejects edges to unknown nodes", () => {
     const doc = sampleDocument();
     doc.edges.push({ id: "e2", source: "b", target: "ghost" });

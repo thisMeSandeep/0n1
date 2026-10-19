@@ -180,4 +180,17 @@ describe("simulation controller", () => {
     design.getState().removeEvent(id);
     expect(types()).toEqual(["load"]);
   });
+
+  it("reloads when the seed changes, with the system's seed", () => {
+    const { design, controller, sent, types, clear } = setup();
+    design.getState().addNode("service", { x: 0, y: 0 });
+    controller.play();
+    clear();
+    design.getState().setSeed(42);
+    expect(types()).toEqual(["load"]);
+    expect(sent[0]).toMatchObject({ type: "load", doc: { seed: 42 } });
+    clear();
+    design.getState().setSeed(42); // the same: nothing to do
+    expect(types()).toEqual([]);
+  });
 });

@@ -31,6 +31,11 @@ export const edgeSchema = z.object({
   target: id,
 });
 
+/** Runs use this seed unless the system says otherwise (M08), as every run did before. */
+export const DEFAULT_SEED = 1;
+/** Seeds are whole numbers up to this, short enough to read out and share. */
+export const MAX_SEED = 999_999;
+
 /** The longest a note's text may be. */
 export const NOTE_MAX_LENGTH = 2000;
 
@@ -62,6 +67,11 @@ export const systemDocumentSchema = z
     scenario: scenarioSchema.optional(),
     /** Sticky notes (M04), also optional. */
     notes: z.array(noteSchema).optional(),
+    /**
+     * The run's random seed (M08): the same seed replays the same run.
+     * Optional; without it, DEFAULT_SEED.
+     */
+    seed: z.number().int().min(1).max(MAX_SEED).optional(),
   })
   .superRefine((doc, ctx) => {
     const nodeIds = new Set<string>();

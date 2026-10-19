@@ -286,6 +286,21 @@ describe("design store", () => {
     expect(node(svc)?.params).toMatchObject({ concurrency: 64, workTime: 5 });
   });
 
+  it("sets the run seed: whole numbers in range only, one undo step", () => {
+    const { actions, doc, history } = setup();
+    expect(doc().seed).toBeUndefined();
+    for (const bad of [0, -3, 1.5, 1_000_000, Number.NaN]) expect(actions.setSeed(bad)).toBe(false);
+    const before = history().pastStates.length;
+    expect(actions.setSeed(1)).toBe(true); // already the default: no change
+    expect(history().pastStates.length).toBe(before);
+    expect(actions.setSeed(42)).toBe(true);
+    expect(doc().seed).toBe(42);
+    expect(history().pastStates.length).toBe(before + 1);
+    expect(systemDocumentSchema.safeParse(doc()).success).toBe(true);
+    history().undo();
+    expect(doc().seed).toBeUndefined();
+  });
+
   describe("undo / redo", () => {
     it("undoes and redoes each edit as one step", () => {
       const { actions, doc, history } = setup();

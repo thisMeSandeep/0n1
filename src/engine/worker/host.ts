@@ -1,5 +1,5 @@
 import { registry } from "../../components/index.ts";
-import type { SystemDocument } from "../../model/document.ts";
+import { DEFAULT_SEED, type SystemDocument } from "../../model/document.ts";
 import { type CompileIssue, compile } from "../compile.ts";
 import { DEFAULT_EVENT_BUDGET, Engine } from "../runtime/engine.ts";
 import type { SimulationCommand, SimulationEvent } from "./protocol.ts";
@@ -51,7 +51,8 @@ export class SimulationHost {
     switch (command.type) {
       case "load":
         this.#doc = structuredClone(command.doc);
-        this.#seed = command.seed ?? 1;
+        // A seed sent with the command wins (tests); otherwise the system's own (M08).
+        this.#seed = command.seed ?? command.doc.seed ?? DEFAULT_SEED;
         this.#start();
         return;
       case "reset":

@@ -1,4 +1,4 @@
-import type { SystemDocument } from "../model/document.ts";
+import { DEFAULT_SEED, type SystemDocument } from "../model/document.ts";
 import type { DesignStore } from "../store/design.ts";
 import type { SimulationClient } from "./client.ts";
 import type { SimulationStore } from "./store.ts";
@@ -10,14 +10,15 @@ export const TRAFFIC_LEVELS = [0.1, 0.25, 0.5, 1, 1.5, 2, 3, 5, 10] as const;
 
 /**
  * What the simulation is built from: components, their types, connections,
- * and the chaos timeline (events are scheduled when the run starts). Names
- * and positions don't count.
+ * the chaos timeline (events are scheduled when the run starts) and the
+ * random seed (M08). Names and positions don't count.
  */
 function structure(doc: SystemDocument): string {
   return JSON.stringify([
     doc.nodes.map((n) => [n.id, n.type]),
     doc.edges.map((e) => [e.id, e.source, e.target]),
     doc.scenario?.events ?? [],
+    doc.seed ?? DEFAULT_SEED,
   ]);
 }
 
@@ -26,7 +27,8 @@ function structure(doc: SystemDocument): string {
  * commands. The worker starts on the first Run or Step:
  * - settings changes go live (no reset);
  * - adding or removing components or connections, or changing the chaos
- *   timeline, reloads the system (time back to 0, still running if it was);
+ *   timeline or the seed, reloads the system (time back to 0, still running
+ *   if it was);
  * - opening another system loads it, paused.
  *
  * Components taken down stay down through a reload, until they're brought
