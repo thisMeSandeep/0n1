@@ -81,7 +81,12 @@ export function LabShell() {
   // The provider lets the palette (outside the canvas) place components in view.
   return (
     <ReactFlowProvider>
-      <div className="flex h-dvh flex-col overflow-hidden bg-canvas text-fg">
+      {/*
+        relative + overflow-clip: anything placed against the page lands inside this
+        frame and is clipped by it, so it can never make the page taller and give the
+        browser something to scroll (focusing a field reaches it even through hidden).
+      */}
+      <div className="relative flex h-dvh flex-col overflow-clip bg-canvas text-fg">
         <TopBar />
         <div className="flex min-h-0 flex-1">
           <PalettePanel open={layout.paletteOpen} onToggle={layout.togglePalette} />

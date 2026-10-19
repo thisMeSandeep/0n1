@@ -36,7 +36,10 @@ export function ChoiceField({ label, value, options, onChange, hint, disabled }:
           <label
             key={option.value}
             className={cx(
-              "flex cursor-pointer items-center gap-2.5 rounded-control px-2 py-1.5 text-sm",
+              // relative: the hidden input is placed here, inside the panel's scroll area.
+              // Placed against the page instead, it sat below the bottom of a scrolled
+              // panel, and focusing it scrolled the whole page to reach it.
+              "relative flex cursor-pointer items-center gap-2.5 rounded-control px-2 py-1.5 text-sm",
               "transition-colors duration-(--duration-fast) hover:bg-fg/5",
               "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent",
               selected ? "text-fg" : "text-fg-2",
