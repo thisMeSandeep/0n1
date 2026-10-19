@@ -56,6 +56,10 @@
   --note: #f6f0dd;
   --note-line: #e2d8bb;
 
+  /* Scrollbars: a quiet thumb that firms up under the pointer */
+  --scrollbar: rgb(59 58 54 / 0.18);
+  --scrollbar-hover: rgb(59 58 54 / 0.34);
+
   /* Motion */
   --duration-fast: 120ms; /* hover, press, toggle */
   --duration-popover: 160ms; /* popover, menu, tooltip */
@@ -102,6 +106,9 @@
 
   --note: #26241e;
   --note-line: #3a3529;
+
+  --scrollbar: rgb(207 204 197 / 0.16);
+  --scrollbar-hover: rgb(207 204 197 / 0.32);
 }
 
 @media (prefers-reduced-motion: reduce) {
