@@ -5,7 +5,6 @@ import type { Blueprint } from "../blueprints/format.ts";
 import { isUntouchedBlank } from "../library/actions.ts";
 import { library } from "../library/index.ts";
 import { designStore, uiStore, useDesign, useUi } from "../store/index.ts";
-import { startTutorial } from "../tutorial/start.ts";
 import { IconButton } from "../ui/Button.tsx";
 import { Kbd } from "../ui/Kbd.tsx";
 import { toast } from "../ui/Toast.tsx";
@@ -103,7 +102,10 @@ export function Welcome() {
           </button>
           <button
             type="button"
-            onClick={() => void startTutorial("first-system")}
+            // Lessons load when one starts (M09).
+            onClick={() =>
+              void import("../tutorial/start.ts").then((m) => m.startTutorial("first-system"))
+            }
             className="rounded-control px-1 text-base font-medium text-accent hover:underline"
           >
             New here? Take the 5-minute tutorial

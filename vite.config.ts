@@ -1,13 +1,43 @@
 /// <reference types="vitest/config" />
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { DEFAULT_WEIGHT, iconWeightsIn, keepWeights } from "./src/build/iconWeights.ts";
+
+/**
+ * Each Phosphor icon keeps only the weights 0n1 draws it in (M09; see
+ * src/build/iconWeights.ts). Builds only: in dev, icons are pre-bundled whole.
+ */
+function phosphorWeights(): Plugin {
+  let weights = new Map<string, Set<string>>();
+  return {
+    name: "0n1:phosphor-weights",
+    apply: "build",
+    buildStart() {
+      const files: Record<string, string> = {};
+      for (const file of readdirSync("src", { recursive: true, encoding: "utf8" })) {
+        if (/\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file)) {
+          files[file] = readFileSync(join("src", file), "utf8");
+        }
+      }
+      weights = iconWeightsIn(files);
+    },
+    transform(code, id) {
+      const icon = /@phosphor-icons\/react\/dist\/defs\/([A-Za-z0-9]+)\.es\.js$/.exec(id)?.[1];
+      if (!icon) return null;
+      return keepWeights(code, new Set([DEFAULT_WEIGHT, ...(weights.get(icon) ?? [])]));
+    },
+  };
+}
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    phosphorWeights(),
     // An installable app that works offline after the first visit (S47).
     VitePWA({
       // A new version waits until the user chooses to reload (src/app/updates.ts).

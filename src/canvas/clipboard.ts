@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 import {
   CURRENT_SCHEMA_VERSION,
   edgeSchema,
@@ -23,9 +23,9 @@ const clipboardSchema = z.object({
   format: z.literal(CLIPBOARD_FORMAT),
   version: z.literal(CLIPBOARD_VERSION),
   /** The document schema the nodes are in. */
-  schemaVersion: z.number().int().positive(),
-  nodes: z.array(nodeSchema).min(1),
-  edges: z.array(edgeSchema.pick({ source: true, target: true })),
+  schemaVersion: z.int().check(z.positive()),
+  nodes: z.array(nodeSchema).check(z.minLength(1)),
+  edges: z.array(z.pick(edgeSchema, { source: true, target: true })),
 });
 
 export type Clipboard = z.infer<typeof clipboardSchema>;

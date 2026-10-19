@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 import { paramsSchema } from "../model/component.ts";
 import { edgeSchema, nodeSchema, type SystemDocument } from "../model/document.ts";
 import { migrate } from "../model/migrate.ts";
@@ -18,18 +18,18 @@ export const blueprintSchema = z.object({
   format: z.literal(BLUEPRINT_FORMAT),
   version: z.literal(BLUEPRINT_VERSION),
   /** Stable, kebab-case, the same as the file name. Never rename: copies remember it. */
-  id: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use kebab-case, e.g. url-shortener"),
-  title: z.string().min(1).max(60),
+  id: z.string().check(z.regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use kebab-case, e.g. url-shortener")),
+  title: z.string().check(z.minLength(1), z.maxLength(60)),
   /** One line for lists: what kind of system, and what it teaches. */
-  summary: z.string().min(1).max(120),
+  summary: z.string().check(z.minLength(1), z.maxLength(120)),
   /** A short paragraph shown with the system. */
-  description: z.string().min(1),
+  description: z.string().check(z.minLength(1)),
   /** Things to try, in order, as plain sentences. */
-  experiments: z.array(z.string().min(1)).min(1),
+  experiments: z.array(z.string().check(z.minLength(1))).check(z.minLength(1)),
   /** Lower comes first in lists; ties sort by title. */
-  order: z.number().int().optional(),
+  order: z.optional(z.int()),
   system: z.object({
-    schemaVersion: z.number().int().positive(),
+    schemaVersion: z.int().check(z.positive()),
     /** Settings may be partial: missing ones take the component's defaults. */
     nodes: z.array(nodeSchema),
     edges: z.array(edgeSchema),

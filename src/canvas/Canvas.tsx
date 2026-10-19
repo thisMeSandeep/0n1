@@ -25,6 +25,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { lazyOverlay } from "../app/lazyOverlay.tsx";
 import { EmptyCanvasHint, Welcome } from "../app/Welcome.tsx";
 import { registry } from "../components/index.ts";
 import { InsightNote } from "../insights/InsightViews.tsx";
@@ -38,7 +39,6 @@ import {
   useSelection,
   useUi,
 } from "../store/index.ts";
-import { TutorialCard } from "../tutorial/TutorialCard.tsx";
 import { usePrefersReducedMotion } from "../ui/hooks/useMediaQuery.ts";
 import { Menu, MenuContent, MenuTrigger } from "../ui/Menu.tsx";
 import { useTheme } from "../ui/theme/ThemeProvider.tsx";
@@ -67,6 +67,11 @@ import { VitalsPill } from "./VitalsPill.tsx";
 import { ZoomControls } from "./ZoomControls.tsx";
 
 const nodeTypes = { component: ComponentNode, note: NoteNode };
+/** The tutorial in progress (the guide, part 2), loaded only once one starts (M09). */
+const TutorialCard = lazyOverlay(
+  (ui) => ui.tutorial !== null,
+  () => import("../tutorial/TutorialCard.tsx").then((m) => ({ default: m.TutorialCard })),
+);
 const edgeTypes = { component: ComponentEdge };
 const SNAP_GRID: [number, number] = [8, 8];
 const GRID_GAP = 24;

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 
 /*
  * A system's chaos timeline (S40): failures and surges planned at simulated
@@ -13,16 +13,16 @@ export type EventKind = (typeof EVENT_KINDS)[number];
 export const MAX_FACTOR = 100;
 export const MAX_EVENTS = 100;
 
-const id = z.string().min(1);
+const id = z.string().check(z.minLength(1));
 /** When it starts, in simulated ms from the start of the run. */
-const at = z.number().min(0);
+const at = z.number().check(z.minimum(0));
 /** How long it lasts (ms). */
-const duration = z.number().positive();
-const factor = z.number().min(1.1).max(MAX_FACTOR);
+const duration = z.number().check(z.positive());
+const factor = z.number().check(z.minimum(1.1), z.maximum(MAX_FACTOR));
 
 export const scenarioEventSchema = z.discriminatedUnion("kind", [
   /** Take a component down; `duration: null` keeps it down for the rest of the run. */
-  z.object({ kind: z.literal("down"), id, at, target: id, duration: duration.nullable() }),
+  z.object({ kind: z.literal("down"), id, at, target: id, duration: z.nullable(duration) }),
   /** Everything the component does takes `factor` times longer. */
   z.object({ kind: z.literal("slow"), id, at, target: id, factor, duration }),
   /** Requests on a connection (by edge id) fail at once. */
@@ -33,7 +33,9 @@ export const scenarioEventSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("surge"), id, at, factor, duration }),
 ]);
 
-export const scenarioSchema = z.object({ events: z.array(scenarioEventSchema).max(MAX_EVENTS) });
+export const scenarioSchema = z.object({
+  events: z.array(scenarioEventSchema).check(z.maxLength(MAX_EVENTS)),
+});
 
 export type ScenarioEvent = z.infer<typeof scenarioEventSchema>;
 export type Scenario = z.infer<typeof scenarioSchema>;

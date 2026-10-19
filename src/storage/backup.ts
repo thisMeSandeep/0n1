@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 import type { SystemDocument } from "../model/document.ts";
 import { MigrationError, migrate } from "../model/migrate.ts";
 
@@ -62,7 +62,7 @@ export type ParsedBackup = {
 
 const envelopeSchema = z.object({
   format: z.literal(BACKUP_FORMAT),
-  version: z.number().int().positive(),
+  version: z.int().check(z.positive()),
   systems: z.array(z.unknown()),
 });
 

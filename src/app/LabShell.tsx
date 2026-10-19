@@ -2,19 +2,37 @@ import { ReactFlowProvider } from "@xyflow/react";
 import { useEffect, useState } from "react";
 import { Canvas } from "../canvas/Canvas.tsx";
 import { TimelineStrip } from "../chaos/TimelineStrip.tsx";
-import { ImageExportDialog } from "../export/ImageExportDialog.tsx";
-import { GuideSheet } from "../guide/GuideSheet.tsx";
-import { RestoreDialog } from "../library/RestoreDialog.tsx";
 import { PalettePanel } from "../palette/PalettePanel.tsx";
 import { simulationStore } from "../simulation/store.ts";
 import { selectionStore, uiStore, useUi } from "../store/index.ts";
-import { TutorialsDialog } from "../tutorial/TutorialsDialog.tsx";
-import { CommandPalette } from "./CommandPalette.tsx";
 import { DesktopNotice } from "./DesktopNotice.tsx";
 import { LabShortcuts } from "./LabShortcuts.tsx";
+import { lazyOverlay } from "./lazyOverlay.tsx";
 import { InspectorPanel, OpenInspectorButton } from "./Panels.tsx";
 import { TopBar } from "./TopBar.tsx";
 import { useLabLayout } from "./useLabLayout.ts";
+
+// Overlays load the first time they open (M09).
+const CommandPalette = lazyOverlay(
+  (ui) => ui.commandPaletteOpen,
+  () => import("./CommandPalette.tsx").then((m) => ({ default: m.CommandPalette })),
+);
+const RestoreDialog = lazyOverlay(
+  (ui) => ui.restore !== null,
+  () => import("../library/RestoreDialog.tsx").then((m) => ({ default: m.RestoreDialog })),
+);
+const ImageExportDialog = lazyOverlay(
+  (ui) => ui.imageExportOpen,
+  () => import("../export/ImageExportDialog.tsx").then((m) => ({ default: m.ImageExportDialog })),
+);
+const GuideSheet = lazyOverlay(
+  (ui) => ui.guide.open,
+  () => import("../guide/GuideSheet.tsx").then((m) => ({ default: m.GuideSheet })),
+);
+const TutorialsDialog = lazyOverlay(
+  (ui) => ui.tutorialsOpen,
+  () => import("../tutorial/TutorialsDialog.tsx").then((m) => ({ default: m.TutorialsDialog })),
+);
 
 /** The lab frame: top bar, palette, canvas, inspector (UIUX §3). */
 export function LabShell() {

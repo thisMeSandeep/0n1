@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 import { midSentence } from "./text.ts";
 
 /**
@@ -89,14 +89,14 @@ export type Params = Record<string, number | string | boolean>;
 function paramSchema(spec: ParamSpec) {
   switch (spec.kind) {
     case "number":
-      return z.number().min(spec.min).max(spec.max).default(spec.default);
+      return z._default(z.number().check(z.minimum(spec.min), z.maximum(spec.max)), spec.default);
     case "choice": {
       const [first, ...rest] = spec.options.map((option) => option.value);
       if (first === undefined) throw new Error(`Choice "${spec.label}" has no options`);
-      return z.enum([first, ...rest]).default(spec.default);
+      return z._default(z.enum([first, ...rest]), spec.default);
     }
     case "toggle":
-      return z.boolean().default(spec.default);
+      return z._default(z.boolean(), spec.default);
   }
 }
 

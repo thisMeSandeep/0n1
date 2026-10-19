@@ -23,6 +23,7 @@ bun run dev
 |---|---|
 | `bun run dev` | Start the dev server |
 | `bun run build` | Typecheck and build static files into `dist/` |
+| `bun run check:bundle` | After a build: fail if what the app downloads to start is over its size budget |
 | `bun run preview` | Serve the production build locally |
 | `bun run typecheck` | Run TypeScript |
 | `bun run lint` | Lint and check formatting (Biome) |

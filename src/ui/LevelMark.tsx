@@ -14,10 +14,16 @@ const LEVEL_WORD: Record<Level, string> = { ok: "", warn: "High", fail: "Too hig
 /** ▲ for amber, ● for red, so a level never relies on colour alone (UIUX §5). */
 export function LevelMark({ level, className }: { level: Level; className?: string }) {
   if (level === "ok") return null;
-  const Icon = level === "warn" ? TriangleIcon : CircleIcon;
+  const mark = cx("size-2", LEVEL_TEXT[level]);
+  // Written out, not through a variable, so the build sees they're drawn filled
+  // (src/build/iconWeights.ts keeps only the weights it finds).
   return (
     <span className={cx("inline-flex items-center", className)}>
-      <Icon aria-hidden weight="fill" className={cx("size-2", LEVEL_TEXT[level])} />
+      {level === "warn" ? (
+        <TriangleIcon aria-hidden weight="fill" className={mark} />
+      ) : (
+        <CircleIcon aria-hidden weight="fill" className={mark} />
+      )}
       <span className="sr-only">{LEVEL_WORD[level]}:</span>
     </span>
   );

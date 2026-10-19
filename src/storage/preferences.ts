@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 import { CATEGORIES } from "../model/component.ts";
 import type { createUiStore } from "../store/ui.ts";
 import type { ThemePreference } from "../ui/theme/theme.ts";
@@ -60,23 +60,14 @@ export async function loadPreferences(settings: SettingsRepository): Promise<Pre
       settings.get("tutorialsDone"),
     ]);
   return {
-    theme: themeSchema.catch("system").parse(theme),
-    minimap: z.boolean().catch(false).parse(minimap),
-    collapsedGroups: groupsSchema.catch([]).parse(groups),
-    panels: panelsSchema
-      .nullable()
-      .catch(null)
-      .parse(panels ?? null),
-    welcomeSeen: z.boolean().catch(false).parse(welcomeSeen),
-    timelineOpen: z.boolean().catch(false).parse(timelineOpen),
-    tutorial: tutorialSchema
-      .nullable()
-      .catch(null)
-      .parse(tutorial ?? null),
-    tutorialsDone: z
-      .array(z.string())
-      .catch([])
-      .parse(tutorialsDone ?? []),
+    theme: z.catch(themeSchema, "system").parse(theme),
+    minimap: z.catch(z.boolean(), false).parse(minimap),
+    collapsedGroups: z.catch(groupsSchema, []).parse(groups),
+    panels: z.catch(z.nullable(panelsSchema), null).parse(panels ?? null),
+    welcomeSeen: z.catch(z.boolean(), false).parse(welcomeSeen),
+    timelineOpen: z.catch(z.boolean(), false).parse(timelineOpen),
+    tutorial: z.catch(z.nullable(tutorialSchema), null).parse(tutorial ?? null),
+    tutorialsDone: z.catch(z.array(z.string()), []).parse(tutorialsDone ?? []),
   };
 }
 
