@@ -18,6 +18,7 @@ import {
   PlusIcon,
   SkipForwardIcon,
   SunIcon,
+  TreeStructureIcon,
   UploadSimpleIcon,
 } from "@phosphor-icons/react";
 import * as RadixDialog from "@radix-ui/react-dialog";
@@ -25,6 +26,7 @@ import { BLUEPRINTS } from "../blueprints/catalog.ts";
 import { useAddComponent } from "../canvas/useAddComponent.ts";
 import { useAddNote } from "../canvas/useAddNote.ts";
 import { copySelectionFromMenu, usePaste } from "../canvas/useClipboard.ts";
+import { useTidyLayout } from "../canvas/useTidyLayout.ts";
 import { useViewActions } from "../canvas/useViewActions.ts";
 import { registry } from "../components/index.ts";
 import { backUpAll, startRestore } from "../library/backup.ts";
@@ -60,6 +62,7 @@ export function CommandPalette() {
   const { resolved, setPreference } = useTheme();
   const { pasteFromMenu } = usePaste();
   const { addNoteAtCentre } = useAddNote();
+  const tidy = useTidyLayout();
   const selected = useSelection((s) => s.nodeIds.length);
 
   const run = (action: () => void) => () => {
@@ -192,6 +195,15 @@ export function CommandPalette() {
                 </CommandItem>
               </CommandGroup>
               <CommandGroup heading="View">
+                <CommandItem
+                  value="Tidy layout"
+                  keywords={["arrange", "auto layout", "organize", "clean up", "align"]}
+                  shortcut={shortcutKeys("tidyLayout")}
+                  onSelect={run(tidy)}
+                  icon={<TreeStructureIcon aria-hidden className="text-fg-2" />}
+                >
+                  Tidy layout
+                </CommandItem>
                 <CommandItem
                   value="Fit to view"
                   shortcut={shortcutKeys("fitView")}

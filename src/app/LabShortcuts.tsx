@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { GRID } from "../canvas/placement.ts";
 import { useAddNote } from "../canvas/useAddNote.ts";
+import { useTidyLayout } from "../canvas/useTidyLayout.ts";
 import { useViewActions } from "../canvas/useViewActions.ts";
 import { simulation } from "../simulation/index.ts";
 import { designStore, selectionStore, uiStore, useUi } from "../store/index.ts";
@@ -39,6 +40,7 @@ const FAR = 5;
 export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: LabShortcutsProps) {
   const view = useViewActions();
   const { addNoteAtCentre } = useAddNote();
+  const tidy = useTidyLayout();
 
   // Handlers read live values through a ref, so the listener is attached once.
   const handlers = useRef<Record<KeyShortcutId, (event: KeyboardEvent) => void> | null>(null);
@@ -109,6 +111,7 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
       );
     },
     fitView: view.fitView,
+    tidyLayout: tidy,
     zoomToActual: view.zoomToActual,
     toggleMinimap: () => uiStore.getState().toggleMinimap(),
     togglePalette,

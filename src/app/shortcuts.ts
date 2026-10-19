@@ -55,6 +55,7 @@ export const SHORTCUT_IDS = [
   "deselect",
   "move",
   "fitView",
+  "tidyLayout",
   "zoomToActual",
   "toggleMinimap",
   "togglePalette",
@@ -158,6 +159,12 @@ export const SHORTCUTS: readonly Shortcut[] = [
     display: "← ↑ → ↓",
   },
   { id: "fitView", label: "Fit to view", group: "View", combos: [{ key: "f" }] },
+  {
+    id: "tidyLayout",
+    label: "Tidy the layout",
+    group: "View",
+    combos: [{ key: "l", shift: true }],
+  },
   { id: "zoomToActual", label: "Zoom to 100%", group: "View", combos: [{ key: "1" }] },
   { id: "toggleMinimap", label: "Show or hide the minimap", group: "View", combos: [{ key: "m" }] },
   {

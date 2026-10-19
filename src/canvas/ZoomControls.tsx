@@ -1,13 +1,15 @@
-import { CornersOutIcon, MinusIcon, PlusIcon } from "@phosphor-icons/react";
+import { CornersOutIcon, MinusIcon, PlusIcon, TreeStructureIcon } from "@phosphor-icons/react";
 import { useViewport } from "@xyflow/react";
 import { shortcutKeys } from "../app/shortcuts.ts";
 import { IconButton } from "../ui/Button.tsx";
 import { Tooltip } from "../ui/Tooltip.tsx";
+import { useTidyLayout } from "./useTidyLayout.ts";
 import { useViewActions } from "./useViewActions.ts";
 
 export function ZoomControls() {
   const { zoom } = useViewport();
   const view = useViewActions();
+  const tidy = useTidyLayout();
 
   return (
     <div className="flex items-center gap-0.5 rounded-card border border-line bg-raised p-1">
@@ -33,6 +35,14 @@ export function ZoomControls() {
         onClick={view.fitView}
       >
         <CornersOutIcon />
+      </IconButton>
+      <IconButton
+        label="Tidy layout"
+        shortcut={shortcutKeys("tidyLayout")}
+        size="sm"
+        onClick={tidy}
+      >
+        <TreeStructureIcon />
       </IconButton>
     </div>
   );
