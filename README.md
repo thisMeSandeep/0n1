@@ -51,6 +51,18 @@ bunx playwright install chromium
 
 Tests in `*.build.spec.ts` (offline use, installing, updates) run against a production build, since only that has a service worker. Playwright builds it for them.
 
+## Deploy
+
+0n1 is static files, so any static host works. The repository deploys itself to GitHub Pages: [`deploy.yml`](./.github/workflows/deploy.yml) publishes `main` each time its checks pass, and you can also run it by hand from the Actions tab.
+
+To set it up on your fork, go to **Settings → Pages** and set **Source** to **GitHub Actions**. The app is then at `https://<you>.github.io/<repository>/`, or at the root of a custom domain if you set one.
+
+To build for a path other than `/` yourself, set `BASE_PATH`:
+
+```sh
+BASE_PATH=/0n1 bun run build
+```
+
 ## Built with
 
 React, TypeScript and Vite. [React Flow](https://reactflow.dev) for the canvas, uPlot for charts, Dexie over IndexedDB for storage, and Tailwind CSS. The simulation runs in a web worker.

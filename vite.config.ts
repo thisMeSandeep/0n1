@@ -33,7 +33,14 @@ function phosphorWeights(): Plugin {
   };
 }
 
+/**
+ * Where the app is served from. "/" by default; the GitHub Pages deploy sets
+ * BASE_PATH to the repository's path ("/0n1/") unless it has its own domain.
+ */
+const base = `${(process.env.BASE_PATH ?? "").replace(/\/+$/, "")}/`;
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     tailwindcss(),
@@ -46,12 +53,12 @@ export default defineConfig({
       // The precache glob below already has the icons.
       includeManifestIcons: false,
       manifest: {
-        id: "/",
+        id: base,
         name: "0n1",
         short_name: "0n1",
         description: "An open-source system design lab that runs in your browser.",
-        start_url: "/",
-        scope: "/",
+        start_url: base,
+        scope: base,
         display: "standalone",
         // The light theme's surface; index.html sets the dark one for the browser's bar.
         theme_color: "#faf9f7",

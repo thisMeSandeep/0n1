@@ -194,5 +194,5 @@ export function vendorIconLabel(icon: VendorIcon): string {
 
 /** Where an icon's file is, for the theme it's shown in. */
 export function vendorIconUrl(icon: VendorIcon, theme: "light" | "dark"): string {
-  return `/vendor-icons/${icon.id}${icon.dark && theme === "dark" ? "-dark" : ""}.svg`;
+  return `${import.meta.env.BASE_URL}vendor-icons/${icon.id}${icon.dark && theme === "dark" ? "-dark" : ""}.svg`;
 }

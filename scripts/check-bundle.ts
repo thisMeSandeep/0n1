@@ -25,7 +25,7 @@ const kb = (bytes: number) => bytes / 1024;
 const gz = (file: string) => gzipSync(readFileSync(join(DIST, file))).length;
 
 const html = readFileSync(join(DIST, "index.html"), "utf8");
-const entries = [...html.matchAll(/(?:src|href)="\/(assets\/[^"]+\.js)"/g)].map(
+const entries = [...html.matchAll(/(?:src|href)="[^"]*?(assets\/[^"]+\.js)"/g)].map(
   (m) => m[1] as string,
 );
 
