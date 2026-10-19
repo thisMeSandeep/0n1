@@ -1,6 +1,8 @@
 import {
+  BookOpenTextIcon,
   DotsThreeIcon,
   DownloadSimpleIcon,
+  GraduationCapIcon,
   HandWavingIcon,
   ImageIcon,
   InfoIcon,
@@ -14,6 +16,7 @@ import { backUpAll, startRestore } from "../library/backup.ts";
 import { LibraryPopover } from "../library/LibraryPopover.tsx";
 import { uiStore, useUi } from "../store/index.ts";
 import type { SaveStatus } from "../store/ui.ts";
+import { startTutorial } from "../tutorial/start.ts";
 import { Button, IconButton } from "../ui/Button.tsx";
 import { Dialog, DialogClose, DialogContent, DialogFooter } from "../ui/Dialog.tsx";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../ui/Menu.tsx";
@@ -116,6 +119,18 @@ function LabMenu() {
             Download image…
           </MenuItem>
           <MenuSeparator />
+          <MenuItem
+            icon={<GraduationCapIcon />}
+            onSelect={() => void startTutorial("first-system")}
+          >
+            Tutorial: your first system
+          </MenuItem>
+          <MenuItem
+            icon={<BookOpenTextIcon />}
+            onSelect={() => uiStore.getState().setGuideOpen(true)}
+          >
+            Reading the numbers
+          </MenuItem>
           <MenuItem
             icon={<KeyboardIcon />}
             shortcut={shortcutKeys("shortcuts")}

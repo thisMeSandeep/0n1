@@ -40,7 +40,7 @@ export function HealthSummary() {
     );
 
   return (
-    <InspectorSection title="Health">
+    <InspectorSection title="Health" explain="status">
       {needing.length === 0 ? (
         <p className="flex items-center gap-2 text-base text-fg">
           <CheckCircleIcon aria-hidden className="size-4.5 text-fg-2" />

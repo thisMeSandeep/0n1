@@ -1,12 +1,14 @@
 import {
   ArrowCounterClockwiseIcon,
   BlueprintIcon,
+  BookOpenTextIcon,
   ClipboardIcon,
   ClipboardTextIcon,
   ClockCountdownIcon,
   CornersOutIcon,
   DownloadSimpleIcon,
   FolderOpenIcon,
+  GraduationCapIcon,
   HandWavingIcon,
   ImageIcon,
   KeyboardIcon,
@@ -37,6 +39,7 @@ import { simulation } from "../simulation/index.ts";
 import { useSimulation } from "../simulation/store.ts";
 import { isStorageAvailable } from "../storage/index.ts";
 import { uiStore, useDesign, useSelection, useUi } from "../store/index.ts";
+import { startTutorial } from "../tutorial/start.ts";
 import {
   Command,
   CommandEmpty,
@@ -222,6 +225,30 @@ export function CommandPalette() {
                 </CommandItem>
               </CommandGroup>
               <CommandGroup heading="Help">
+                <CommandItem
+                  value="Tutorial: your first system"
+                  keywords={["learn", "beginner", "start", "lesson", "how", "guide"]}
+                  onSelect={run(() => void startTutorial("first-system"))}
+                  icon={<GraduationCapIcon aria-hidden className="text-fg-2" />}
+                >
+                  Tutorial: your first system
+                </CommandItem>
+                <CommandItem
+                  value="Reading the numbers"
+                  keywords={[
+                    "guide",
+                    "help",
+                    "metrics",
+                    "p99",
+                    "throughput",
+                    "glossary",
+                    "explain",
+                  ]}
+                  onSelect={run(() => uiStore.getState().setGuideOpen(true))}
+                  icon={<BookOpenTextIcon aria-hidden className="text-fg-2" />}
+                >
+                  Reading the numbers
+                </CommandItem>
                 <CommandItem
                   value="Keyboard shortcuts"
                   keywords={["keys", "hotkeys", "help"]}

@@ -1,6 +1,8 @@
 import { SidebarSimpleIcon } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import { shortcutKeys } from "../app/shortcuts.ts";
+import { Explain } from "../guide/Explain.tsx";
+import type { GlossaryId } from "../guide/glossary.ts";
 import { IconButton } from "../ui/Button.tsx";
 
 type InspectorHeaderProps = {
@@ -38,10 +40,21 @@ export function InspectorHeader({ icon, title, subtitle, actions, onClose }: Ins
 }
 
 /** A titled group of settings or facts, separated by space rather than boxes. */
-export function InspectorSection({ title, children }: { title: string; children: ReactNode }) {
+export function InspectorSection({
+  title,
+  explain,
+  children,
+}: {
+  title: string;
+  /** The guide's entry for what this section shows: the title explains it. */
+  explain?: GlossaryId;
+  children: ReactNode;
+}) {
   return (
     <section className="pt-6">
-      <h3 className="mb-3 text-sm font-medium text-fg-2">{title}</h3>
+      <h3 className="mb-3 text-sm font-medium text-fg-2">
+        {explain ? <Explain id={explain}>{title}</Explain> : title}
+      </h3>
       <div className="flex flex-col gap-5">{children}</div>
     </section>
   );

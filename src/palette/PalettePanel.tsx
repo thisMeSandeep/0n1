@@ -168,6 +168,7 @@ function PaletteItem({ definition, onAdd }: ItemProps) {
       <button
         type="button"
         draggable
+        data-palette-type={definition.type}
         onDragStart={(event) => startDrag(event, definition.type)}
         onClick={() => onAdd(definition.type)}
         className={cx(
@@ -193,6 +194,7 @@ function RailItem({ definition, onAdd }: ItemProps) {
       <button
         type="button"
         draggable
+        data-palette-type={definition.type}
         aria-label={`Add ${midSentence(definition.displayName)}`}
         onDragStart={(event) => startDrag(event, definition.type)}
         onClick={() => onAdd(definition.type)}

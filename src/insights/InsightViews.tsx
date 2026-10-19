@@ -1,4 +1,5 @@
 import { LightbulbIcon } from "@phosphor-icons/react";
+import { Explain } from "../guide/Explain.tsx";
 import { useLive } from "../simulation/index.ts";
 import { selectionStore } from "../store/index.ts";
 import { cx } from "../ui/cx.ts";
@@ -58,7 +59,11 @@ export function InsightList({ nodeId, title }: { nodeId?: string; title?: string
   if (insights.length === 0) return null;
   return (
     <section className="pt-6">
-      {title && <h3 className="mb-3 text-sm font-medium text-fg-2">{title}</h3>}
+      {title && (
+        <h3 className="mb-3 text-sm font-medium text-fg-2">
+          <Explain id="insights">{title}</Explain>
+        </h3>
+      )}
       <ul aria-label="Insights" className="-mx-2 flex flex-col gap-1">
         {insights.map((insight) => (
           <li key={insight.id}>

@@ -5,6 +5,7 @@ import type { Blueprint } from "../blueprints/format.ts";
 import { isUntouchedBlank } from "../library/actions.ts";
 import { library } from "../library/index.ts";
 import { designStore, uiStore, useDesign, useUi } from "../store/index.ts";
+import { startTutorial } from "../tutorial/start.ts";
 import { IconButton } from "../ui/Button.tsx";
 import { Kbd } from "../ui/Kbd.tsx";
 import { toast } from "../ui/Toast.tsx";
@@ -92,13 +93,29 @@ export function Welcome() {
           ))}
         </ul>
 
-        <button
-          type="button"
-          onClick={() => void blank()}
-          className="mt-4 rounded-control px-1 text-base font-medium text-accent hover:underline"
-        >
-          Start with a blank canvas
-        </button>
+        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+          <button
+            type="button"
+            onClick={() => void blank()}
+            className="rounded-control px-1 text-base font-medium text-accent hover:underline"
+          >
+            Start with a blank canvas
+          </button>
+          <button
+            type="button"
+            onClick={() => void startTutorial("first-system")}
+            className="rounded-control px-1 text-base font-medium text-accent hover:underline"
+          >
+            New here? Take the 5-minute tutorial
+          </button>
+          <button
+            type="button"
+            onClick={() => uiStore.getState().setGuideOpen(true)}
+            className="rounded-control px-1 text-base font-medium text-accent hover:underline"
+          >
+            What do the numbers mean?
+          </button>
+        </div>
 
         <ul
           aria-label="Tips"

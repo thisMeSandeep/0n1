@@ -29,7 +29,7 @@ export function SystemCostSection() {
   const priced = cost.components.filter((c) => c.cost.monthly > 0);
   if (priced.length === 0) return null;
   return (
-    <InspectorSection title="Estimated cost">
+    <InspectorSection title="Estimated cost" explain="cost">
       <div className="flex flex-col gap-2">
         <Total dollars={cost.total} label="system" />
         <ul aria-label="Cost by component" className="-mx-2 flex flex-col">
@@ -58,7 +58,7 @@ export function ComponentCostSection({ nodeId }: { nodeId: string }) {
   const own = cost.components.find((c) => c.id === nodeId)?.cost;
   if (!own) return null;
   return (
-    <InspectorSection title="Estimated cost">
+    <InspectorSection title="Estimated cost" explain="cost">
       <div className="flex flex-col gap-2">
         <Total dollars={own.monthly} label="component" />
         <dl aria-label="What drives the cost" className="flex flex-col gap-1.5 text-sm">

@@ -89,7 +89,9 @@ describe("live numbers in the inspector match the engine's snapshot", () => {
     expect(stat("Busy")).toBe(text(formatPercent(api.utilization)));
 
     await userEvent.click(screen.getByRole("button", { name: "Details" }));
-    const row = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
+    // A row's label can be a button explaining it (the guide), inside the row's <dt>.
+    const row = (label: string) =>
+      screen.getByText(label).closest("dt")?.nextElementSibling?.textContent;
     const spaced = (m: Measure) => `${m.value} ${m.unit}`;
     expect(row("In flight")).toBe(formatCompact(api.inFlight));
     expect(row("Arriving")).toBe(`${formatCompact(api.arrivals)}/s`);

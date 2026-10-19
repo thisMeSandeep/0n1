@@ -1,5 +1,7 @@
 import { formatMoney } from "../cost/format.ts";
 import { useSystemCost } from "../cost/useCost.ts";
+import { Explain } from "../guide/Explain.tsx";
+import type { GlossaryId } from "../guide/glossary.ts";
 import { useLive } from "../simulation/index.ts";
 import type { Level } from "../simulation/live.ts";
 import { cx } from "../ui/cx.ts";
@@ -19,21 +21,24 @@ export function VitalsPill() {
       aria-label="System vitals"
       className="flex items-center rounded-pill border border-line bg-raised px-2 py-2.5 shadow-raised"
     >
-      <Vital label="throughput" value={system?.throughput} unit="/s" />
+      <Vital label="throughput" explain="throughput" value={system?.throughput} unit="/s" />
       <Vital
         label="p99"
+        explain="p99"
         value={system ? (system.p99?.value ?? "—") : undefined}
         unit={system?.p99?.unit}
         level={system?.p99Level}
       />
       <Vital
         label="errors"
+        explain="errors"
         value={system?.errors.value}
         unit={system?.errors.unit ?? "%"}
         level={system?.errorsLevel}
       />
       <Vital
         label="est. cost"
+        explain="cost"
         value={formatMoney(cost.total)}
         unit="/mo"
         title={
@@ -52,8 +57,11 @@ function Vital({
   unit,
   level = "ok",
   title,
+  explain,
 }: {
   label: string;
+  /** What the label explains (the guide): click it to learn what the number means. */
+  explain?: GlossaryId;
   value: string | undefined;
   unit: string | undefined;
   level?: Level | undefined;
@@ -79,7 +87,13 @@ function Vital({
           )}
         </span>
       </span>
-      <span className="text-xs text-fg-2">{label}</span>
+      {explain ? (
+        <Explain id={explain} className="text-xs text-fg-2">
+          {label}
+        </Explain>
+      ) : (
+        <span className="text-xs text-fg-2">{label}</span>
+      )}
     </div>
   );
 }

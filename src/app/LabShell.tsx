@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Canvas } from "../canvas/Canvas.tsx";
 import { TimelineStrip } from "../chaos/TimelineStrip.tsx";
 import { ImageExportDialog } from "../export/ImageExportDialog.tsx";
+import { GuideSheet } from "../guide/GuideSheet.tsx";
 import { RestoreDialog } from "../library/RestoreDialog.tsx";
 import { PalettePanel } from "../palette/PalettePanel.tsx";
 import { simulationStore } from "../simulation/store.ts";
@@ -95,6 +96,7 @@ export function LabShell() {
         </div>
         <CommandPalette />
         <RestoreDialog />
+        <GuideSheet />
         <ImageExportDialog />
         <LabShortcuts
           paletteOpen={layout.paletteOpen}

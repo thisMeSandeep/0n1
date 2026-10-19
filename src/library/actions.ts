@@ -105,9 +105,14 @@ export function createLibraryActions({
     },
 
     /** A new blank system, opened. */
-    async createAndOpen(): Promise<void> {
+    /** A new blank system, opened: "Untitled system", or a name of its own (made unique). */
+    async createAndOpen(name?: string): Promise<SystemDocument> {
       await flush();
-      store.getState().load(await create());
+      const doc = await create(
+        name === undefined ? undefined : uniqueName(name, await takenNames()),
+      );
+      store.getState().load(doc);
+      return doc;
     },
 
     /**

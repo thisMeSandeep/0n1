@@ -32,6 +32,7 @@ describe("loadPreferences", () => {
       panels: null,
       welcomeSeen: false,
       timelineOpen: false,
+      tutorial: null,
     });
   });
 
@@ -49,6 +50,7 @@ describe("loadPreferences", () => {
       panels: { tier: "wide", paletteOpen: false, inspectorOpen: true },
       welcomeSeen: true,
       timelineOpen: false,
+      tutorial: null,
     });
   });
 
@@ -67,6 +69,7 @@ describe("loadPreferences", () => {
       panels: null,
       welcomeSeen: false,
       timelineOpen: false,
+      tutorial: null,
     });
   });
 });
@@ -81,6 +84,7 @@ describe("bindPreferences", () => {
       panels: null,
       welcomeSeen: false,
       timelineOpen: false,
+      tutorial: null,
     });
     expect(ui.getState()).toMatchObject({
       minimap: true,
@@ -114,6 +118,7 @@ describe("bindPreferences", () => {
       panels: null,
       welcomeSeen: true,
       timelineOpen: false,
+      tutorial: null,
     });
     expect(ui.getState().welcomeOpen).toBe(false);
     stop();

@@ -47,6 +47,7 @@ export function RunControls() {
         <Tooltip content={running ? "Pause" : "Run"} shortcut={shortcutKeys("runPause")}>
           <Button
             variant="primary"
+            data-run-button
             onClick={simulation.toggle}
             aria-keyshortcuts="Space"
             // Same width as Run or Pause, so the bar doesn't shift.

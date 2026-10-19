@@ -38,6 +38,7 @@ import {
   useSelection,
   useUi,
 } from "../store/index.ts";
+import { TutorialCard } from "../tutorial/TutorialCard.tsx";
 import { usePrefersReducedMotion } from "../ui/hooks/useMediaQuery.ts";
 import { Menu, MenuContent, MenuTrigger } from "../ui/Menu.tsx";
 import { useTheme } from "../ui/theme/ThemeProvider.tsx";
@@ -280,6 +281,9 @@ export function Canvas() {
           color="var(--grid-dot)"
         />
         <AlignmentGuides guides={guides} />
+        <Panel position="top-left" className="m-0! mt-4! ml-4!">
+          <TutorialCard />
+        </Panel>
         <Panel position="bottom-left" className="m-0! mb-6! ml-5!">
           <ZoomControls />
         </Panel>

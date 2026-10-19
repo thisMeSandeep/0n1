@@ -1,4 +1,6 @@
 import type { NodeMetrics } from "../engine/metrics/recorder.ts";
+import { Explain } from "../guide/Explain.tsx";
+import { explainLabel } from "../guide/glossary.ts";
 import type { LiveDetail } from "../model/component.ts";
 import {
   formatCompact,
@@ -25,11 +27,19 @@ import { Sparkline } from "../ui/Sparkline.tsx";
 
 export type Stat = { label: string; measure: Measure | null; level?: Level };
 
+/** A number's label: one the guide explains opens its explanation when clicked. */
+function Label({ label }: { label: string }) {
+  const id = explainLabel(label);
+  return id ? <Explain id={id}>{label}</Explain> : label;
+}
+
 /** One number with its label, unit, and level. */
 export function StatValue({ label, measure, level = "ok" }: Stat) {
   return (
     <div className="min-w-0">
-      <div className="text-xs text-fg-2">{label}</div>
+      <div className="text-xs text-fg-2">
+        <Label label={label} />
+      </div>
       <div className={cx("flex items-baseline gap-1.5 text-md font-medium", LEVEL_TEXT[level])}>
         <LevelMark level={level} className="self-center" />
         <span data-stat={label}>
@@ -218,7 +228,9 @@ export function ComponentDetails({ nodeId }: { nodeId: string }) {
         <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-sm">
           {detailRows(metrics, nameOf).map(([label, value]) => (
             <div key={label} className="contents">
-              <dt className="text-fg-2">{label}</dt>
+              <dt className="text-fg-2">
+                <Label label={label} />
+              </dt>
               <dd className="text-right text-fg">{value}</dd>
             </div>
           ))}

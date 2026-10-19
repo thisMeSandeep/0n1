@@ -26,6 +26,7 @@ const panelsSchema = z.object({
 });
 
 const groupsSchema = z.array(z.enum(CATEGORIES));
+const tutorialSchema = z.object({ lesson: z.string(), step: z.string(), systemId: z.string() });
 
 export type Preferences = {
   theme: ThemePreference;
@@ -34,17 +35,20 @@ export type Preferences = {
   panels: z.infer<typeof panelsSchema> | null;
   welcomeSeen: boolean;
   timelineOpen: boolean;
+  /** A tutorial in progress, to pick up where it was left. */
+  tutorial: z.infer<typeof tutorialSchema> | null;
 };
 
 /** Stored values are validated; anything unexpected falls back to the default. */
 export async function loadPreferences(settings: SettingsRepository): Promise<Preferences> {
-  const [theme, minimap, groups, panels, welcomeSeen, timelineOpen] = await Promise.all([
+  const [theme, minimap, groups, panels, welcomeSeen, timelineOpen, tutorial] = await Promise.all([
     settings.get("theme"),
     settings.get("minimap"),
     settings.get("collapsedGroups"),
     settings.get("panels"),
     settings.get("welcomeSeen"),
     settings.get("timelineOpen"),
+    settings.get("tutorial"),
   ]);
   return {
     theme: themeSchema.catch("system").parse(theme),
@@ -56,6 +60,10 @@ export async function loadPreferences(settings: SettingsRepository): Promise<Pre
       .parse(panels ?? null),
     welcomeSeen: z.boolean().catch(false).parse(welcomeSeen),
     timelineOpen: z.boolean().catch(false).parse(timelineOpen),
+    tutorial: tutorialSchema
+      .nullable()
+      .catch(null)
+      .parse(tutorial ?? null),
   };
 }
 
@@ -74,6 +82,7 @@ export function bindPreferences(
     // A first visit opens the welcome card.
     welcomeOpen: !prefs.welcomeSeen,
     timelineOpen: prefs.timelineOpen,
+    tutorial: prefs.tutorial,
   });
   return ui.subscribe((state, previous) => {
     if (state.minimap !== previous.minimap) void settings.set("minimap", state.minimap);
@@ -83,6 +92,7 @@ export function bindPreferences(
     if (state.collapsedGroups !== previous.collapsedGroups) {
       void settings.set("collapsedGroups", [...state.collapsedGroups]);
     }
+    if (state.tutorial !== previous.tutorial) void settings.set("tutorial", state.tutorial);
     if (state.panels !== previous.panels && state.panels) {
       void settings.set("panels", state.panels);
     }

@@ -48,7 +48,7 @@ export function TracesSection() {
   const pending = useSimulation((s) => s.tracesPending);
   const name = useNames();
   return (
-    <InspectorSection title="Traces">
+    <InspectorSection title="Traces" explain="traces">
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <Button size="sm" onClick={() => simulation.trace()}>

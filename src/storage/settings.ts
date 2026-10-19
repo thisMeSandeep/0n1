@@ -15,6 +15,8 @@ export type Settings = {
   /** The welcome card was dismissed; it doesn't open on its own again. */
   welcomeSeen: boolean;
   timelineOpen: boolean;
+  /** A tutorial in progress (null when there's none). */
+  tutorial: { lesson: string; step: string; systemId: string } | null;
 };
 
 export type SettingsRepository = ReturnType<typeof createSettingsRepository>;

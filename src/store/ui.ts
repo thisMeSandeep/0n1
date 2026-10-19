@@ -5,6 +5,8 @@ import type { RestorePreview } from "../library/backup.ts";
 import type { Category } from "../model/component.ts";
 
 /** Panel open state, remembered for the layout tier it was set at. */
+export type TutorialProgress = { lesson: string; step: string; systemId: string };
+
 export type PanelPrefs = { tier: LayoutTier; paletteOpen: boolean; inspectorOpen: boolean };
 
 /**
@@ -38,6 +40,12 @@ export type UiState = {
   paletteSearchRequest: number;
   /** Bumped when a component is clicked: the inspector opens if it's closed. */
   inspectorRequest: number;
+  /** A tutorial in progress (the guide, part 2): its lesson, step, and the system it builds in. */
+  tutorial: TutorialProgress | null;
+  setTutorial(tutorial: TutorialProgress | null): void;
+  /** The "Reading the numbers" guide, and the entry to show in it, if one was asked for. */
+  guide: { open: boolean; entry: string | null };
+  setGuideOpen(open: boolean, entry?: string | null): void;
   /** The sticky note (M04) whose text is being edited on the canvas, if any. */
   editingNote: string | null;
   setEditingNote(id: string | null): void;
@@ -83,6 +91,10 @@ export function createUiStore() {
     restore: null,
     paletteSearchRequest: 0,
     inspectorRequest: 0,
+    tutorial: null,
+    setTutorial: (tutorial) => set({ tutorial }),
+    guide: { open: false, entry: null },
+    setGuideOpen: (open, entry = null) => set({ guide: { open, entry: open ? entry : null } }),
     editingNote: null,
     setEditingNote: (editingNote) => set({ editingNote }),
     welcomeOpen: false,
