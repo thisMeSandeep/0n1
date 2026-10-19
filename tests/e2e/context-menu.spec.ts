@@ -46,6 +46,7 @@ test("right-clicking a component shows its actions, and they act on it", async (
     /^Duplicate/,
     /^Copy/,
     /^Cut/,
+    /^Reset settings to defaults/,
     /^Take down/,
     /^Delete/,
   ]);

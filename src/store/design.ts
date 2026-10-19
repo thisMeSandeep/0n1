@@ -32,6 +32,8 @@ export type DesignActions = {
   renameNode(id: string, name: string): boolean;
   /** Merges and validates against the component's schema. Rejects invalid values. */
   updateParams(id: string, patch: Params): boolean;
+  /** Every setting of these components back to its default (M05): one undo step. */
+  resetParams(ids: readonly string[]): void;
   /** Removes nodes (and every connection touching them) and notes. */
   removeNodes(ids: readonly string[]): void;
   /** A sticky note (M04) at `position`. Returns its id. */
@@ -97,6 +99,16 @@ export function copyName(name: string, taken: ReadonlySet<string>): string {
   for (let n = 2; ; n++) {
     if (!taken.has(`${prefix}${n}`)) return `${prefix}${n}`;
   }
+}
+
+/** Whether any of a component's settings differs from its default (a missing one is the default). */
+export function hasCustomParams(
+  node: Pick<SystemNode, "params">,
+  definition: { params: Readonly<Record<string, { default: unknown }>> },
+): boolean {
+  return Object.entries(definition.params).some(
+    ([key, spec]) => key in node.params && node.params[key] !== spec.default,
+  );
 }
 
 function cleanName(name: string): string | null {
@@ -218,6 +230,22 @@ export function createDesignStore({
               });
             }
             return true;
+          },
+
+          resetParams(ids) {
+            const reset = get().doc.nodes.filter((n) => {
+              const definition = registry.get(n.type);
+              return ids.includes(n.id) && definition && hasCustomParams(n, definition);
+            });
+            if (reset.length === 0) return;
+            edit((d) => {
+              for (const node of d.nodes) {
+                const definition = registry.get(node.type);
+                if (definition && reset.some((r) => r.id === node.id)) {
+                  node.params = defaultParams(definition);
+                }
+              }
+            });
           },
 
           removeNodes(ids) {

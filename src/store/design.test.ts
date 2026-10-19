@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { registry } from "../components/index.ts";
+import { defaultParams } from "../model/component.ts";
 import { createSystemDocument, systemDocumentSchema } from "../model/document.ts";
-import { copyName, createDesignStore, uniqueName } from "./design.ts";
+import { copyName, createDesignStore, hasCustomParams, uniqueName } from "./design.ts";
 
 function setup() {
   let next = 0;
@@ -257,6 +258,32 @@ describe("design store", () => {
     history().undo();
     expect(doc().notes?.[0]?.text).toBe("Watch the database");
     expect(systemDocumentSchema.safeParse(doc()).success).toBe(true);
+  });
+
+  it("resets every setting of components to its default, in one undo step", () => {
+    const { actions, node, history } = setup();
+    const svc = actions.addNode("service", { x: 0, y: 0 });
+    const db = actions.addNode("database", { x: 300, y: 0 });
+    const service = registry.require("service");
+    expect(hasCustomParams(node(svc)!, service)).toBe(false);
+    expect(hasCustomParams({ params: {} }, service)).toBe(false); // missing means default
+
+    actions.updateParams(svc, { concurrency: 64, workTime: 5 });
+    actions.updateParams(db, { connections: 8 });
+    expect(hasCustomParams(node(svc)!, service)).toBe(true);
+    actions.renameNode(svc, "Orders API");
+
+    const before = history().pastStates.length;
+    actions.resetParams([svc, db]);
+    expect(node(svc)?.params).toEqual(defaultParams(service));
+    expect(node(db)?.params).toEqual(defaultParams(registry.require("database")));
+    expect(node(svc)?.name).toBe("Orders API"); // only settings
+    expect(history().pastStates.length).toBe(before + 1);
+
+    actions.resetParams([svc]); // nothing left to reset: no step
+    expect(history().pastStates.length).toBe(before + 1);
+    history().undo();
+    expect(node(svc)?.params).toMatchObject({ concurrency: 64, workTime: 5 });
   });
 
   describe("undo / redo", () => {

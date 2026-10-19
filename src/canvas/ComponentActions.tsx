@@ -1,4 +1,5 @@
 import {
+  ArrowCounterClockwiseIcon,
   ClipboardTextIcon,
   CopyIcon,
   PathIcon,
@@ -7,7 +8,9 @@ import {
   TrashIcon,
 } from "@phosphor-icons/react";
 import { shortcutKeys } from "../app/shortcuts.ts";
+import { registry } from "../components/index.ts";
 import { simulation, useLive } from "../simulation/index.ts";
+import { hasCustomParams } from "../store/design.ts";
 import { designStore, selectionStore, useDesign } from "../store/index.ts";
 import { MenuItem, MenuLabel, MenuSeparator } from "../ui/Menu.tsx";
 import { copySelectionFromMenu, cutSelectionFromMenu } from "./useClipboard.ts";
@@ -22,6 +25,11 @@ export function ComponentActionItems({ nodeIds }: { nodeIds: readonly string[] }
   const nodes = useDesign((s) => s.doc.nodes);
   // A selection can include sticky notes (M04): they're deleted with it, but not taken down.
   const components = nodeIds.filter((id) => nodes.some((n) => n.id === id));
+  // Reset (M05) only when some setting has been changed.
+  const customised = nodes.some((n) => {
+    const definition = registry.get(n.type);
+    return components.includes(n.id) && definition !== undefined && hasCustomParams(n, definition);
+  });
   const allDown = useLive(
     (s) => components.length > 0 && components.every((id) => s.nodes[id]?.status === "down"),
   );
@@ -59,6 +67,13 @@ export function ComponentActionItems({ nodeIds }: { nodeIds: readonly string[] }
         onSelect={() => void cutSelectionFromMenu(nodeIds)}
       >
         Cut
+      </MenuItem>
+      <MenuItem
+        icon={<ArrowCounterClockwiseIcon />}
+        disabled={!customised}
+        onSelect={() => designStore.getState().resetParams(components)}
+      >
+        Reset settings to defaults
       </MenuItem>
       {onlyClient && (
         <MenuItem icon={<PathIcon />} onSelect={() => simulation.trace(nodeIds[0] ?? null)}>
