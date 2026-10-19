@@ -301,6 +301,22 @@ describe("design store", () => {
     expect(doc().seed).toBeUndefined();
   });
 
+  it("sets a component's vendor icon, and takes it off, one undo step each", () => {
+    const { actions, node, history, doc } = setup();
+    const db = actions.addNode("database", { x: 0, y: 0 });
+    const before = history().pastStates.length;
+    actions.setNodeIcon(db, "aws/rds");
+    expect(node(db)?.icon).toBe("aws/rds");
+    actions.setNodeIcon(db, "aws/rds"); // the same: no step
+    expect(history().pastStates.length).toBe(before + 1);
+    // Copies keep it.
+    const [copy] = actions.duplicateNodes([db]);
+    expect(node(copy!)?.icon).toBe("aws/rds");
+    actions.setNodeIcon(db, null);
+    expect(node(db)).not.toHaveProperty("icon");
+    expect(systemDocumentSchema.safeParse(doc()).success).toBe(true);
+  });
+
   describe("undo / redo", () => {
     it("undoes and redoes each edit as one step", () => {
       const { actions, doc, history } = setup();

@@ -15,6 +15,8 @@ export type ComponentNodeData = {
   type: string;
   /** Why this component isn't wired up enough to do anything, if it isn't. */
   hint: string | null;
+  /** A vendor icon chosen for it, if any. */
+  icon: string | null;
 };
 export type ComponentFlowNode = Node<ComponentNodeData, "component">;
 export type ComponentFlowEdge = Edge<Record<string, never>, "component">;
@@ -59,9 +61,10 @@ export function toFlowNodes(
       prior &&
       prior.data.name === node.name &&
       prior.data.type === node.type &&
-      prior.data.hint === hint
+      prior.data.hint === hint &&
+      prior.data.icon === (node.icon ?? null)
         ? prior.data
-        : { name: node.name, type: node.type, hint };
+        : { name: node.name, type: node.type, hint, icon: node.icon ?? null };
     return {
       ...prior,
       id: node.id,

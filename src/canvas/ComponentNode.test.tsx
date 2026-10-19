@@ -70,7 +70,7 @@ const flowNode = (id: string, name: string, y: number): ComponentFlowNode => ({
   id,
   type: "component",
   position: { x: 0, y },
-  data: { name, type: "service", hint: null },
+  data: { name, type: "service", hint: null, icon: null },
 });
 
 function renderCanvas() {

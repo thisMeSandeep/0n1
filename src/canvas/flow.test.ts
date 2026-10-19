@@ -21,14 +21,14 @@ describe("toFlowNodes", () => {
         id: "a",
         type: "component",
         position: { x: 0, y: 0 },
-        data: { name: "Cache a", type: "cache", hint: UNCONNECTED },
+        data: { name: "Cache a", type: "cache", hint: UNCONNECTED, icon: null },
         selected: false,
       },
       {
         id: "b",
         type: "component",
         position: { x: 100, y: 0 },
-        data: { name: "Cache b", type: "cache", hint: UNCONNECTED },
+        data: { name: "Cache b", type: "cache", hint: UNCONNECTED, icon: null },
         selected: true,
       },
     ]);

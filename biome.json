@@ -13,7 +13,9 @@
       "!**/coverage",
       "!**/test-results",
       "!**/playwright-report",
-      "!docs/mockups"
+      "!docs/mockups",
+      "!public/vendor-icons",
+      "!vendor-icon-packs"
     ]
   },
   "formatter": {

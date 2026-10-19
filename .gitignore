@@ -24,3 +24,7 @@ docs
 test-results/
 playwright-report/
 blob-report/
+
+# Vendor icon packs (AWS, Azure, Google Cloud): the source for public/vendor-icons/.
+# Kept locally, not committed: see scripts/copy-vendor-icons.ts.
+vendor-icon-packs/

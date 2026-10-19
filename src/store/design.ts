@@ -32,6 +32,8 @@ export type DesignActions = {
   /** Moves components and notes. */
   moveNodes(moves: readonly { id: string; position: Position }[]): void;
   renameNode(id: string, name: string): boolean;
+  /** Show a vendor icon on a component (null: 0n1's own). One undo step. */
+  setNodeIcon(id: string, icon: string | null): void;
   /** Merges and validates against the component's schema. Rejects invalid values. */
   updateParams(id: string, patch: Params): boolean;
   /** Every setting of these components back to its default (M05): one undo step. */
@@ -234,6 +236,17 @@ export function createDesignStore({
               });
             }
             return true;
+          },
+
+          setNodeIcon(id, icon) {
+            const node = nodeById(id);
+            if (!node || (node.icon ?? null) === icon) return;
+            edit((d) => {
+              const draft = d.nodes.find((n) => n.id === id);
+              if (!draft) return;
+              if (icon === null) delete draft.icon;
+              else draft.icon = icon;
+            });
           },
 
           resetParams(ids) {

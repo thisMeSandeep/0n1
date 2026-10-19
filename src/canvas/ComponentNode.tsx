@@ -6,9 +6,9 @@ import { checkConnection } from "../model/connections.ts";
 import { useLive } from "../simulation/index.ts";
 import { designStore } from "../store/index.ts";
 import { useTracedNode } from "../tracing/TraceViews.tsx";
-import { CATEGORY_TINT, componentIcon } from "../ui/componentIcons.tsx";
 import { cx } from "../ui/cx.ts";
 import { Tooltip } from "../ui/Tooltip.tsx";
+import { ComponentIcon } from "../vendor-icons/ComponentIcon.tsx";
 import type { ComponentFlowNode } from "./flow.ts";
 import {
   ErrorBadge,
@@ -47,7 +47,6 @@ export const ComponentNode = memo(function ComponentNode({
   dragging,
 }: NodeProps<ComponentFlowNode>) {
   const definition = registry.get(data.type);
-  const Icon = componentIcon(definition?.icon ?? "");
   // The type, when the name doesn't already say it ("Links DB" · Database).
   const typeLabel =
     definition && definition.displayName !== data.name ? definition.displayName : null;
@@ -104,11 +103,7 @@ export const ComponentNode = memo(function ComponentNode({
           className={cx("handle handle-target", isTargetCandidate && "handle-target-active")}
         />
         <div className="flex items-center gap-2.5">
-          <Icon
-            aria-hidden
-            weight="duotone"
-            className={cx("size-5 shrink-0", definition && CATEGORY_TINT[definition.category])}
-          />
+          <ComponentIcon type={data.type} icon={data.icon} className="size-5" />
           <span className="min-w-0 flex-1 truncate font-medium">{data.name}</span>
           {zoom === "far" && <StatusMark status={status} />}
           {data.hint && (

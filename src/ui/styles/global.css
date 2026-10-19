@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+/* `dark:` follows the app's theme (set on <html> before first paint), not the OS setting. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /*
  * Tailwind theme, mapped onto our tokens. Tailwind's default palette, radii,
  * type scale, weights, shadows and easings are reset so only our tokens can

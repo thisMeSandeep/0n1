@@ -21,6 +21,11 @@ export const nodeSchema = z.object({
   position: positionSchema,
   /** Validated against the component's own parameter schema, not here. */
   params: z.record(z.string(), z.unknown()),
+  /**
+   * A vendor icon to show instead of 0n1's, e.g. "aws/rds"
+   * (vendor-icons/catalog.ts). Optional; one that's gone shows 0n1's.
+   */
+  icon: z.string().min(1).max(64).optional(),
 });
 
 export const edgeSchema = z.object({

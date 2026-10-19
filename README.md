@@ -42,4 +42,6 @@ The app icons in `public/` are rendered from `public/favicon.svg`. After changin
 
 ## License
 
-[MIT](./LICENSE)
+[MIT](./LICENSE), except the vendor icons in `public/vendor-icons/`. Those belong to Amazon Web Services, Microsoft and Google, are included unchanged for drawing architecture diagrams, and aren't covered by the MIT licence: see [`public/vendor-icons/NOTICE.md`](./public/vendor-icons/NOTICE.md). 0n1 isn't affiliated with any of them.
+
+To change which vendor icons are included, put the vendors' icon packs in `vendor-icon-packs/` (git-ignored) and run `bun scripts/copy-vendor-icons.ts`.

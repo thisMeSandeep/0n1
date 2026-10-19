@@ -9,9 +9,9 @@ import type { Params } from "../model/component.ts";
 import { designStore, useDesign } from "../store/index.ts";
 import { IconButton } from "../ui/Button.tsx";
 import { CollapsibleSection } from "../ui/Collapsible.tsx";
-import { CATEGORY_LABEL, CATEGORY_TINT, componentIcon } from "../ui/componentIcons.tsx";
-import { cx } from "../ui/cx.ts";
+import { CATEGORY_LABEL } from "../ui/componentIcons.tsx";
 import { Menu, MenuContent, MenuTrigger } from "../ui/Menu.tsx";
+import { IconPicker } from "../vendor-icons/IconPicker.tsx";
 import { EditableTitle } from "./EditableTitle.tsx";
 import { InspectorHeader, InspectorSection } from "./InspectorHeader.tsx";
 import { ComponentDetails, LiveSummary } from "./LiveSummary.tsx";
@@ -25,19 +25,12 @@ export function ComponentView({ nodeId, onClose }: { nodeId: string; onClose: ()
   const definition = node ? registry.get(node.type) : undefined;
   if (!node || !definition) return null;
 
-  const Icon = componentIcon(definition.icon);
   const actions = designStore.getState();
 
   return (
     <>
       <InspectorHeader
-        icon={
-          <Icon
-            aria-hidden
-            weight="duotone"
-            className={cx("size-5", CATEGORY_TINT[definition.category])}
-          />
-        }
+        icon={<IconPicker nodeId={nodeId} type={node.type} icon={node.icon} />}
         title={
           <EditableTitle
             label="Component name"
