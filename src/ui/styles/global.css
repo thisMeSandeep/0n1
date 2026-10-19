@@ -139,6 +139,14 @@
   body {
     background-color: var(--canvas);
     color: var(--text);
+    /*
+     * The lab is a fixed frame; only its panels scroll. The page itself never
+     * does: not by a stray focus, and not by macOS's rubber-band bounce when a
+     * panel's scrolling runs past its end (which slid the whole interface up).
+     */
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 
   body {
