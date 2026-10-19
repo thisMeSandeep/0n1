@@ -39,7 +39,10 @@ describe("toFlowNodes", () => {
     const edges = [{ id: "e", source: "svc", target: "a" }];
     const first = toFlowNodes([], [service, docNode("a")], edges, new Set());
     // The cache now gets requests; the service still has nothing sending to it.
-    expect(first.map((n) => n.data.hint)).toEqual([expect.stringMatching(/sit idle/), null]);
+    expect(first.map((n) => ("hint" in n.data ? n.data.hint : undefined))).toEqual([
+      expect.stringMatching(/sit idle/),
+      null,
+    ]);
 
     const again = toFlowNodes(first, [service, docNode("a", 50)], edges, new Set());
     expect(again[1]?.data).toBe(first[1]?.data);
@@ -91,5 +94,21 @@ describe("positionMoves", () => {
       { type: "select", id: "a", selected: true },
     ];
     expect(positionMoves(changes)).toEqual([{ id: "a", position: { x: 8, y: 16 } }]);
+  });
+
+  it("puts sticky notes on the canvas too, under the components", () => {
+    const notes = [{ id: "note", text: "Hello", position: { x: 5, y: 6 } }];
+    const flow = toFlowNodes([], [docNode("a")], [], new Set(["note"]), notes);
+    expect(flow.map((n) => [n.id, n.type])).toEqual([
+      ["note", "note"],
+      ["a", "component"],
+    ]);
+    expect(flow[0]).toMatchObject({
+      position: { x: 5, y: 6 },
+      data: { text: "Hello" },
+      selected: true,
+    });
+    // Unchanged text keeps the same data object.
+    expect(toFlowNodes(flow, [docNode("a")], [], new Set(), notes)[0]?.data).toBe(flow[0]?.data);
   });
 });

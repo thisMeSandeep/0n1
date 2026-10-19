@@ -52,6 +52,10 @@
   --cat-data: #94668c;
   --cat-messaging: #8a7f6c;
 
+  /* Sticky notes (M04): paper, a little warmer than the canvas */
+  --note: #f6f0dd;
+  --note-line: #e2d8bb;
+
   /* Motion */
   --duration-fast: 120ms; /* hover, press, toggle */
   --duration-popover: 160ms; /* popover, menu, tooltip */
@@ -95,6 +99,9 @@
   --cat-compute: #959ddb;
   --cat-data: #bf93b7;
   --cat-messaging: #b3a891;
+
+  --note: #26241e;
+  --note-line: #3a3529;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -49,12 +49,14 @@ import { ComponentNode } from "./ComponentNode.tsx";
 import { ConnectionLine } from "./ConnectionLine.tsx";
 import {
   applySelectChanges,
-  type ComponentFlowNode,
+  type CanvasFlowNode,
   positionMoves,
   toFlowEdges,
   toFlowNodes,
 } from "./flow.ts";
 import { setPlaying } from "./flowDots.ts";
+import { NoteActionItems, PaneActionItems } from "./NoteActions.tsx";
+import { NoteNode } from "./NoteNode.tsx";
 import { COMPONENT_DRAG_TYPE } from "./placement.ts";
 import { QuickAdd, type QuickAddRequest } from "./QuickAdd.tsx";
 import { useAddComponent } from "./useAddComponent.ts";
@@ -63,7 +65,7 @@ import { FIT_VIEW_OPTIONS } from "./useViewActions.ts";
 import { VitalsPill } from "./VitalsPill.tsx";
 import { ZoomControls } from "./ZoomControls.tsx";
 
-const nodeTypes = { component: ComponentNode };
+const nodeTypes = { component: ComponentNode, note: NoteNode };
 const edgeTypes = { component: ComponentEdge };
 const SNAP_GRID: [number, number] = [8, 8];
 const GRID_GAP = 24;
@@ -84,6 +86,7 @@ function onConnect({ source, target }: Connection) {
 /** The editable canvas, driven by the design and selection stores. */
 export function Canvas() {
   const docNodes = useDesign((s) => s.doc.nodes);
+  const docNotes = useDesign((s) => s.doc.notes);
   const docEdges = useDesign((s) => s.doc.edges);
   const selectedNodeIds = useSelection((s) => s.nodeIds);
   const selectedEdgeIds = useSelection((s) => s.edgeIds);
@@ -91,10 +94,12 @@ export function Canvas() {
   const minimap = useUi((s) => s.minimap);
 
   const selectedNodes = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
-  const [nodes, setNodes] = useState(() => toFlowNodes([], docNodes, docEdges, selectedNodes));
+  const [nodes, setNodes] = useState(() =>
+    toFlowNodes([], docNodes, docEdges, selectedNodes, docNotes),
+  );
   useEffect(() => {
-    setNodes((previous) => toFlowNodes(previous, docNodes, docEdges, selectedNodes));
-  }, [docNodes, docEdges, selectedNodes]);
+    setNodes((previous) => toFlowNodes(previous, docNodes, docEdges, selectedNodes, docNotes));
+  }, [docNodes, docEdges, selectedNodes, docNotes]);
 
   useFitViewOnOpen(docNodes.length);
   useFlowDots();
@@ -106,7 +111,7 @@ export function Canvas() {
   );
 
   // Alignment guides (M02): a drag lines up with other components as it goes.
-  const { screenToFlowPosition, getNodes, getZoom } = useReactFlow<ComponentFlowNode>();
+  const { screenToFlowPosition, getNodes, getZoom } = useReactFlow<CanvasFlowNode>();
   const [guides, setGuides] = useState<Guide[]>([]);
   /** How far the drag in progress was moved to line up. */
   const dragShift = useRef({ x: 0, y: 0 });
@@ -117,7 +122,7 @@ export function Canvas() {
   }, []);
 
   /** Apply node changes to the canvas, the document (moves) and the selection. */
-  const applyChanges = useCallback((changes: NodeChange<ComponentFlowNode>[]) => {
+  const applyChanges = useCallback((changes: NodeChange<CanvasFlowNode>[]) => {
     setNodes((current) => applyNodeChanges(changes, current));
     const moves = positionMoves(changes);
     if (moves.length > 0) designStore.getState().moveNodes(moves);
@@ -126,7 +131,7 @@ export function Canvas() {
   }, []);
 
   const onNodesChange = useCallback(
-    (incoming: NodeChange<ComponentFlowNode>[]) => {
+    (incoming: NodeChange<CanvasFlowNode>[]) => {
       let changes = incoming;
       if (changes.some((c) => c.type === "position" && c.dragging)) {
         const aligned = alignDrag(changes, getNodes(), ALIGN_THRESHOLD_PX / getZoom());
@@ -153,17 +158,32 @@ export function Canvas() {
 
   // Right-clicking a component: its actions, at the pointer. Right-clicking one
   // in the selection acts on the whole selection; any other, on just that one.
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    nodeIds: string[];
-  } | null>(null);
-  const onNodeContextMenu = useCallback((event: MouseEvent, node: ComponentFlowNode) => {
+  // A note has its own; empty canvas offers a note there, and Paste.
+  const [contextMenu, setContextMenu] = useState<
+    | { x: number; y: number; kind: "components"; nodeIds: string[] }
+    | { x: number; y: number; kind: "note"; noteId: string }
+    | { x: number; y: number; kind: "canvas" }
+    | null
+  >(null);
+  const onNodeContextMenu = useCallback((event: MouseEvent, node: CanvasFlowNode) => {
     event.preventDefault();
     const selection = selectionStore.getState();
     const nodeIds = selection.nodeIds.includes(node.id) ? [...selection.nodeIds] : [node.id];
     if (nodeIds.length === 1) selection.select({ nodeIds, edgeIds: [] });
-    setContextMenu({ x: event.clientX, y: event.clientY, nodeIds });
+    const at = { x: event.clientX, y: event.clientY };
+    setContextMenu(
+      node.type === "note" && nodeIds.length === 1
+        ? { ...at, kind: "note", noteId: node.id }
+        : { ...at, kind: "components", nodeIds },
+    );
+  }, []);
+  // Double-clicking a note writes in it.
+  const onNodeDoubleClick = useCallback((_event: MouseEvent, node: CanvasFlowNode) => {
+    if (node.type === "note") uiStore.getState().setEditingNote(node.id);
+  }, []);
+  const onPaneContextMenu = useCallback((event: MouseEvent | globalThis.MouseEvent) => {
+    event.preventDefault();
+    setContextMenu({ x: event.clientX, y: event.clientY, kind: "canvas" });
   }, []);
 
   // Quick add: double-click empty canvas, or drop a connection on empty canvas.
@@ -232,6 +252,8 @@ export function Canvas() {
         onDoubleClick={onDoubleClick}
         onNodeClick={onNodeClick}
         onNodeContextMenu={onNodeContextMenu}
+        onPaneContextMenu={onPaneContextMenu}
+        onNodeDoubleClick={onNodeDoubleClick}
         isValidConnection={isValidConnection}
         connectionLineComponent={ConnectionLine}
         connectionRadius={32}
@@ -298,11 +320,15 @@ export function Canvas() {
           align="start"
           side="bottom"
           sideOffset={2}
-          aria-label="Component actions"
+          aria-label={contextMenu?.kind === "canvas" ? "Canvas actions" : "Component actions"}
           // Focus goes back to the canvas, not the invisible anchor.
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
-          {contextMenu && <ComponentActionItems nodeIds={contextMenu.nodeIds} />}
+          {contextMenu?.kind === "components" && (
+            <ComponentActionItems nodeIds={contextMenu.nodeIds} />
+          )}
+          {contextMenu?.kind === "note" && <NoteActionItems noteId={contextMenu.noteId} />}
+          {contextMenu?.kind === "canvas" && <PaneActionItems at={contextMenu} />}
         </MenuContent>
       </Menu>
       {quickAdd && (

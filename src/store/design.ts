@@ -3,7 +3,12 @@ import { immer } from "zustand/middleware/immer";
 import { createStore } from "zustand/vanilla";
 import { canConnect, defaultParams, type Params, paramsSchema } from "../model/component.ts";
 import { checkConnection } from "../model/connections.ts";
-import type { Position, SystemDocument, SystemNode } from "../model/document.ts";
+import {
+  NOTE_MAX_LENGTH,
+  type Position,
+  type SystemDocument,
+  type SystemNode,
+} from "../model/document.ts";
 import type { Registry } from "../model/registry.ts";
 import { eventTarget, type NewScenarioEvent, scenarioEventSchema } from "../model/scenario.ts";
 
@@ -22,12 +27,17 @@ export type DesignActions = {
   renameSystem(name: string): boolean;
   /** Adds a component with default params and a unique name. Returns its id. */
   addNode(type: string, position: Position): string;
+  /** Moves components and notes. */
   moveNodes(moves: readonly { id: string; position: Position }[]): void;
   renameNode(id: string, name: string): boolean;
   /** Merges and validates against the component's schema. Rejects invalid values. */
   updateParams(id: string, patch: Params): boolean;
-  /** Removes nodes and every connection touching them. */
+  /** Removes nodes (and every connection touching them) and notes. */
   removeNodes(ids: readonly string[]): void;
+  /** A sticky note (M04) at `position`. Returns its id. */
+  addNote(position: Position, text?: string): string;
+  /** Rejects text over the limit, or a note that isn't there. */
+  updateNote(id: string, text: string): boolean;
   connect(source: string, target: string): ConnectResult;
   disconnect(edgeIds: readonly string[]): void;
   /** Copies nodes (and the connections between them), offset slightly. Returns new ids. */
@@ -165,15 +175,16 @@ export function createDesignStore({
           },
 
           moveNodes(moves) {
+            const notes = get().doc.notes ?? [];
             const targets = moves.filter(({ id, position }) => {
-              const node = nodeById(id);
-              return node && (node.position.x !== position.x || node.position.y !== position.y);
+              const item = nodeById(id) ?? notes.find((n) => n.id === id);
+              return item && (item.position.x !== position.x || item.position.y !== position.y);
             });
             if (targets.length === 0) return;
             edit((d) => {
               for (const { id, position } of targets) {
-                const node = d.nodes.find((n) => n.id === id);
-                if (node) node.position = { ...position };
+                const item = d.nodes.find((n) => n.id === id) ?? d.notes?.find((n) => n.id === id);
+                if (item) item.position = { ...position };
               }
             });
           },
@@ -211,12 +222,36 @@ export function createDesignStore({
 
           removeNodes(ids) {
             const remove = new Set(ids);
-            if (!get().doc.nodes.some((n) => remove.has(n.id))) return;
+            const { nodes, notes } = get().doc;
+            const any = (items: readonly { id: string }[] = []) =>
+              items.some((i) => remove.has(i.id));
+            if (!any(nodes) && !any(notes)) return;
             edit((d) => {
               d.nodes = d.nodes.filter((n) => !remove.has(n.id));
               d.edges = d.edges.filter((e) => !remove.has(e.source) && !remove.has(e.target));
+              if (d.notes) d.notes = d.notes.filter((n) => !remove.has(n.id));
               pruneEvents(d);
             });
+          },
+
+          addNote(position, text = "") {
+            const id = newId();
+            edit((d) => {
+              d.notes ??= [];
+              d.notes.push({ id, text: text.slice(0, NOTE_MAX_LENGTH), position: { ...position } });
+            });
+            return id;
+          },
+
+          updateNote(id, text) {
+            const note = get().doc.notes?.find((n) => n.id === id);
+            if (!note || text.length > NOTE_MAX_LENGTH) return false;
+            if (note.text === text) return true;
+            edit((d) => {
+              const target = d.notes?.find((n) => n.id === id);
+              if (target) target.text = text;
+            });
+            return true;
           },
 
           addEvent(event) {

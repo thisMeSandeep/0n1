@@ -1,7 +1,7 @@
 import { CopyIcon, PowerIcon, TrashIcon } from "@phosphor-icons/react";
 import { shortcutKeys } from "../app/shortcuts.ts";
 import { simulation, useLive } from "../simulation/index.ts";
-import { designStore, selectionStore } from "../store/index.ts";
+import { designStore, selectionStore, useDesign } from "../store/index.ts";
 import { Button } from "../ui/Button.tsx";
 import { InspectorHeader } from "./InspectorHeader.tsx";
 import { count } from "./sections.ts";
@@ -14,17 +14,22 @@ type MultiViewProps = {
 
 /** Several things selected: a count and bulk actions. */
 export function MultiView({ nodeIds, edgeIds, onClose }: MultiViewProps) {
+  // The selection can include sticky notes (M04), which aren't components.
+  const docNodes = useDesign((s) => s.doc.nodes);
+  const components = nodeIds.filter((id) => docNodes.some((n) => n.id === id));
+  const notes = nodeIds.length - components.length;
   const parts = [
-    nodeIds.length > 0 && count(nodeIds.length, "component"),
+    components.length > 0 && count(components.length, "component"),
+    notes > 0 && count(notes, "note"),
     edgeIds.length > 0 && count(edgeIds.length, "connection"),
   ].filter(Boolean);
 
   const duplicate = () => {
-    const copies = designStore.getState().duplicateNodes(nodeIds);
+    const copies = designStore.getState().duplicateNodes(components);
     selectionStore.getState().select({ nodeIds: copies, edgeIds: [] });
   };
   const allDown = useLive(
-    (s) => nodeIds.length > 0 && nodeIds.every((id) => s.nodes[id]?.status === "down"),
+    (s) => components.length > 0 && components.every((id) => s.nodes[id]?.status === "down"),
   );
   const remove = () => {
     const actions = designStore.getState();
@@ -44,15 +49,15 @@ export function MultiView({ nodeIds, edgeIds, onClose }: MultiViewProps) {
         onClose={onClose}
       />
       <div className="flex flex-wrap gap-2 px-5 pt-6">
-        {nodeIds.length > 0 && (
+        {components.length > 0 && (
           <Button onClick={duplicate}>
             <CopyIcon />
             Duplicate
           </Button>
         )}
-        {nodeIds.length > 0 && (
+        {components.length > 0 && (
           <Button
-            onClick={() => simulation.toggleDown(nodeIds)}
+            onClick={() => simulation.toggleDown(components)}
             aria-keyshortcuts={shortcutKeys("takeDown")}
           >
             <PowerIcon />

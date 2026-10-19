@@ -46,6 +46,7 @@ export const SHORTCUT_IDS = [
   "undo",
   "redo",
   "duplicate",
+  "addNote",
   "copy",
   "cut",
   "paste",
@@ -114,6 +115,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
     group: "Editing",
     combos: [{ key: "d", mod: true }],
   },
+  { id: "addNote", label: "Add a sticky note", group: "Editing", combos: [{ key: "n" }] },
   {
     id: "copy",
     label: "Copy selected components",

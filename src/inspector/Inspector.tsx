@@ -1,8 +1,9 @@
-import { useSelection, useUi } from "../store/index.ts";
+import { useDesign, useSelection, useUi } from "../store/index.ts";
 import { TraceView } from "../tracing/TraceViews.tsx";
 import { ComponentView } from "./ComponentView.tsx";
 import { ConnectionView } from "./ConnectionView.tsx";
 import { MultiView } from "./MultiView.tsx";
+import { NoteView } from "./NoteView.tsx";
 import { SystemView } from "./SystemView.tsx";
 
 /** Picks the inspector view for the current selection (UIUX §3). */
@@ -11,9 +12,12 @@ export function Inspector({ onClose }: { onClose: () => void }) {
   const edgeIds = useSelection((s) => s.edgeIds);
   const total = nodeIds.length + edgeIds.length;
   const trace = useUi((s) => s.openTrace);
+  const isNote = useDesign((s) => s.doc.notes?.some((n) => n.id === nodeIds[0]) ?? false);
 
   if (trace) return <TraceView trace={trace} onClose={onClose} />;
   if (total > 1) return <MultiView nodeIds={nodeIds} edgeIds={edgeIds} onClose={onClose} />;
+  if (nodeIds[0] && isNote)
+    return <NoteView key={nodeIds[0]} noteId={nodeIds[0]} onClose={onClose} />;
   if (nodeIds[0]) return <ComponentView key={nodeIds[0]} nodeId={nodeIds[0]} onClose={onClose} />;
   if (edgeIds[0]) return <ConnectionView key={edgeIds[0]} edgeId={edgeIds[0]} onClose={onClose} />;
   return <SystemView onClose={onClose} />;

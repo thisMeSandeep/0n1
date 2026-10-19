@@ -1,7 +1,8 @@
 import type { Edge, EdgeChange, Node, NodeChange } from "@xyflow/react";
 import { registry } from "../components/index.ts";
 import { connectionHint, edgeCounts } from "../model/connections.ts";
-import type { SystemEdge, SystemNode } from "../model/document.ts";
+import type { SystemEdge, SystemNode, SystemNote } from "../model/document.ts";
+import type { NoteFlowNode } from "./NoteNode.tsx";
 
 /*
  * Translation between the design/selection stores and React Flow's node and
@@ -17,21 +18,39 @@ export type ComponentNodeData = {
 };
 export type ComponentFlowNode = Node<ComponentNodeData, "component">;
 export type ComponentFlowEdge = Edge<Record<string, never>, "component">;
+/** Everything on the canvas: components and sticky notes (M04). */
+export type CanvasFlowNode = ComponentFlowNode | NoteFlowNode;
 
 /**
  * Build React Flow nodes from the document, reusing what React Flow measured
  * on the previous nodes so it doesn't have to measure again.
  */
 export function toFlowNodes(
-  previous: readonly ComponentFlowNode[],
+  previous: readonly CanvasFlowNode[],
   nodes: readonly SystemNode[],
   edges: readonly SystemEdge[],
   selected: ReadonlySet<string>,
-): ComponentFlowNode[] {
+  notes: readonly SystemNote[] = [],
+): CanvasFlowNode[] {
   const byId = new Map(previous.map((n) => [n.id, n]));
   const counts = edgeCounts({ edges });
-  return nodes.map((node) => {
-    const prior = byId.get(node.id);
+  // Notes first, so components sit on top where they overlap.
+  const noteNodes = notes.map((note): NoteFlowNode => {
+    const prior = byId.get(note.id);
+    const data =
+      prior?.type === "note" && prior.data.text === note.text ? prior.data : { text: note.text };
+    return {
+      ...(prior?.type === "note" ? prior : {}),
+      id: note.id,
+      type: "note",
+      position: note.position,
+      data,
+      selected: selected.has(note.id),
+    };
+  });
+  const componentNodes = nodes.map((node): ComponentFlowNode => {
+    const found = byId.get(node.id);
+    const prior = found?.type === "component" ? found : undefined;
     const definition = registry.get(node.type);
     const count = counts.get(node.id) ?? { incoming: 0, outgoing: 0 };
     const hint = definition ? connectionHint(definition, count.incoming, count.outgoing) : null;
@@ -52,6 +71,7 @@ export function toFlowNodes(
       selected: selected.has(node.id),
     };
   });
+  return [...noteNodes, ...componentNodes];
 }
 
 export function toFlowEdges(

@@ -23,7 +23,12 @@ export type DeletedSystem = { restore: () => Promise<void> };
 /** A system nobody has done anything with yet: empty, and still called "Untitled system" (or "… 2"). */
 export function isUntouchedBlank(doc: SystemDocument): boolean {
   const defaultName = new RegExp(`^${DEFAULT_SYSTEM_NAME}( \\d+)?$`);
-  return doc.nodes.length === 0 && doc.edges.length === 0 && defaultName.test(doc.name);
+  return (
+    doc.nodes.length === 0 &&
+    doc.edges.length === 0 &&
+    (doc.notes?.length ?? 0) === 0 && // a note is work too (M04)
+    defaultName.test(doc.name)
+  );
 }
 
 /**

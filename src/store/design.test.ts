@@ -228,6 +228,37 @@ describe("design store", () => {
     expect(systemDocumentSchema.safeParse(doc()).success).toBe(true);
   });
 
+  it("adds, edits, moves and removes sticky notes, each one undo step", () => {
+    const { actions, doc, history } = setup();
+    const svc = actions.addNode("service", { x: 0, y: 0 });
+    const note = actions.addNote({ x: 10, y: 20 });
+    expect(doc().notes).toEqual([{ id: note, text: "", position: { x: 10, y: 20 } }]);
+
+    expect(actions.updateNote(note, "Watch the database")).toBe(true);
+    expect(actions.updateNote(note, "x".repeat(5000))).toBe(false); // too long
+    expect(actions.updateNote("gone", "hi")).toBe(false);
+    expect(doc().notes?.[0]?.text).toBe("Watch the database");
+
+    // Moving and removing take notes and components together.
+    actions.moveNodes([
+      { id: note, position: { x: 100, y: 200 } },
+      { id: svc, position: { x: 50, y: 50 } },
+    ]);
+    expect(doc().notes?.[0]?.position).toEqual({ x: 100, y: 200 });
+    expect(doc().nodes[0]?.position).toEqual({ x: 50, y: 50 });
+    // Duplicating copies components only.
+    expect(actions.duplicateNodes([note])).toEqual([]);
+
+    const before = history().pastStates.length;
+    actions.removeNodes([note, svc]);
+    expect(doc().notes).toEqual([]);
+    expect(doc().nodes).toEqual([]);
+    expect(history().pastStates.length).toBe(before + 1);
+    history().undo();
+    expect(doc().notes?.[0]?.text).toBe("Watch the database");
+    expect(systemDocumentSchema.safeParse(doc()).success).toBe(true);
+  });
+
   describe("undo / redo", () => {
     it("undoes and redoes each edit as one step", () => {
       const { actions, doc, history } = setup();

@@ -12,6 +12,7 @@ import {
   KeyboardIcon,
   MagnifyingGlassPlusIcon,
   MoonIcon,
+  NotePencilIcon,
   PathIcon,
   PlayIcon,
   PlusIcon,
@@ -22,6 +23,7 @@ import {
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { BLUEPRINTS } from "../blueprints/catalog.ts";
 import { useAddComponent } from "../canvas/useAddComponent.ts";
+import { useAddNote } from "../canvas/useAddNote.ts";
 import { copySelectionFromMenu, usePaste } from "../canvas/useClipboard.ts";
 import { useViewActions } from "../canvas/useViewActions.ts";
 import { registry } from "../components/index.ts";
@@ -57,6 +59,7 @@ export function CommandPalette() {
   const view = useViewActions();
   const { resolved, setPreference } = useTheme();
   const { pasteFromMenu } = usePaste();
+  const { addNoteAtCentre } = useAddNote();
   const selected = useSelection((s) => s.nodeIds.length);
 
   const run = (action: () => void) => () => {
@@ -158,6 +161,15 @@ export function CommandPalette() {
                 />
               )}
               <CommandGroup heading="Edit">
+                <CommandItem
+                  value="Add a note"
+                  keywords={["sticky", "annotation", "comment", "text"]}
+                  shortcut={shortcutKeys("addNote")}
+                  onSelect={run(() => void addNoteAtCentre())}
+                  icon={<NotePencilIcon aria-hidden className="text-fg-2" />}
+                >
+                  Add a note
+                </CommandItem>
                 {selected > 0 && (
                   <CommandItem
                     value="Copy selected components"

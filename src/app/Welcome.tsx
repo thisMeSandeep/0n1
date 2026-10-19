@@ -119,7 +119,7 @@ export function Welcome() {
 
 /** On an empty canvas once the welcome card is gone: one faint line (UIUX §10). */
 export function EmptyCanvasHint() {
-  const empty = useDesign((s) => s.doc.nodes.length === 0);
+  const empty = useDesign((s) => s.doc.nodes.length === 0 && (s.doc.notes?.length ?? 0) === 0);
   const welcome = useUi((s) => s.welcomeOpen);
   if (!empty || welcome) return null;
   return (

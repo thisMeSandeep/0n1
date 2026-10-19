@@ -39,6 +39,23 @@ describe("systemDocumentSchema", () => {
     expect(messages(doc)).toContain('Duplicate node id "a"');
   });
 
+  it("accepts sticky notes, with ids of their own that nothing connects to", () => {
+    const doc = sampleDocument();
+    doc.notes = [{ id: "n1", text: "Try a cache", position: { x: 0, y: 200 } }];
+    expect(systemDocumentSchema.safeParse(doc).success).toBe(true);
+    // Systems saved before notes existed have none, and still read.
+    expect(systemDocumentSchema.safeParse({ ...doc, notes: undefined }).success).toBe(true);
+
+    doc.notes.push({ id: "a", text: "", position: { x: 0, y: 0 } });
+    expect(messages(doc)).toContain('Duplicate id "a"');
+    doc.notes.pop();
+    doc.edges.push({ id: "e2", source: "a", target: "n1" });
+    expect(messages(doc)).toContain('Unknown node "n1"');
+    doc.edges.pop();
+    doc.notes[0]!.text = "x".repeat(5000);
+    expect(systemDocumentSchema.safeParse(doc).success).toBe(false);
+  });
+
   it("rejects edges to unknown nodes", () => {
     const doc = sampleDocument();
     doc.edges.push({ id: "e2", source: "b", target: "ghost" });

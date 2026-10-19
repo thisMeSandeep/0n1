@@ -37,6 +37,8 @@
   --color-cat-compute: var(--cat-compute);
   --color-cat-data: var(--cat-data);
   --color-cat-messaging: var(--cat-messaging);
+  --color-note: var(--note);
+  --color-note-line: var(--note-line);
 
   --font-*: initial;
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;

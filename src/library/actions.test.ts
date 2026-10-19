@@ -53,6 +53,10 @@ describe("isUntouchedBlank", () => {
     expect(isUntouchedBlank(blank("Untitled system 2"))).toBe(true);
     expect(isUntouchedBlank(blank("Untitled system draft"))).toBe(false);
     expect(isUntouchedBlank(blank("Checkout"))).toBe(false);
+    // A note is work too: the system isn't thrown away.
+    const noted = blank("Untitled system");
+    noted.notes = [{ id: "note", text: "Idea", position: { x: 0, y: 0 } }];
+    expect(isUntouchedBlank(noted)).toBe(false);
     const used = blank("Untitled system");
     used.nodes.push({
       id: "n",

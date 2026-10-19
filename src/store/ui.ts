@@ -38,6 +38,9 @@ export type UiState = {
   paletteSearchRequest: number;
   /** Bumped when a component is clicked: the inspector opens if it's closed. */
   inspectorRequest: number;
+  /** The sticky note (M04) whose text is being edited on the canvas, if any. */
+  editingNote: string | null;
+  setEditingNote(id: string | null): void;
   /** The first-visit welcome card (UIUX §10). Closing it is remembered by preferences.ts. */
   welcomeOpen: boolean;
   setWelcomeOpen(open: boolean): void;
@@ -80,6 +83,8 @@ export function createUiStore() {
     restore: null,
     paletteSearchRequest: 0,
     inspectorRequest: 0,
+    editingNote: null,
+    setEditingNote: (editingNote) => set({ editingNote }),
     welcomeOpen: false,
     setWelcomeOpen: (welcomeOpen) => set({ welcomeOpen }),
     imageExportOpen: false,

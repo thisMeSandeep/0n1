@@ -20,8 +20,10 @@ import { copySelectionFromMenu, cutSelectionFromMenu } from "./useClipboard.ts";
 
 export function ComponentActionItems({ nodeIds }: { nodeIds: readonly string[] }) {
   const nodes = useDesign((s) => s.doc.nodes);
+  // A selection can include sticky notes (M04): they're deleted with it, but not taken down.
+  const components = nodeIds.filter((id) => nodes.some((n) => n.id === id));
   const allDown = useLive(
-    (s) => nodeIds.length > 0 && nodeIds.every((id) => s.nodes[id]?.status === "down"),
+    (s) => components.length > 0 && components.every((id) => s.nodes[id]?.status === "down"),
   );
   const onlyClient =
     nodeIds.length === 1 && nodes.find((n) => n.id === nodeIds[0])?.type === "client";
@@ -34,7 +36,13 @@ export function ComponentActionItems({ nodeIds }: { nodeIds: readonly string[] }
 
   return (
     <>
-      {nodeIds.length > 1 && <MenuLabel>{nodeIds.length} components</MenuLabel>}
+      {nodeIds.length > 1 && (
+        <MenuLabel>
+          {components.length === nodeIds.length
+            ? `${nodeIds.length} components`
+            : `${nodeIds.length} selected`}
+        </MenuLabel>
+      )}
       <MenuItem icon={<CopyIcon />} shortcut={shortcutKeys("duplicate")} onSelect={duplicate}>
         Duplicate
       </MenuItem>
@@ -60,7 +68,8 @@ export function ComponentActionItems({ nodeIds }: { nodeIds: readonly string[] }
       <MenuItem
         icon={<PowerIcon />}
         shortcut={shortcutKeys("takeDown")}
-        onSelect={() => simulation.toggleDown(nodeIds)}
+        disabled={components.length === 0}
+        onSelect={() => simulation.toggleDown(components)}
       >
         {allDown ? "Bring back" : "Take down"}
       </MenuItem>

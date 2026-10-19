@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { GRID } from "../canvas/placement.ts";
+import { useAddNote } from "../canvas/useAddNote.ts";
 import { useViewActions } from "../canvas/useViewActions.ts";
 import { simulation } from "../simulation/index.ts";
 import { designStore, selectionStore, uiStore, useUi } from "../store/index.ts";
@@ -37,6 +38,7 @@ const FAR = 5;
  */
 export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: LabShortcutsProps) {
   const view = useViewActions();
+  const { addNoteAtCentre } = useAddNote();
 
   // Handlers read live values through a ref, so the listener is attached once.
   const handlers = useRef<Record<KeyShortcutId, (event: KeyboardEvent) => void> | null>(null);
@@ -53,7 +55,11 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
     runPause: simulation.toggle,
     step: simulation.step,
     reset: simulation.reset,
-    takeDown: () => simulation.toggleDown(selectionStore.getState().nodeIds),
+    takeDown: () => {
+      // Components only: a note can't be taken down.
+      const components = new Set(designStore.getState().doc.nodes.map((n) => n.id));
+      simulation.toggleDown(selectionStore.getState().nodeIds.filter((id) => components.has(id)));
+    },
     timeline: () => uiStore.getState().setTimelineOpen(!uiStore.getState().timelineOpen),
     undo: () => designStore.temporal.getState().undo(),
     redo: () => designStore.temporal.getState().redo(),
@@ -63,6 +69,7 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
       const copies = designStore.getState().duplicateNodes(nodeIds);
       selectionStore.getState().select({ nodeIds: copies, edgeIds: [] });
     },
+    addNote: () => void addNoteAtCentre(),
     delete: () => {
       const { nodeIds, edgeIds } = selectionStore.getState();
       if (nodeIds.length + edgeIds.length === 0) return;
@@ -88,10 +95,10 @@ export function LabShortcuts({ paletteOpen, togglePalette, toggleInspector }: La
       if (!direction || nodeIds.length === 0) return;
       const step = GRID * (event.shiftKey ? FAR : 1);
       const selected = new Set(nodeIds);
+      const { nodes, notes = [] } = designStore.getState().doc;
       designStore.getState().moveNodes(
-        designStore
-          .getState()
-          .doc.nodes.filter((n) => selected.has(n.id))
+        [...nodes, ...notes]
+          .filter((n) => selected.has(n.id))
           .map((n) => ({
             id: n.id,
             position: {

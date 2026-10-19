@@ -31,6 +31,16 @@ export const edgeSchema = z.object({
   target: id,
 });
 
+/** The longest a note's text may be. */
+export const NOTE_MAX_LENGTH = 2000;
+
+/** A sticky note on the canvas (M04): words for people, ignored by the simulation. */
+export const noteSchema = z.object({
+  id,
+  text: z.string().max(NOTE_MAX_LENGTH),
+  position: positionSchema,
+});
+
 export const systemDocumentSchema = z
   .object({
     schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
@@ -50,6 +60,8 @@ export const systemDocumentSchema = z
     blueprint: z.object({ id }).optional(),
     /** The chaos timeline (S40), also optional. */
     scenario: scenarioSchema.optional(),
+    /** Sticky notes (M04), also optional. */
+    notes: z.array(noteSchema).optional(),
   })
   .superRefine((doc, ctx) => {
     const nodeIds = new Set<string>();
@@ -62,6 +74,19 @@ export const systemDocumentSchema = z
         });
       }
       nodeIds.add(node.id);
+    });
+    // Notes share the canvas (and the selection) with components, so their ids can't clash.
+    // (They're kept out of nodeIds: nothing connects to a note.)
+    const canvasIds = new Set(nodeIds);
+    doc.notes?.forEach((note, index) => {
+      if (canvasIds.has(note.id)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["notes", index, "id"],
+          message: `Duplicate id "${note.id}"`,
+        });
+      }
+      canvasIds.add(note.id);
     });
 
     const edgeIds = new Set<string>();
@@ -115,6 +140,7 @@ export const systemDocumentSchema = z
 
 export type Position = z.infer<typeof positionSchema>;
 export type SystemNode = z.infer<typeof nodeSchema>;
+export type SystemNote = z.infer<typeof noteSchema>;
 export type SystemEdge = z.infer<typeof edgeSchema>;
 export type SystemDocument = z.infer<typeof systemDocumentSchema>;
 
