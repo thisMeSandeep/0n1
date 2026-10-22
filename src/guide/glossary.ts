@@ -1,12 +1,20 @@
 /*
- * What 0n1's numbers mean, in plain words: one entry per number, plus the
- * few ideas that tie them together. The ⓘ explanations beside the numbers
- * and the "Reading the numbers" guide both read from here, so they can't
- * drift apart. Thresholds quoted here are the ones the lab colours by
- * (simulation/live.ts).
+ * Beginner-friendly explanations for the performance numbers shown by 0n1.
+ *
+ * The glossary entries explain what each number means, why it matters,
+ * and what changes can make it increase or decrease.
+ *
+ * The thresholds mentioned here should match the colours used by
+ * simulation/live.ts.
  */
 
-export type GlossaryGroup = "Traffic" | "Speed" | "Health" | "Data" | "Cost" | "Reading a run";
+export type GlossaryGroup =
+  | "Traffic"
+  | "Speed"
+  | "Health"
+  | "Data"
+  | "Cost"
+  | "Reading a run";
 
 export const GLOSSARY_GROUPS: readonly GlossaryGroup[] = [
   "Traffic",
@@ -21,13 +29,13 @@ export type GlossaryEntry = {
   id: GlossaryId;
   term: string;
   group: GlossaryGroup;
-  /** One sentence: what it is. */
+  /** A short explanation of the term. */
   what: string;
-  /** Why anyone should care. */
+  /** Why this number is useful. */
   why: string;
-  /** What good looks like, and when to worry. */
+  /** What a normal value looks like, and when to investigate. */
   healthy?: string;
-  /** What makes it go up or down. */
+  /** What can cause the number to increase or decrease. */
   moves?: string;
 };
 
@@ -54,6 +62,7 @@ export const GLOSSARY_IDS = [
   "traces",
   "sampling",
 ] as const;
+
 export type GlossaryId = (typeof GLOSSARY_IDS)[number];
 
 export const GLOSSARY: readonly GlossaryEntry[] = [
@@ -61,209 +70,219 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
     id: "throughput",
     term: "Throughput",
     group: "Traffic",
-    what: "How many requests are finished each second, successfully or not.",
-    why: "It's the work the system actually gets through. If it stays below what clients send, requests are piling up somewhere.",
+    what: "The number of requests the system completes each second. This includes requests that succeed and requests that fail.",
+    why: "This shows how much work the system completes. If fewer requests are completed than arrive, the remaining requests may have to wait or may be rejected.",
     healthy:
-      "Close to what the clients send. On the vitals pill it's what users get back; on a component, what that component finishes.",
+      "It is usually close to the number of requests being sent, provided the system can handle the load. For the whole system, it represents the responses users receive each second. For one component, it shows how many requests that component completes each second.",
     moves:
-      "Rises with traffic until something runs out of room, then flattens while the rest waits or fails.",
+      "It usually increases when more requests arrive, until a component reaches its limit. After that, the number completed may stop increasing, while more requests wait or fail.",
   },
   {
     id: "sent",
     term: "Sent",
     group: "Traffic",
-    what: "Requests per second a client sends into the system.",
-    why: "It's the load you're testing with. Real traffic doesn't slow down because your system is struggling, and neither does a client.",
+    what: "The number of requests clients send to the system each second.",
+    why: "This is the amount of work the test sends to the system. In a real website, users may continue sending requests even when the website is slow. The simulator can represent this situation too.",
     moves:
-      "The client's Requests per second, its traffic shape, the Traffic % control, and surges on the chaos timeline.",
+      "It depends on the client's Requests per second setting, the traffic pattern, the Traffic % control at the top, and any traffic increases added to the timeline.",
   },
   {
     id: "p99",
     term: "p99",
     group: "Speed",
-    what: "99 of every 100 requests finished faster than this. The slowest 1% took longer.",
-    why: "Averages hide the slow ones. One page load can make dozens of requests, so most people hit the slowest 1% sooner than you'd think.",
+    what: "The time within which 99% of requests finish. The slowest 1% take longer than this time.",
+    why: "An average can look good even when some requests are very slow. A webpage may make many requests, so slow requests can affect users even when most requests finish quickly.",
     healthy:
-      "Under about 200 ms feels instant. The vitals turn amber from 500 ms and red from 1 s. Near a client's timeout, slow turns into failed.",
+      "A response time below about 200 ms may feel very fast to users, though the result depends on the task. The summary bar turns amber at 500 ms and red at 1 second. If p99 approaches the client's timeout limit, some requests may fail because they take too long.",
     moves:
-      "Waiting in line at a busy component, slow work, calls made one after another, and retries.",
+      "It increases when requests wait in a line, when a component takes longer to process them, when calls are made one after another instead of at the same time, or when requests are tried again after failures.",
   },
   {
     id: "percentiles",
     term: "p50 and p95",
     group: "Speed",
-    what: "Half of requests finished faster than p50 (the typical request); 95 in 100 faster than p95.",
-    why: "Together with p99 they show the spread. If p50 is fine but p99 is far above it, a few requests are stuck waiting while most fly through.",
+    what: "p50 is the time within which 50% of requests finish. p95 is the time within which 95% of requests finish.",
+    why: "Looking at p50, p95 and p99 together helps show whether most requests are fast while a smaller number are slow. For example, a low p50 and a much higher p99 mean that some requests take much longer than a typical request.",
     moves:
-      "p50 moves with the typical work time; p95 and p99 move first when things start to queue.",
+      "p50 changes when the usual processing time changes. p95 and p99 often increase when requests start waiting in lines.",
   },
   {
     id: "errors",
     term: "Errors",
     group: "Health",
-    what: "The share of requests that failed: turned away, failed by a component, or given up on after the client's timeout.",
-    why: "Each one is a user who didn't get an answer. On the vitals pill it's what users see, wherever the failure started.",
-    healthy: "0%. The vitals turn amber from 0.5% and red from 5%.",
+    what: "The percentage of requests that fail. A request is counted as failed if a component rejects it, returns an error, or the client stops waiting because the timeout limit has been reached.",
+    why: "A failed request means the user did not receive a successful result. This number shows the failure rate experienced by users, regardless of where the problem started.",
+    healthy:
+      "The target is 0%. The summary bar turns amber at 0.5% and red at 5%.",
     moves:
-      "Full lines, components taken down, error rates you set, and timeouts when things get slow.",
+      "It increases when waiting lines fill up, components stop working, a component is configured to return errors, or requests take so long that clients stop waiting.",
   },
   {
     id: "failed-here",
     term: "Failed here",
     group: "Health",
-    what: "Failures that started at this component: its own errors, or requests it turned away. Not failures it passed on from further down.",
-    why: "It tells you where trouble starts. A service whose database is failing shows failed responses, but failed here stays at 0.",
-    moves: "The component's error rate, its line filling up, or it being taken down.",
+    what: "The number of failures that start at this component. These happen when the component returns an error or rejects a request. This number does not include failures that started in another component it depends on.",
+    why: "It helps identify where a problem starts. For example, if a database fails, the service using that database may also return failed responses. The service's 'Failed here' number can still be 0 if the service itself did not cause the failure.",
+    moves:
+      "It increases when the component's own error rate increases, its waiting line becomes full, or the component is taken offline.",
   },
   {
     id: "turned-away",
     term: "Turned away",
     group: "Health",
-    what: "Requests refused at the door because the component's waiting line was full, or a rate limit said no.",
-    why: "It's the system protecting itself: failing fast is better than making everyone wait forever. But each one is a failed request.",
+    what: "The number of requests a component rejects immediately. This can happen when its waiting line is full or a rate limit does not allow the request.",
+    why: "Rejecting a request quickly can prevent the component from becoming even more overloaded. However, the rejected request is still a failure from the user's point of view.",
     moves:
-      "More traffic than the component can handle, a short Max waiting in line, or a tight rate limit.",
+      "It increases when more requests arrive than the component can handle, when the waiting-line limit is low, or when the rate limit allows too few requests.",
   },
   {
     id: "busy",
     term: "Busy",
     group: "Health",
-    what: "How much of a component's capacity is in use: for a service, the share of its 'requests at once' slots that are working.",
-    why: "Waiting starts long before 100%. Requests arrive in bursts, so past about 70% they often find every slot taken.",
+    what: "The percentage of a component's available processing slots that are currently in use. For a service, each slot can handle one request at a time.",
+    why: "Requests can start waiting before a component reaches 100% usage. Requests may arrive together, so all slots can be occupied when a new request arrives.",
     healthy:
-      "Below 70% is comfortable. 0n1 marks it amber from 70% and red from 90%, where lines grow fast.",
+      "Below 70% is generally a comfortable level in this simulator. The component turns amber at 70% and red at 90%. These are simulator thresholds, not universal limits for every real system.",
     moves:
-      "More traffic, slower work per request, or fewer slots. Capacity is roughly slots ÷ work time: 16 slots at 20 ms each is about 800 requests a second.",
+      "It increases when more requests arrive, each request takes longer to process, or fewer processing slots are available. As a rough estimate, a component with 16 slots that each handle a request in 20 ms can complete about 800 requests per second if all slots remain in use and there is no other delay.",
   },
   {
     id: "waiting",
     term: "Waiting in line",
     group: "Health",
-    what: "Requests that have arrived but haven't started, because every slot is taken.",
-    why: "Every waiting request adds its wait to its time. A line that keeps growing means the component can't keep up.",
-    healthy: "Near 0. A few now and then is normal; a steady line means it's full.",
+    what: "The number of requests that have arrived at a component but have not started processing because all its slots are in use.",
+    why: "The time a request spends waiting adds to its total response time. If the waiting line keeps growing, the component is not completing work as quickly as requests arrive.",
+    healthy:
+      "A value close to 0 is usually good. A few waiting requests from time to time can be normal. A line that remains large suggests that the component cannot handle the incoming work quickly enough.",
     moves:
-      "Grows when requests arrive faster than they're finished. How long each waits is about the line's length ÷ the throughput.",
+      "The line grows when requests arrive faster than they are completed. As a rough estimate, divide the number of requests ahead in the line by the number of requests the component completes per second to estimate the waiting time.",
   },
   {
     id: "in-flight",
     term: "In flight",
     group: "Health",
-    what: "Requests being worked on right now, including any waiting on something this component called.",
-    why: "With waiting in line, it shows where requests are sitting at this moment.",
+    what: "The requests a component is currently handling. This includes requests for which the component is waiting for a response from another service or a database.",
+    why: "Read this number together with 'Waiting in line'. It shows how many requests are being handled now and how many have not started yet.",
   },
   {
     id: "hit-ratio",
     term: "Hit ratio",
     group: "Data",
-    what: "The share of lookups a cache or CDN answered itself, without going to the database or origin behind it.",
-    why: "Every hit is work the slower thing behind it doesn't do. A cache at 90% sends a tenth of the reads on.",
+    what: "The percentage of lookups answered by a cache or CDN without asking the database or the original server for the data.",
+    why: "When a cache answers a request, the database or original server does not need to do that work. A 90% hit ratio means that 9 out of every 10 lookups are answered by the cache.",
     healthy:
-      "It depends on the traffic: with a few very popular keys, 80–95% is common. Under 30% the cache isn't pulling its weight.",
+      "The suitable value depends on the type of traffic and data. A value of 80–95% can be common when users often request the same items. Below 30%, the cache may provide limited benefit for that workload.",
     moves:
-      "How many keys the cache holds, how long they stay (TTL), and whether clients ask for a few popular keys or all of them equally.",
+      "It depends on how many items the cache can store, how long each item remains in the cache, and whether users request a small set of popular items or many different items.",
   },
   {
     id: "stale-reads",
     term: "Stale reads",
     group: "Data",
-    what: "Reads from a replica (or searches on an index) that missed a write still on its way there.",
-    why: "Copies trade freshness for capacity. Some features can live with slightly old data; others, like a just-placed order, can't.",
-    moves: "Longer replication lag or indexing delay, and more writes to popular keys.",
+    what: "The number of reads that return old information because a copy of the data, such as a database replica or search index, has not yet received a recent update.",
+    why: "Extra copies of data can help a system handle more requests, but those copies may not contain the latest changes. Slightly old information may be acceptable for some features, but not for others, such as showing a newly placed order.",
+    moves:
+      "It increases when copies take longer to receive updates, when search indexing is delayed, or when many updates affect the same data.",
   },
   {
     id: "oldest-job",
     term: "Oldest job",
     group: "Data",
-    what: "How long the job that's waited longest in a queue has been waiting.",
-    why: "A queue hides slowness from users, but the work is still late. If this keeps growing, workers can't keep up.",
-    moves: "Fewer or slower workers, more jobs, or failed jobs being retried.",
+    what: "How long the job that has been waiting the longest in a queue has been waiting.",
+    why: "A queue lets a system process work later instead of immediately. If the oldest job keeps waiting longer, the workers may not be completing jobs as quickly as new jobs arrive.",
+    moves:
+      "It increases when there are fewer workers, workers take longer to finish jobs, more jobs arrive, or failed jobs are repeatedly tried again.",
   },
   {
     id: "backlog",
     term: "Backlog",
     group: "Data",
-    what: "Messages or jobs waiting for a worker. On a pub/sub, each subscriber has its own.",
-    why: "A backlog that stays flat is fine; one that grows will eventually fill up and lose work.",
-    moves: "Grows when work arrives faster than it's done.",
+    what: "The number of messages or jobs waiting for a worker to process them. In a publish-subscribe system, each subscriber can have its own backlog.",
+    why: "A backlog that remains at a manageable level may be normal. If it keeps growing, the system may eventually run out of space or fail to process new work on time.",
+    moves:
+      "It grows when jobs or messages arrive faster than workers complete them.",
   },
   {
     id: "breaker-state",
     term: "Circuit breaker state",
     group: "Health",
-    what: "Closed: calls go through. Open: calls fail at once without being sent. Half-open: a few test calls check whether things recovered.",
-    why: "Failing fast gives a struggling dependency room to recover, and stops a retry storm from spreading.",
-    moves: "Opens when failures pass its threshold; tries again after its cool-down.",
+    what: "A circuit breaker has three states. Closed means calls are allowed as usual. Open means calls are stopped immediately instead of being sent to the failing component. Half-open means a small number of test calls are allowed to check whether that component has recovered.",
+    why: "Stopping calls temporarily gives a failing component time to recover. It can also prevent repeated calls from increasing the problem.",
+    moves:
+      "The breaker opens when failures cross its configured limit. After a waiting period, it may allow a few test calls to check whether the component is working again.",
   },
   {
     id: "dns-cached",
     term: "Users with the address cached",
     group: "Data",
-    what: "The share of a client's users that still have the system's address from DNS.",
-    why: "If DNS goes down, these users carry on and the rest can't reach anything. It's why a DNS outage starts slowly, then breaks everything.",
+    what: "The percentage of users whose systems still have your service's IP address saved from an earlier DNS lookup.",
+    why: "DNS converts a domain name, such as example.com, into an IP address. If DNS stops responding, users who still have a valid saved address may continue to connect, while other users may be unable to find the address.",
     moves:
-      "Falls as answers expire (the DNS's Answer TTL) while DNS is down; back to 100% once it answers again.",
+      "During a DNS outage, this percentage falls as saved answers expire. The time an answer can remain saved is controlled by its DNS TTL. Once DNS works again and users can look up the address, the percentage can recover.",
   },
   {
     id: "cost",
     term: "Estimated cost",
     group: "Cost",
-    what: "A rough monthly bill at typical cloud list prices: each component's size, plus usage like requests and data sent.",
-    why: "'Just add more servers' fixes many problems, at a price. It shows what each fix costs.",
+    what: "An approximate monthly infrastructure bill based on typical cloud prices. It includes the size of each component and usage such as requests handled and data sent.",
+    why: "Adding servers or increasing component capacity can help handle more work, but it also increases cost. This estimate helps compare the approximate cost of different configurations.",
     moves:
-      "Bigger components (more connections, more requests at once), more of them, and more traffic. Click empty canvas to see it by component.",
+      "It increases when components become larger, more components are added, or traffic and data usage increase. Click an empty area of the canvas to see the cost split by component.",
   },
   {
     id: "status",
     term: "Status colours",
     group: "Reading a run",
-    what: "Grey is fine, amber is getting busy, red is overloaded or failing, and a dashed, faded card is down.",
-    why: "Colour only ever means state, so anything red is worth a look first.",
+    what: "Grey means the component is operating normally, amber means it is becoming busy, and red means it is overloaded or failing. A faded card with a dashed outline means the component is offline.",
+    why: "The colours help identify which components need attention first.",
   },
   {
     id: "insights",
     term: "What's happening",
     group: "Reading a run",
-    what: "0n1's notes on the run: what's wrong, where, and what might help, in plain words.",
-    why: "When everything turns red at once, they name the real bottleneck rather than everything waiting behind it.",
+    what: "Short explanations written by 0n1 about the test. They describe what is wrong, where the problem may be, and what could help.",
+    why: "When several components show problems, these explanations help identify the component where the problem may have started.",
   },
   {
     id: "traces",
     term: "Traces",
     group: "Reading a run",
-    what: "One request followed hop by hop: when it reached each component, how long it waited in line, and how long the work took.",
-    why: "Numbers say something is slow; a trace shows where the time went.",
+    what: "A trace follows one request as it moves through the system. It records when the request reaches each component, how long it waits, and how long processing takes.",
+    why: "Summary numbers can show that requests are slow. A trace helps show which component used the time.",
   },
   {
     id: "sampling",
     term: "Sampling",
     group: "Reading a run",
-    what: "At very high traffic, 0n1 simulates one request for every few real ones, each standing for the rest.",
-    why: "It keeps big runs smooth in a browser. Rates, percentages and costs stay right; only the finest detail is approximate.",
+    what: "When traffic is very high, 0n1 does not simulate every request. It simulates a smaller number of requests and uses them to represent the larger amount of traffic.",
+    why: "This helps the simulator handle large tests in a browser. Rates, percentages and costs are intended to remain accurate, while some detailed results may be approximate.",
   },
 ];
 
-/** The ideas that make the numbers make sense together. */
-export const CONCEPTS: readonly { title: string; body: string }[] = [
+/** Explanations that show how different performance numbers are related. */
+export const CONCEPTS: readonly {
+  title: string;
+  body: string;
+}[] = [
   {
-    title: "Capacity is slots ÷ time",
-    body: "A component with 16 requests at once, each taking 20 ms, finishes at most 16 ÷ 0.02 s = 800 requests a second. Send more and the rest wait or are turned away.",
+    title: "Capacity depends on slots and processing time",
+    body: "Think of a component as having a fixed number of slots. Each request uses one slot while it is being processed. If a component can handle 16 requests at the same time and each request takes 20 ms (0.02 seconds), it can complete about 16 ÷ 0.02 = 800 requests per second under these assumptions. If more requests arrive, the extra requests must wait or be rejected.",
   },
   {
-    title: "Slow comes before broken",
-    body: "As something gets busy, requests start finding every slot taken. Past about 70–80% busy, lines grow quickly and p99 climbs steeply, long before errors appear.",
+    title: "A system can become slow before requests start failing",
+    body: "A component does not always go from normal operation to failure immediately. As it becomes busier, new requests are more likely to find all slots in use and must wait. In this simulator, waiting lines and p99 response time can rise quickly when a component is around 70–80% busy. This can happen before the error rate increases.",
   },
   {
-    title: "Waiting adds up",
-    body: "Time in line ≈ requests waiting ÷ throughput. 200 waiting at a component finishing 1,000 a second means about 200 ms of waiting for each new request.",
+    title: "Waiting increases response time",
+    body: "A rough estimate of waiting time is the number of requests ahead in the line divided by the number of requests completed per second. For example, if 200 requests are ahead in the line and the component completes 1,000 requests per second, the estimated wait is 200 ÷ 1,000 = 0.2 seconds, or 200 ms. This is an estimate and assumes the completion rate stays the same.",
   },
   {
-    title: "Slow becomes failed at the timeout",
-    body: "When waiting pushes requests past a client's timeout, it gives up and counts an error, even though the work may still happen. Retries then add more load.",
+    title: "A slow request can fail when it reaches the timeout limit",
+    body: "A client usually waits only for a configured period. If a request takes longer, the client may stop waiting and report a timeout error. The system may still finish the work after the client has stopped waiting. If the client sends the request again, the extra request can increase the load.",
   },
   {
-    title: "Find where it starts",
-    body: "Trouble spreads backwards: a full database makes the services calling it look full too. Look for the component that's red while what it calls is fine; the insights do this for you.",
+    title: "Find the component where the problem starts",
+    body: "A problem in one component can make other components that depend on it appear slow. For example, if a database is overloaded, a service that waits for the database may also become slow. To find the starting point, check which component is showing a problem and whether the components it calls are also having problems. The 'What's happening' notes are intended to help with this.",
   },
 ];
 
@@ -273,7 +292,7 @@ export function glossaryEntry(id: GlossaryId): GlossaryEntry {
   return byId.get(id) as GlossaryEntry;
 }
 
-/** The entry for a label as the inspector shows it ("Busy", "Hit ratio"…), if there is one. */
+/** Maps the labels shown in the inspector to glossary entry IDs. */
 const LABELS: Readonly<Record<string, GlossaryId>> = {
   Throughput: "throughput",
   Finishing: "throughput",
@@ -306,6 +325,9 @@ const LABELS: Readonly<Record<string, GlossaryId>> = {
 };
 
 export function explainLabel(label: string): GlossaryId | undefined {
-  if (label.startsWith("Waiting for ")) return "backlog"; // a pub/sub subscriber's
+  if (label.startsWith("Waiting for ")) {
+    return "backlog"; // A subscriber's waiting messages or jobs.
+  }
+
   return LABELS[label];
 }
