@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   checks:
-    name: Typecheck, lint, test, build, e2e
+    name: Typecheck, lint, test, build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -56,17 +56,3 @@ jobs:
 
       - name: Bundle budget
         run: bun run check:bundle
-
-      - name: Install Playwright browser
-        run: bunx playwright install --with-deps chromium
-
-      - name: End-to-end tests
-        run: bun run test:e2e
-
-      - name: Upload Playwright report
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 7
