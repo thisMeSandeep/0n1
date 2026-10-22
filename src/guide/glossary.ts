@@ -8,13 +8,7 @@
  * simulation/live.ts.
  */
 
-export type GlossaryGroup =
-  | "Traffic"
-  | "Speed"
-  | "Health"
-  | "Data"
-  | "Cost"
-  | "Reading a run";
+export type GlossaryGroup = "Traffic" | "Speed" | "Health" | "Data" | "Cost" | "Reading a run";
 
 export const GLOSSARY_GROUPS: readonly GlossaryGroup[] = [
   "Traffic",
@@ -112,8 +106,7 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
     group: "Health",
     what: "The percentage of requests that fail. A request is counted as failed if a component rejects it, returns an error, or the client stops waiting because the timeout limit has been reached.",
     why: "A failed request means the user did not receive a successful result. This number shows the failure rate experienced by users, regardless of where the problem started.",
-    healthy:
-      "The target is 0%. The summary bar turns amber at 0.5% and red at 5%.",
+    healthy: "The target is 0%. The summary bar turns amber at 0.5% and red at 5%.",
     moves:
       "It increases when waiting lines fill up, components stop working, a component is configured to return errors, or requests take so long that clients stop waiting.",
   },
@@ -199,8 +192,7 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
     group: "Data",
     what: "The number of messages or jobs waiting for a worker to process them. In a publish-subscribe system, each subscriber can have its own backlog.",
     why: "A backlog that remains at a manageable level may be normal. If it keeps growing, the system may eventually run out of space or fail to process new work on time.",
-    moves:
-      "It grows when jobs or messages arrive faster than workers complete them.",
+    moves: "It grows when jobs or messages arrive faster than workers complete them.",
   },
   {
     id: "breaker-state",
